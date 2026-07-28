@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Nexus Defense</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0b0e17;
+    color: #dfe6f5;
+    font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; padding: 12px;
+    user-select: none;
+  }
+  #app { display: flex; gap: 12px; align-items: flex-start; }
+
+  /* ── 화면 전환 ─────────────────────────────── */
+  .screen { display: none; }
+  .screen.on { display: flex; gap: 12px; align-items: flex-start; }
+
+  #menu, #shopScreen {
+    width: 1254px; height: 744px;
+    flex-direction: column; justify-content: center; align-items: center;
+    background: radial-gradient(circle at 50% 45%, #182140 0%, #0d1120 62%);
+    border: 1px solid #232b41; border-radius: 8px;
+  }
+  #menu .title {
+    font-size: 62px; font-weight: 800; letter-spacing: .14em;
+    background: linear-gradient(180deg,#cfe6ff,#4b8ff0);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #menu .sub { color: #6d7ba0; font-size: 14px; letter-spacing: .3em; margin-top: 4px; }
+  #menu .records { display: flex; gap: 34px; margin: 34px 0 30px; }
+  #menu .rec { text-align: center; }
+  #menu .rec .v { font-size: 30px; font-weight: 800; color: #dfe6f5; }
+  #menu .rec .k { font-size: 12px; color: #6d7ba0; letter-spacing: .1em; margin-top: 3px; }
+  #menu .menuBtns { display: flex; flex-direction: column; gap: 11px; width: 260px; }
+  #menu button { padding: 15px; font-size: 16px; letter-spacing: .06em; }
+
+  #shopScreen h2 { font-size: 26px; font-weight: 800; letter-spacing: .1em; margin-bottom: 6px; }
+  #shopScreen .cores { color: #7fe7ff; font-size: 15px; font-weight: 700; margin-bottom: 20px; }
+  #metaList { width: 560px; display: flex; flex-direction: column; gap: 8px; }
+  .meta {
+    display: flex; align-items: center; gap: 14px;
+    background: #161d2e; border: 1px solid #263050; border-radius: 8px; padding: 13px 15px;
+  }
+  .meta.max { border-color: #2f5c46; }
+  .meta .info { flex: 1; }
+  .meta .nm { font-size: 14px; font-weight: 700; }
+  .meta .ds { font-size: 12px; color: #7b88a8; margin-top: 3px; }
+  .meta .pips { display: flex; gap: 3px; margin-top: 6px; }
+  .meta .pip { width: 22px; height: 5px; border-radius: 3px; background: #26304a; }
+  .meta .pip.on { background: #5b9dff; }
+  .meta button { width: 110px; padding: 9px; }
+  #shopScreen .back { width: 200px; margin-top: 24px; }
+
+  /* ── 게임 화면 ─────────────────────────────── */
+  #stage { position: relative; }
+  canvas {
+    display: block;
+    background: #10141f;
+    border: 1px solid #232b41;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  #topbar {
+    position: absolute; top: 10px; left: 10px; right: 10px;
+    display: flex; gap: 10px; align-items: center;
+    pointer-events: none;
+  }
+  .chip {
+    background: rgba(14,18,30,.86);
+    border: 1px solid #2b3550;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 14px; font-weight: 700;
+    display: flex; gap: 7px; align-items: center;
+  }
+  .chip small { font-weight: 400; color: #7b88a8; font-size: 12px; }
+  #hpwrap { flex: 1; }
+  #hpbar { height: 10px; background: #23293c; border-radius: 5px; overflow: hidden; margin-top: 4px; }
+  #hpfill { height: 100%; width: 100%; background: linear-gradient(90deg,#4de3a2,#2fb37c); transition: width .15s; }
+
+  #panel {
+    width: 276px; display: flex; flex-direction: column; gap: 10px;
+    max-height: 722px; overflow-y: auto; padding-right: 6px;
+  }
+  #panel::-webkit-scrollbar { width: 6px; }
+  #panel::-webkit-scrollbar-thumb { background: #2b3550; border-radius: 3px; }
+
+  .box { background: #141926; border: 1px solid #232b41; border-radius: 8px; padding: 11px; }
+  .box h3 {
+    font-size: 12px; letter-spacing: .08em; color: #7b88a8;
+    text-transform: uppercase; margin-bottom: 9px; font-weight: 700;
+  }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tabs .tab {
+    flex: 1; text-align: center; padding: 7px 0; cursor: pointer;
+    font-size: 12px; font-weight: 700; letter-spacing: .06em;
+    border-radius: 6px; border: 1px solid #263050;
+    background: #131a29; color: #6d7ba0;
+  }
+  .tabs .tab:hover { color: #aab6d0; }
+  .tabs .tab.on { background: #24304d; border-color: #3f6ac0; color: #dfe6f5; }
+
+  .card {
+    display: flex; gap: 9px; align-items: center;
+    padding: 8px; border-radius: 6px; border: 1px solid #263050;
+    background: #1a2133; cursor: pointer; margin-bottom: 6px;
+    transition: background .12s, border-color .12s;
+  }
+  .card:last-child { margin-bottom: 0; }
+  .card:hover { background: #212a42; }
+  .card.poor { opacity: .45; cursor: not-allowed; }
+  .swatch {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    box-shadow: 0 0 0 2px #141926, 0 0 0 3px currentColor;
+  }
+  .card .nm { font-size: 13px; font-weight: 700; }
+  .card .ds { font-size: 11px; color: #7b88a8; margin-top: 2px; line-height: 1.35; }
+  .card .cost { margin-left: auto; font-size: 13px; font-weight: 700; color: #ffd45e; white-space: nowrap; }
+  .card .buy {
+    margin-left: auto; width: auto; min-width: 66px;
+    padding: 7px 10px; font-size: 12px; white-space: nowrap;
+    background: #21304f; border-color: #37507f; color: #ffd45e;
+  }
+  .card .buy:hover:not(:disabled) { background: #2b4272; }
+  #nexusShop .card { padding: 7px 9px; }
+  #nexusShop .card .ds { margin-top: 1px; }
+
+  button {
+    width: 100%; padding: 9px; border-radius: 6px; border: 1px solid #2f6ae0;
+    background: #2f6ae0; color: #fff; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  button:hover:not(:disabled) { background: #3f7bf5; }
+  button:disabled { background: #232b41; border-color: #232b41; color: #626e8c; cursor: default; }
+  button.ghost { background: transparent; border-color: #33405f; color: #aab6d0; }
+  button.ghost:hover:not(:disabled) { background: #1e2740; }
+  button.danger { background: transparent; border-color: #6b3141; color: #e08292; }
+  button.danger:hover:not(:disabled) { background: #2a1a20; }
+  .row { display: flex; gap: 6px; }
+  .stat { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: #aab6d0; }
+  .stat b { color: #dfe6f5; }
+  .hint { font-size: 11px; color: #66728f; line-height: 1.5; }
+
+  #over {
+    position: absolute; inset: 0; display: none;
+    flex-direction: column; justify-content: center; align-items: center; gap: 14px;
+    background: rgba(8,10,18,.88); border-radius: 8px;
+  }
+  #over.on { display: flex; }
+  #over h1 { font-size: 34px; color: #ff6b81; }
+  #over p { color: #aab6d0; font-size: 15px; }
+  #over button { width: 180px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── 메인 화면 ────────────────────────────── -->
+<div id="menu" class="screen on">
+  <div class="title">NEXUS DEFENSE</div>
+  <div class="sub">DEFEND THE CORE</div>
+  <div class="records">
+    <div class="rec"><div class="v" id="mBest">0</div><div class="k">최고 웨이브</div></div>
+    <div class="rec"><div class="v" id="mCores" style="color:#7fe7ff">0</div><div class="k">보유 코어</div></div>
+    <div class="rec"><div class="v" id="mRuns">0</div><div class="k">출격 횟수</div></div>
+  </div>
+  <div class="menuBtns">
+    <button id="btnSortie">출 격</button>
+    <button id="btnShop" class="ghost">상 점</button>
+  </div>
+  <p class="hint" style="margin-top:22px;color:#4e5872">사방에서 몰려오는 적으로부터 중앙 넥서스를 지켜내십시오.</p>
+</div>
+
+<!-- ── 상점 화면 ────────────────────────────── -->
+<div id="shopScreen" class="screen">
+  <h2>영구 강화 상점</h2>
+  <div class="cores">보유 코어 <span id="sCores">0</span></div>
+  <div id="metaList"></div>
+  <button class="ghost back" id="btnShopBack">메인으로</button>
+  <p class="hint" style="margin-top:12px;color:#4e5872">코어는 출격을 마칠 때 도달한 웨이브에 비례해 지급됩니다.</p>
+</div>
+
+<!-- ── 게임 화면 ────────────────────────────── -->
+<div id="gameScreen" class="screen">
+  <div id="stage">
+    <canvas id="cv" width="960" height="720"></canvas>
+    <div id="topbar">
+      <div class="chip"><small>웨이브</small><span id="uiWave">1</span></div>
+      <div class="chip"><small>골드</small><span id="uiGold" style="color:#ffd45e">0</span></div>
+      <div class="chip"><small>최고</small><span id="uiBest">0</span></div>
+      <div class="chip" id="hpwrap">
+        <div style="width:100%">
+          <div style="display:flex;justify-content:space-between"><small>넥서스</small><span id="uiHp">0/0</span></div>
+          <div id="hpbar"><div id="hpfill"></div></div>
+        </div>
+      </div>
+      <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiSpeed">1x</div>
+    </div>
+    <div id="over">
+      <h1>넥서스 파괴됨</h1>
+      <p id="overMsg"></p>
+      <p id="overCore" style="color:#7fe7ff;font-weight:700"></p>
+      <button id="btnRestart">다시 출격</button>
+      <button id="btnToMenu" class="ghost" style="width:180px">메인으로</button>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="box">
+      <div class="tabs">
+        <div class="tab on" data-tab="nexus">넥서스</div>
+        <div class="tab" data-tab="hero">영웅</div>
+      </div>
+      <div id="nexusShop"></div>
+      <div id="heroShop" style="display:none"></div>
+    </div>
+
+    <div class="box" id="selBox" style="display:none">
+      <h3 id="selName">정보</h3>
+      <div id="selStats"></div>
+      <div class="row" style="margin-top:9px" id="selBtns">
+        <button id="btnUp">강화</button>
+        <button id="btnSell" class="danger" style="width:78px">해고</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <button id="btnWave">웨이브 1 시작</button>
+      <p class="hint" style="margin-top:9px">
+        영웅 카드를 누르면 넥서스 주변에 배치됩니다<br>
+        넥서스·영웅을 클릭하면 능력치 확인 · Space 웨이브 시작
+      </p>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+"use strict";
+
+/* ══════════════════════════════════════════════════════════
+   밸런스 데이터 — 숫자 조정은 전부 이 구역에서
+   ══════════════════════════════════════════════════════════ */
+
+const CFG = {
+  startGold: 40,
+  nexusHp: 200,
+  nexusDmg: 10,
+  nexusRange: 155,
+  nexusRate: 1.0,        // 초당 발사 수
+  sellRatio: 0.7,        // 해고 시 투자금 환급률
+  maxLevel: 10,
+  heroesLocked: true,    // 영웅 고용 일시 차단 — false 로 바꾸면 다시 열린다
+  heroUnique: false,     // true 로 두면 영웅을 종류당 1기만 고용
+  heroCostGrow: 1.55,    // 같은 영웅을 또 고용할 때 비용 증가율
+  postR: 112,            // 넥서스 주변 대기 반경
+  leash: 380,            // 이 거리 밖의 적은 쫓지 않는다
+};
+
+// 영웅 — 고용하면 넥서스 주변에 나타나고, 적이 오면 직접 요격하러 간다
+const HEROES = [
+  { id:'scout', name:'순찰병', cost:90, color:'#5b9dff', accent:'#a8ccff',
+    dmg:14, range:120, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
+    desc:'값싸고 발이 빠른 기본 영웅' },
+  { id:'sniper', name:'저격수', cost:260, color:'#c86bff', accent:'#e6c2ff',
+    dmg:95, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
+    desc:'멀리서 한 발씩 확실하게' },
+  { id:'pyro', name:'화염술사', cost:300, color:'#ff5f3d', accent:'#ffb199',
+    dmg:46, range:140, rate:0.85, bspd:340, spd:104, splash:74, slow:0, slowT:0,
+    desc:'몰린 적을 통째로 태운다' },
+  { id:'engi', name:'정비공', cost:240, color:'#5ce8a0', accent:'#b6f7d6',
+    dmg:16, range:130, rate:1.25, bspd:520, spd:118, splash:0, slow:0, slowT:0,
+    aura: { rate:0.35, range:150 },
+    desc:'주변 아군 공격속도 +35%' },
+];
+const defById = id => HEROES.find(d => d.id === id);
+
+// 레벨당 증가율
+const UP = { dmg:1.30, range:1.045, rate:1.06, costBase:0.75, costGrow:1.65 };
+
+const ENEMIES = {
+  normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:6,   rew:1,  sides:0, from:1,   to:30  },
+  fast:    { name:'질주',   color:'#f2c14e', hp:8,    spd:110, r:9,  dmg:4,   rew:1,  sides:3, from:6,   to:40  },
+  tank:    { name:'중갑',   color:'#9b6bff', hp:45,   spd:34,  r:18, dmg:13,  rew:3,  sides:6, from:11,  to:50  },
+  venom:   { name:'독충',   color:'#3ddc84', hp:25,   spd:60,  r:11, dmg:10,  rew:2,  sides:5, from:20,  to:60  },
+  charger: { name:'돌격병', color:'#ff8a50', hp:40,   spd:78,  r:13, dmg:16,  rew:3,  sides:0, from:30,  to:70  },
+  heavy:   { name:'철갑',   color:'#607d8b', hp:95,   spd:28,  r:20, dmg:22,  rew:5,  sides:6, from:40,  to:80  },
+  assassin:{ name:'암살자', color:'#e040fb', hp:20,   spd:135, r:8,  dmg:24,  rew:3,  sides:4, from:50,  to:90  },
+  crusher: { name:'파괴자', color:'#ff1744', hp:75,   spd:50,  r:16, dmg:28,  rew:5,  sides:0, from:60,  to:100 },
+  mage:    { name:'마법사', color:'#40c4ff', hp:30,   spd:38,  r:12, dmg:14,  rew:4,  sides:5, from:70,  to:100, ranged:200, atkRate:0.8, projSpd:300 },
+  cannon:  { name:'포격수', color:'#ffd600', hp:55,   spd:26,  r:14, dmg:35,  rew:6,  sides:8, from:80,  to:100, ranged:250, atkRate:0.45, projSpd:240 },
+  boss:    { name:'보스',   color:'#ff4d4d', hp:250,  spd:24,  r:30, dmg:45,  rew:15, sides:8 },
+};
+
+const waveCount = w => 6 + Math.floor(w * 1.6);
+const waveGap   = w => Math.max(0.24, 1.6 - w * 0.014);
+const waveBonus = w => 25 + w * 6;
+
+function getActiveTypes(w) {
+  return Object.entries(ENEMIES)
+    .filter(([k, e]) => k !== 'boss' && e.from <= w && e.to >= w)
+    .map(([k]) => k);
+}
+
+function buildWave(w) {
+  const list = [];
+  const n = waveCount(w);
+  const types = getActiveTypes(w);
+  if (types.length === 0) types.push('normal');
+  for (let i = 0; i < n; i++) {
+    list.push(types[i % types.length]);
+  }
+  if (w % 10 === 0) list.push('boss');
+  return list;
+}
+
+// 강화 비용 증가율 — 한 번 살 때마다 다음 비용이 이 배율만큼 오른다 (1.0 이면 고정)
+const UP_COST_GROW = 1.15;
+
+const NEXUS_UPS = [
+  { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +1',
+    cost: lv => 5 + lv * 5,
+    apply: s => { s.nexus.dmg += 1; } },
+  { id:'rate',  name:'공격속도 강화', desc:'넥서스 초당 발사 +0.1',
+    cost: lv => 5 + lv * 5,
+    apply: s => { s.nexus.rate += 0.1; } },
+  { id:'range', name:'사거리 증가',   desc:'넥서스 사거리 +0.5',
+    cost: lv => 5 + lv * 5,
+    apply: s => { s.nexus.range += 0.5; } },
+  { id:'wall',  name:'최대체력 증가', desc:'최대 체력 +5 · 즉시 회복',
+    cost: lv => 5 + lv * 5,
+    apply: s => { s.nexus.maxHp += 5; s.nexus.hp = Math.min(s.nexus.maxHp, s.nexus.hp + 5); } },
+  { id:'inc',   name:'수입 증대',     desc:'웨이브 클리어 보상 +5%',
+    cost: lv => 5 + lv * 5,
+    apply: s => { s.incomeMul += 0.05; } },
+  { id:'regen', name:'체력 재생',     desc:'초당 HP +0.5 회복',
+    cost: lv => 5 + lv * 5,
+    apply: s => { s.nexus.regen += 0.5; } },
+];
+
+/* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
+const META = [
+  { id:'fund',  name:'초기 자금',       max:5, base:50,
+    desc: lv => `시작 골드 +${lv * 40}` },
+  { id:'power', name:'공격력 강화',     max:5, base:55,
+    desc: lv => `넥서스 공격력 +${lv * 4}` },
+  { id:'spd',   name:'공격속도 강화',   max:5, base:60,
+    desc: lv => `넥서스 공격속도 +${(lv * 0.1).toFixed(1)}` },
+  { id:'rng',   name:'사거리 강화',     max:5, base:65,
+    desc: lv => `넥서스 사거리 +${lv * 10}` },
+  { id:'armor', name:'최대체력 강화',   max:5, base:60,
+    desc: lv => `넥서스 최대 체력 +${lv * 30}` },
+  { id:'mregen',name:'체력재생 강화',   max:5, base:70,
+    desc: lv => `초당 HP 재생 +${(lv * 0.3).toFixed(1)}` },
+];
+const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
+const coreReward = cleared => Math.floor(3 * Math.pow(Math.max(0, cleared), 1.25));
+
+const SAVE_KEY = 'nexusdefense.save';
+let save = { best: 0, cores: 0, runs: 0, meta: {} };
+
+function loadSave() {
+  try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
+  for (const m of META) if (typeof save.meta[m.id] !== 'number') save.meta[m.id] = 0;
+  const old = +(localStorage.getItem('nexusdefense.best') || 0);
+  if (old > save.best) save.best = old;
+}
+const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+const mlv = id => save.meta[id] || 0;
+
+/* ══════════════════════════════════════════════════════════
+   상수 / 유틸
+   ══════════════════════════════════════════════════════════ */
+
+const W = 960, H = 720, CELL = 48;
+const COLS = W / CELL, ROWS = H / CELL;
+const CX = W / 2, CY = H / 2;
+const NEXUS_R = 42;
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+
+const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+/* ══════════════════════════════════════════════════════════
+   게임 상태
+   ══════════════════════════════════════════════════════════ */
+
+const AUTO_WAVE_SEC = 5;
+const GOLDEN = 2.39996;                  // 대기 위치를 고르게 흩는 황금각
+
+let S, screen = 'menu', speed = 1, sel = null, hover = null, last = 0;
+
+function newGame() {
+  const hp = CFG.nexusHp + mlv('armor') * 30;
+  S = {
+    phase: 'build',                      // build | combat | over
+    wave: 1,
+    gold: CFG.startGold + mlv('fund') * 40,
+    nexus: { hp, maxHp: hp, dmg: CFG.nexusDmg + mlv('power') * 4,
+             range: CFG.nexusRange + mlv('rng') * 10, rate: CFG.nexusRate + mlv('spd') * 0.1,
+             regen: mlv('mregen') * 0.3, cd: 0, hitFlash: 0, ang: 0 },
+    nexusLv: Object.fromEntries(NEXUS_UPS.map(u => [u.id, 0])),
+    heroes: [], enemies: [], bullets: [], eBullets: [], parts: [], texts: [],
+    queue: [], spawnT: 0, shake: 0, hired: 0,
+    autoT: 0,
+    dmgMul: 1,
+    goldMul: 1,
+    incomeMul: 1,
+  };
+  sel = null;
+  $('over').classList.remove('on');
+  syncUI();
+}
+
+const best = () => save.best;
+
+function show(name) {
+  screen = name;
+  for (const id of ['menu', 'shopScreen', 'gameScreen'])
+    $(id).classList.toggle('on', (id === 'gameScreen' ? 'game' : id === 'shopScreen' ? 'shop' : 'menu') === name);
+  if (name === 'menu') renderMenu();
+  if (name === 'shop') renderMeta();
+}
+
+/* ══════════════════════════════════════════════════════════
+   영웅 고용 / 강화 / 해고
+   ══════════════════════════════════════════════════════════ */
+
+const ownedCount = id => S.heroes.filter(h => h.def.id === id).length;
+const heroCost = def => Math.floor(def.cost * Math.pow(CFG.heroCostGrow, ownedCount(def.id)));
+const heroBlocked = def => CFG.heroesLocked || (CFG.heroUnique && ownedCount(def.id) > 0);
+
+const heroStat = h => ({
+  dmg:   h.def.dmg   * Math.pow(UP.dmg,   h.lv - 1) * S.dmgMul,
+  range: h.def.range * Math.pow(UP.range, h.lv - 1),
+  rate:  h.def.rate  * Math.pow(UP.rate,  h.lv - 1) * (1 + (h.buffRate || 0)),
+});
+const upCost = h => Math.floor(h.def.cost * UP.costBase * Math.pow(UP.costGrow, h.lv - 1));
+
+function hire(def) {
+  const cost = heroCost(def);
+  if (S.gold < cost || heroBlocked(def)) return;
+  S.gold -= cost;
+  const ang = S.hired * GOLDEN;                   // 대기 위치를 골고루 배분
+  const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
+  S.heroes.push({
+    def, lv: 1, invested: cost, homeAng: ang,
+    x: post.x, y: post.y, cd: 0, ang: 0, buffRate: 0,
+    recoil: 0, spawnT: 0.6,
+  });
+  S.hired++;
+  addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
+  syncUI();
+}
+
+const homePos = h => ({ x: CX + Math.cos(h.homeAng) * CFG.postR,
+                        y: CY + Math.sin(h.homeAng) * CFG.postR });
+
+// 정비공 아우라 — 사거리 안의 다른 영웅 공격속도를 올린다
+function refreshAura() {
+  for (const h of S.heroes) h.buffRate = 0;
+  for (const a of S.heroes) {
+    if (!a.def.aura) continue;
+    for (const h of S.heroes) {
+      if (h === a) continue;
+      if (dist(a.x, a.y, h.x, h.y) <= a.def.aura.range)
+        h.buffRate = Math.max(h.buffRate, a.def.aura.rate);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   웨이브 진행
+   ══════════════════════════════════════════════════════════ */
+
+function startWave() {
+  if (!S || S.phase !== 'build') return;
+  S.phase = 'combat';
+  S.autoT = 0;
+  S.queue = buildWave(S.wave);
+  S.spawnT = 0;
+  syncUI();
+}
+
+function spawn(type) {
+  const e = ENEMIES[type];
+  const a = Math.random() * Math.PI * 2;
+  const d = 560;
+  const hp = e.hp;
+  S.enemies.push({
+    type, def: e, x: CX + Math.cos(a) * d, y: CY + Math.sin(a) * d,
+    hp, maxHp: hp, spd: e.spd,
+    rew: Math.max(1, Math.round(e.rew * S.goldMul)),
+    slowT: 0, slowMul: 1, ang: Math.random() * 6.28, hit: 0,
+    cd: 0,
+  });
+}
+
+function endWave() {
+  const bonus = Math.floor(waveBonus(S.wave) * S.goldMul * S.incomeMul);
+  S.gold += bonus;
+  addText(CX, CY - 70, '+' + bonus + ' 클리어 보너스', '#ffd45e');
+  S.wave++;
+  S.phase = 'build';
+  S.autoT = AUTO_WAVE_SEC;
+  if (S.wave - 1 > save.best) { save.best = S.wave - 1; writeSave(); }
+  syncUI();
+}
+
+function gameOver() {
+  S.phase = 'over';
+  S.autoT = 0;
+  const cleared = S.wave - 1;
+  const cores = coreReward(cleared);
+  save.cores += cores;
+  save.runs++;
+  if (cleared > save.best) save.best = cleared;
+  writeSave();
+  $('overMsg').textContent = `웨이브 ${S.wave}에서 무너졌습니다 · 최고 기록 ${save.best}`;
+  $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
+  $('over').classList.add('on');
+  syncUI();
+}
+
+/* ══════════════════════════════════════════════════════════
+   전투 로직
+   ══════════════════════════════════════════════════════════ */
+
+function damage(e, amount, slow, slowT) {
+  e.hp -= amount;
+  e.hit = 0.12;
+  if (slow > 0) { e.slowMul = 1 - slow; e.slowT = Math.max(e.slowT, slowT); }
+  if (e.hp <= 0 && !e.dead) {
+    e.dead = true;
+    S.gold += e.rew;
+    addText(e.x, e.y, '+' + e.rew, '#ffd45e');
+    burst(e.x, e.y, e.def.color, e.type === 'boss' ? 34 : 12);
+    if (e.type === 'boss') S.shake = 10;
+  }
+}
+
+// 사거리 안에서 넥서스에 가장 가까운 적
+function pickTarget(x, y, range) {
+  let best = null, bestD = Infinity;
+  for (const e of S.enemies) {
+    if (e.dead) continue;
+    if (dist(x, y, e.x, e.y) > range + e.def.r) continue;
+    const d = dist(e.x, e.y, CX, CY);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best;
+}
+
+// 요격하러 갈 대상 — 리시 범위 안에서 넥서스에 가장 가까운 적
+function pickIntercept() {
+  let best = null, bestD = Infinity;
+  for (const e of S.enemies) {
+    if (e.dead) continue;
+    const d = dist(e.x, e.y, CX, CY);
+    if (d > CFG.leash) continue;
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best;
+}
+
+function fire(from, target, dmg, bspd, splash, slow, slowT, color) {
+  S.bullets.push({ x: from.x, y: from.y, target, dmg, spd: bspd, splash, slow, slowT, color, life: 3 });
+}
+
+function update(dt) {
+  const n = S.nexus;
+  n.ang += dt * 0.5;
+  if (n.hitFlash > 0) n.hitFlash -= dt;
+  if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 30);
+
+  /* 스폰 */
+  if (S.phase === 'combat' && S.queue.length) {
+    S.spawnT -= dt;
+    if (S.spawnT <= 0) { spawn(S.queue.shift()); S.spawnT = waveGap(S.wave); }
+  }
+
+  /* 넥서스 체력 재생 */
+  if (n.hp > 0 && n.hp < n.maxHp && n.regen > 0) {
+    n.hp = Math.min(n.maxHp, n.hp + n.regen * dt);
+  }
+
+  /* 적 이동 */
+  for (const e of S.enemies) {
+    if (e.dead) continue;
+    if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowMul = 1; }
+    if (e.hit > 0) e.hit -= dt;
+    const dx = CX - e.x, dy = CY - e.y;
+    const d = Math.hypot(dx, dy) || 1;
+    e.ang = Math.atan2(dy, dx);
+
+    if (e.def.ranged) {
+      if (d <= e.def.ranged) {
+        e.cd -= dt;
+        if (e.cd <= 0) {
+          e.cd = 1 / e.def.atkRate;
+          S.eBullets.push({ x: e.x, y: e.y, dmg: e.def.dmg, spd: e.def.projSpd, color: e.def.color, life: 4 });
+        }
+      } else {
+        const step = e.spd * e.slowMul * dt;
+        e.x += dx / d * step;
+        e.y += dy / d * step;
+      }
+    } else if (d <= NEXUS_R + e.def.r) {
+      n.hp -= e.def.dmg;
+      n.hitFlash = 0.25;
+      S.shake = Math.max(S.shake, e.type === 'boss' ? 14 : 6);
+      burst(e.x, e.y, '#ff6b81', 16);
+      addText(CX, CY - 55, '-' + e.def.dmg, '#ff6b81');
+      e.dead = true;
+      if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
+    } else {
+      const step = e.spd * e.slowMul * dt;
+      e.x += dx / d * step;
+      e.y += dy / d * step;
+    }
+  }
+
+  /* 적 탄환 → 넥서스 */
+  for (const eb of S.eBullets) {
+    eb.life -= dt;
+    const dx = CX - eb.x, dy = CY - eb.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const step = eb.spd * dt;
+    if (d <= NEXUS_R + 4) {
+      n.hp -= eb.dmg;
+      n.hitFlash = 0.25;
+      S.shake = Math.max(S.shake, 4);
+      addText(CX, CY - 55, '-' + eb.dmg, '#ff6b81');
+      eb.gone = true;
+      if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
+    } else {
+      eb.x += dx / d * step;
+      eb.y += dy / d * step;
+    }
+    if (eb.life <= 0) eb.gone = true;
+  }
+  S.eBullets = S.eBullets.filter(b => !b.gone);
+
+  /* 넥서스 사격 */
+  n.cd -= dt;
+  if (n.cd <= 0) {
+    const t = pickTarget(CX, CY, n.range);
+    if (t) { n.cd = 1 / n.rate; fire({ x: CX, y: CY }, t, n.dmg, 560, 0, 0, 0, '#7fe7ff'); }
+  }
+
+  /* 영웅 — 이동 후 사격 */
+  refreshAura();
+  const intercept = pickIntercept();
+  for (const h of S.heroes) {
+    const st = heroStat(h);
+    if (h.spawnT > 0) h.spawnT -= dt;
+    if (h.recoil > 0) h.recoil -= dt * 6;
+    h.cd -= dt;
+
+    // 사거리 안에 적이 있으면 그놈을, 없으면 요격 대상 쪽으로 이동
+    const inRange = pickTarget(h.x, h.y, st.range);
+    const goal = inRange || intercept;
+    h.target = goal || null;
+
+    let dx = 0, dy = 0;
+    if (goal) {
+      const d = dist(h.x, h.y, goal.x, goal.y);
+      h.ang = Math.atan2(goal.y - h.y, goal.x - h.x);
+      // 사거리의 80%까지만 접근하고 그 자리에서 쏜다
+      const keep = st.range * 0.8;
+      if (d > keep) { dx = (goal.x - h.x) / d; dy = (goal.y - h.y) / d; }
+    } else {
+      const p = homePos(h);
+      const d = dist(h.x, h.y, p.x, p.y);
+      if (d > 4) { dx = (p.x - h.x) / d; dy = (p.y - h.y) / d; h.ang = Math.atan2(dy, dx); }
+    }
+
+    // 영웅끼리 겹치지 않게 살짝 밀어낸다
+    for (const o of S.heroes) {
+      if (o === h) continue;
+      const d = dist(h.x, h.y, o.x, o.y);
+      if (d > 0 && d < 30) { dx += (h.x - o.x) / d * 0.6; dy += (h.y - o.y) / d * 0.6; }
+    }
+
+    const m = Math.hypot(dx, dy);
+    if (m > 0.01) {
+      const step = h.def.spd * dt;
+      h.x = clamp(h.x + dx / m * step, 14, W - 14);
+      h.y = clamp(h.y + dy / m * step, 14, H - 14);
+    }
+
+    if (inRange && h.cd <= 0) {
+      h.cd = 1 / st.rate;
+      h.recoil = 1;
+      fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent);
+    }
+  }
+
+  /* 탄환 */
+  for (const b of S.bullets) {
+    b.life -= dt;
+    const tg = b.target;
+    if (!tg || tg.dead || b.life <= 0) { b.gone = true; continue; }
+    const dx = tg.x - b.x, dy = tg.y - b.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const step = b.spd * dt;
+    if (d <= step + tg.def.r) {
+      b.gone = true;
+      if (b.splash > 0) {
+        for (const e of S.enemies) {
+          if (e.dead) continue;
+          const dd = dist(e.x, e.y, tg.x, tg.y);
+          if (dd <= b.splash + e.def.r) {
+            const falloff = 1 - 0.5 * (dd / (b.splash + e.def.r));
+            damage(e, b.dmg * falloff, b.slow, b.slowT);
+          }
+        }
+        ring(tg.x, tg.y, b.splash, b.color);
+      } else {
+        damage(tg, b.dmg, b.slow, b.slowT);
+      }
+    } else {
+      b.x += dx / d * step;
+      b.y += dy / d * step;
+    }
+  }
+
+  S.bullets = S.bullets.filter(b => !b.gone);
+  S.enemies = S.enemies.filter(e => !e.dead);
+
+  for (const p of S.parts) {
+    p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= 0.94; p.vy *= 0.94;
+    if (p.isRing) p.rr += (p.r - p.rr) * dt * 12;
+  }
+  S.parts = S.parts.filter(p => p.life > 0);
+
+  for (const t of S.texts) { t.life -= dt; t.y -= dt * 26; }
+  S.texts = S.texts.filter(t => t.life > 0);
+
+  if (S.phase === 'combat' && !S.queue.length && !S.enemies.length) endWave();
+}
+
+/* ── 이펙트 ─────────────────────────────────── */
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.28, s = 40 + Math.random() * 150;
+    S.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+                   life: 0.35 + Math.random() * 0.3, color, size: 1.5 + Math.random() * 2.5 });
+  }
+}
+function ring(x, y, r, color) {
+  S.parts.push({ x, y, vx: 0, vy: 0, life: 0.3, color, r, rr: r * 0.3, isRing: true });
+}
+function addText(x, y, msg, color) {
+  S.texts.push({ x, y, msg, color, life: 0.9 });
+}
+
+/* ══════════════════════════════════════════════════════════
+   렌더링
+   ══════════════════════════════════════════════════════════ */
+
+function draw() {
+  ctx.save();
+  if (S.shake > 0) ctx.translate((Math.random() - .5) * S.shake, (Math.random() - .5) * S.shake);
+
+  ctx.fillStyle = '#10141f';
+  ctx.fillRect(-20, -20, W + 40, H + 40);
+
+  ctx.strokeStyle = '#161c2a'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 1; i < COLS; i++) { ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, H); }
+  for (let j = 1; j < ROWS; j++) { ctx.moveTo(0, j * CELL); ctx.lineTo(W, j * CELL); }
+  ctx.stroke();
+
+  // 요격 한계선
+  ctx.strokeStyle = 'rgba(90,140,255,.09)';
+  ctx.setLineDash([5, 10]);
+  ctx.beginPath(); ctx.arc(CX, CY, CFG.leash, 0, 6.284); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 대기 위치
+  for (const h of S.heroes) {
+    const p = homePos(h);
+    ctx.fillStyle = 'rgba(255,255,255,.06)';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 6.284); ctx.fill();
+  }
+
+  // 지원 아우라
+  for (const a of S.heroes) {
+    if (!a.def.aura) continue;
+    ctx.strokeStyle = 'rgba(92,232,160,.15)';
+    ctx.fillStyle = 'rgba(92,232,160,.03)';
+    ctx.beginPath(); ctx.arc(a.x, a.y, a.def.aura.range, 0, 6.284);
+    ctx.fill(); ctx.stroke();
+  }
+
+  // 선택 표시
+  if (sel && sel.kind === 'hero' && S.heroes.includes(sel.h)) {
+    const st = heroStat(sel.h);
+    ctx.strokeStyle = 'rgba(255,255,255,.3)';
+    ctx.fillStyle = 'rgba(255,255,255,.04)';
+    ctx.beginPath(); ctx.arc(sel.h.x, sel.h.y, st.range, 0, 6.284);
+    ctx.fill(); ctx.stroke();
+  }
+
+  drawNexus();
+
+  /* 영웅 */
+  for (const h of S.heroes) {
+    const pop = h.spawnT > 0 ? 1 + h.spawnT * 0.8 : 1;
+    const back = h.recoil > 0 ? h.recoil * 4 : 0;
+
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.scale(pop, pop);
+
+    // 이동 중이면 잔상
+    ctx.fillStyle = '#1c2437';
+    ctx.strokeStyle = h.def.color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = i * 6.2832 / 8 + Math.PI / 8;
+      i ? ctx.lineTo(Math.cos(a) * 17, Math.sin(a) * 17)
+        : ctx.moveTo(Math.cos(a) * 17, Math.sin(a) * 17);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    ctx.rotate(h.ang);
+    ctx.fillStyle = h.def.color;
+    ctx.fillRect(3 - back, -3.5, 14, 7);
+    ctx.beginPath(); ctx.arc(0, 0, 8, 0, 6.284); ctx.fill();
+    ctx.fillStyle = h.def.accent;
+    ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.284); ctx.fill();
+    ctx.restore();
+
+    if (h.buffRate > 0) {
+      ctx.fillStyle = '#5ce8a0';
+      ctx.beginPath(); ctx.arc(h.x + 13, h.y - 13, 3.2, 0, 6.284); ctx.fill();
+    }
+    for (let i = 0; i < h.lv; i++) {
+      ctx.fillStyle = h.def.accent;
+      ctx.fillRect(h.x - 14 + (i % 5) * 6, h.y + 13 - Math.floor(i / 5) * 4, 4, 2.5);
+    }
+  }
+
+  /* 적 */
+  for (const e of S.enemies) {
+    const d = e.def;
+    ctx.save();
+    ctx.translate(e.x, e.y); ctx.rotate(e.ang + Math.PI / 2);
+    ctx.fillStyle = e.hit > 0 ? '#ffffff' : d.color;
+    ctx.beginPath();
+    if (d.sides === 0) ctx.arc(0, 0, d.r, 0, 6.284);
+    else {
+      for (let i = 0; i < d.sides; i++) {
+        const a = -Math.PI / 2 + i * 6.2832 / d.sides;
+        i ? ctx.lineTo(Math.cos(a) * d.r, Math.sin(a) * d.r)
+          : ctx.moveTo(Math.cos(a) * d.r, Math.sin(a) * d.r);
+      }
+      ctx.closePath();
+    }
+    ctx.fill();
+    if (e.slowMul < 1) { ctx.strokeStyle = '#4fd8e0'; ctx.lineWidth = 2.5; ctx.stroke(); }
+    ctx.restore();
+
+    if (e.hp < e.maxHp) {
+      const w = d.r * 2.2;
+      ctx.fillStyle = 'rgba(0,0,0,.55)';
+      ctx.fillRect(e.x - w / 2, e.y - d.r - 9, w, 4);
+      ctx.fillStyle = '#5ce8a0';
+      ctx.fillRect(e.x - w / 2, e.y - d.r - 9, w * clamp(e.hp / e.maxHp, 0, 1), 4);
+    }
+  }
+
+  /* 탄환 */
+  for (const b of S.bullets) {
+    ctx.fillStyle = b.color;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 5 : 3.2, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = .3;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 10 : 6.5, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  /* 적 탄환 */
+  for (const eb of S.eBullets) {
+    ctx.fillStyle = eb.color;
+    ctx.beginPath(); ctx.arc(eb.x, eb.y, 4, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = .4;
+    ctx.fillStyle = '#ff3333';
+    ctx.beginPath(); ctx.arc(eb.x, eb.y, 8, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  /* 파티클 */
+  for (const p of S.parts) {
+    ctx.globalAlpha = clamp(p.life * 2.5, 0, 1);
+    if (p.isRing) {
+      ctx.strokeStyle = p.color; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.rr, 0, 6.284); ctx.stroke();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, 6.284); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* 플로팅 텍스트 */
+  ctx.font = 'bold 14px "Malgun Gothic", sans-serif';
+  ctx.textAlign = 'center';
+  for (const t of S.texts) {
+    ctx.globalAlpha = clamp(t.life * 1.6, 0, 1);
+    ctx.fillStyle = t.color;
+    ctx.fillText(t.msg, t.x, t.y);
+    ctx.globalAlpha = 1;
+  }
+
+  /* 하단 안내 */
+  if (S.phase === 'build') {
+    if (S.autoT > 0) {
+      ctx.fillStyle = '#ffd45e';
+      ctx.font = 'bold 15px "Malgun Gothic", sans-serif';
+      ctx.fillText(`다음 웨이브까지 ${S.autoT.toFixed(1)}초 — Space로 즉시 시작`, CX, H - 24);
+      const bw = 260;
+      ctx.fillStyle = 'rgba(255,255,255,.1)';
+      ctx.fillRect(CX - bw / 2, H - 16, bw, 4);
+      ctx.fillStyle = '#ffd45e';
+      ctx.fillRect(CX - bw / 2, H - 16, bw * (S.autoT / AUTO_WAVE_SEC), 4);
+    } else {
+      ctx.fillStyle = 'rgba(122,136,168,.65)';
+      ctx.font = '13px "Malgun Gothic", sans-serif';
+      ctx.fillText('준비 단계 — 영웅을 고용하고 Space로 웨이브를 시작하십시오', CX, H - 22);
+    }
+  }
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+function drawNexus() {
+  const n = S.nexus;
+  const pulse = 1 + Math.sin(performance.now() / 400) * 0.03;
+  const picked = sel && sel.kind === 'nexus';
+
+  ctx.strokeStyle = picked ? 'rgba(127,231,255,.35)' : 'rgba(127,231,255,.08)';
+  ctx.fillStyle = picked ? 'rgba(127,231,255,.04)' : 'transparent';
+  ctx.beginPath(); ctx.arc(CX, CY, n.range, 0, 6.284);
+  if (picked) ctx.fill();
+  ctx.stroke();
+
+  const g = ctx.createRadialGradient(CX, CY, 8, CX, CY, NEXUS_R * 2.1);
+  g.addColorStop(0, n.hitFlash > 0 ? 'rgba(255,80,110,.5)' : 'rgba(80,180,255,.28)');
+  g.addColorStop(1, 'rgba(80,180,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(CX, CY, NEXUS_R * 2.1, 0, 6.284); ctx.fill();
+
+  ctx.save();
+  ctx.translate(CX, CY);
+  ctx.rotate(n.ang);
+  ctx.scale(pulse, pulse);
+  ctx.fillStyle = n.hitFlash > 0 ? '#ff6b81' : '#2b7de0';
+  ctx.strokeStyle = picked ? '#ffffff' : '#9fd6ff';
+  ctx.lineWidth = picked ? 3.5 : 2.5;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = i * 6.2832 / 6;
+    i ? ctx.lineTo(Math.cos(a) * NEXUS_R, Math.sin(a) * NEXUS_R)
+      : ctx.moveTo(Math.cos(a) * NEXUS_R, Math.sin(a) * NEXUS_R);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  ctx.rotate(-n.ang * 2.4);
+  ctx.fillStyle = '#dff2ff';
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const a = i * 6.2832 / 4;
+    i ? ctx.lineTo(Math.cos(a) * 15, Math.sin(a) * 15)
+      : ctx.moveTo(Math.cos(a) * 15, Math.sin(a) * 15);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  const ratio = clamp(n.hp / n.maxHp, 0, 1);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(255,255,255,.09)';
+  ctx.beginPath(); ctx.arc(CX, CY, NEXUS_R + 11, 0, 6.284); ctx.stroke();
+  ctx.strokeStyle = ratio > 0.5 ? '#4de3a2' : ratio > 0.25 ? '#ffd45e' : '#ff6b81';
+  ctx.beginPath();
+  ctx.arc(CX, CY, NEXUS_R + 11, -Math.PI / 2, -Math.PI / 2 + 6.2832 * ratio);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   UI
+   ══════════════════════════════════════════════════════════ */
+
+function renderMenu() {
+  $('mBest').textContent = save.best;
+  $('mCores').textContent = save.cores;
+  $('mRuns').textContent = save.runs;
+}
+
+function renderMeta() {
+  $('sCores').textContent = save.cores;
+  $('metaList').innerHTML = META.map(m => {
+    const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
+    const pips = Array.from({ length: m.max },
+      (_, i) => `<div class="pip ${i < lv ? 'on' : ''}"></div>`).join('');
+    return `<div class="meta ${maxed ? 'max' : ''}">
+      <div class="info">
+        <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">Lv.${lv}</span></div>
+        <div class="ds">${m.desc(lv)}${maxed ? '' : ` → ${m.desc(lv + 1)}`}</div>
+        <div class="pips">${pips}</div>
+      </div>
+      <button data-m="${m.id}" ${maxed || save.cores < c ? 'disabled' : ''}>
+        ${maxed ? '최대' : c + ' 코어'}
+      </button>
+    </div>`;
+  }).join('');
+  $('metaList').querySelectorAll('button[data-m]').forEach(el => {
+    el.onclick = () => {
+      const m = META.find(x => x.id === el.dataset.m);
+      const lv = mlv(m.id), c = metaCost(m, lv);
+      if (lv >= m.max || save.cores < c) return;
+      save.cores -= c; save.meta[m.id] = lv + 1;
+      writeSave(); renderMeta();
+    };
+  });
+}
+
+/* 상점 목록은 처음에 한 번만 만든다.
+   매 프레임 innerHTML 을 다시 쓰면 버튼이 눌리는 도중에 교체되어 클릭이 씹힌다. */
+const els = { nexus: [], hero: [] };
+
+function buildShops() {
+  $('nexusShop').innerHTML = NEXUS_UPS.map(u => `
+    <div class="card" data-u="${u.id}">
+      <div>
+        <div class="nm">${u.name} <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${u.desc}</div>
+      </div>
+      <button class="buy"></button>
+    </div>`).join('');
+  els.nexus = NEXUS_UPS.map(u => {
+    const card = $('nexusShop').querySelector(`.card[data-u="${u.id}"]`);
+    const btn = card.querySelector('button');
+    card.onclick = () => buyNexusUp(u.id);
+    btn.onclick = ev => { ev.stopPropagation(); buyNexusUp(u.id); };
+    return { u, card, btn, lv: card.querySelector('.lv') };
+  });
+
+  $('heroShop').innerHTML = HEROES.map(d => `
+    <div class="card" data-h="${d.id}">
+      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
+      <div>
+        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${d.desc}</div>
+      </div>
+      <button class="buy"></button>
+    </div>`).join('')
+    + '<p class="hint lockmsg" style="margin-top:9px;display:none">영웅 고용은 현재 잠겨 있습니다.</p>';
+  els.hero = HEROES.map(d => {
+    const card = $('heroShop').querySelector(`.card[data-h="${d.id}"]`);
+    const btn = card.querySelector('button');
+    card.onclick = () => hire(d);
+    btn.onclick = ev => { ev.stopPropagation(); hire(d); };
+    return { d, card, btn, cnt: card.querySelector('.cnt') };
+  });
+}
+
+function renderHeroShop() {
+  for (const e of els.hero) {
+    const c = heroCost(e.d), owned = ownedCount(e.d.id), blocked = heroBlocked(e.d);
+    const off = blocked || S.gold < c;
+    e.cnt.textContent = owned ? '×' + owned : '';
+    e.btn.textContent = CFG.heroesLocked ? '잠김' : blocked ? '보유중' : c + 'G';
+    e.btn.disabled = off;
+    e.card.classList.toggle('poor', off);
+  }
+  $('heroShop').querySelector('.lockmsg').style.display = CFG.heroesLocked ? '' : 'none';
+}
+
+// 카드 어디를 누르든(비용 버튼 포함) 한 번에 강화된다
+function buyNexusUp(id) {
+  const u = NEXUS_UPS.find(x => x.id === id);
+  const c = u.cost(S.nexusLv[u.id]);
+  if (!u || S.gold < c) return;
+  S.gold -= c; S.nexusLv[u.id]++; u.apply(S);
+  addText(CX, CY - 88, u.name + ' Lv.' + S.nexusLv[u.id], '#7fe7ff');
+  syncUI();
+}
+
+function renderNexusShop() {
+  for (const e of els.nexus) {
+    const lv = S.nexusLv[e.u.id], c = e.u.cost(lv);
+    e.lv.textContent = 'Lv.' + lv;
+    e.btn.textContent = c + 'G';
+    e.btn.disabled = S.gold < c;
+    e.card.classList.toggle('poor', S.gold < c);
+  }
+}
+
+function renderSel() {
+  const box = $('selBox');
+  if (!sel || (sel.kind === 'hero' && !S.heroes.includes(sel.h))) {
+    sel = null; box.style.display = 'none'; return;
+  }
+  box.style.display = '';
+
+  if (sel.kind === 'nexus') {
+    const n = S.nexus;
+    $('selName').textContent = '넥서스';
+    $('selStats').innerHTML = `
+      <div class="stat"><span>체력</span><b>${Math.ceil(n.hp)} / ${n.maxHp}</b></div>
+      <div class="stat"><span>공격력</span><b>${n.dmg.toFixed(1)}</b></div>
+      <div class="stat"><span>공격속도</span><b>${n.rate.toFixed(2)} 발/초</b></div>
+      <div class="stat"><span>초당 피해량</span><b>${(n.dmg * n.rate).toFixed(1)}</b></div>
+      <div class="stat"><span>사거리</span><b>${n.range.toFixed(0)}</b></div>
+      <div class="stat"><span>체력 재생</span><b>${n.regen.toFixed(1)}/초</b></div>
+      <div class="stat"><span>수입 배율</span><b>×${S.incomeMul.toFixed(2)}</b></div>
+      <div class="stat"><span>강화 횟수</span><b>${
+        NEXUS_UPS.map(u => S.nexusLv[u.id]).reduce((a, b) => a + b, 0)}</b></div>`;
+    $('selBtns').style.display = 'none';
+    return;
+  }
+
+  const h = sel.h, st = heroStat(h);
+  const maxed = h.lv >= CFG.maxLevel, cost = upCost(h);
+  $('selBtns').style.display = '';
+  $('selName').textContent = `★ ${h.def.name} Lv.${h.lv}`;
+  const nextDmg = h.def.dmg * Math.pow(UP.dmg, h.lv) * S.dmgMul;
+  $('selStats').innerHTML = `
+    <div class="stat"><span>공격력</span><b>${st.dmg.toFixed(1)}${maxed ? '' : ` → ${nextDmg.toFixed(1)}`}</b></div>
+    <div class="stat"><span>공격속도</span><b>${st.rate.toFixed(2)} 발/초</b></div>
+    <div class="stat"><span>초당 피해량</span><b>${(st.dmg * st.rate).toFixed(1)}</b></div>
+    <div class="stat"><span>사거리</span><b>${st.range.toFixed(0)}</b></div>
+    <div class="stat"><span>이동속도</span><b>${h.def.spd}</b></div>
+    ${h.def.splash ? `<div class="stat"><span>범위</span><b>${h.def.splash}</b></div>` : ''}
+    ${h.def.aura ? `<div class="stat"><span>지원 아우라</span><b style="color:#5ce8a0">공속 +${(h.def.aura.rate * 100).toFixed(0)}%</b></div>` : ''}
+    ${h.buffRate > 0 ? `<div class="stat"><span>받는 버프</span><b style="color:#5ce8a0">공속 +${(h.buffRate * 100).toFixed(0)}%</b></div>` : ''}`;
+  const btn = $('btnUp');
+  btn.disabled = maxed || S.gold < cost;
+  btn.textContent = maxed ? '최대 레벨' : `강화 ${cost}G`;
+  $('btnSell').textContent = `해고 ${Math.floor(h.invested * CFG.sellRatio)}G`;
+}
+
+function syncUI() {
+  $('uiWave').textContent = S.wave;
+  $('uiGold').textContent = Math.floor(S.gold);
+  $('uiBest').textContent = best();
+  $('uiHp').textContent = `${Math.ceil(S.nexus.hp)}/${S.nexus.maxHp}`;
+  $('hpfill').style.width = clamp(S.nexus.hp / S.nexus.maxHp, 0, 1) * 100 + '%';
+  $('uiSpeed').textContent = speed + 'x';
+
+  const b = $('btnWave');
+  b.disabled = S.phase !== 'build';
+  b.textContent = S.phase === 'combat' ? `전투 중 · 남은 적 ${S.enemies.length + S.queue.length}`
+                : S.phase === 'over'   ? '게임 오버'
+                : S.autoT > 0          ? `웨이브 ${S.wave} 시작 (${Math.ceil(S.autoT)})`
+                :                        `웨이브 ${S.wave} 시작`;
+  renderHeroShop(); renderNexusShop(); renderSel();
+}
+
+/* ── 탭 ─────────────────────────────────────── */
+let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
+document.querySelectorAll('.tabs .tab').forEach(el => {
+  el.onclick = () => setTab(el.dataset.tab);
+});
+function setTab(name) {
+  tab = name;
+  document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
+  $('heroShop').style.display  = tab === 'hero'  ? '' : 'none';
+  $('nexusShop').style.display = tab === 'nexus' ? '' : 'none';
+}
+
+/* ══════════════════════════════════════════════════════════
+   입력
+   ══════════════════════════════════════════════════════════ */
+
+function mousePos(ev) {
+  const r = cv.getBoundingClientRect();
+  return { x: (ev.clientX - r.left) * (W / r.width), y: (ev.clientY - r.top) * (H / r.height) };
+}
+
+cv.addEventListener('mousemove', ev => { hover = mousePos(ev); });
+cv.addEventListener('mouseleave', () => { hover = null; });
+
+cv.addEventListener('click', ev => {
+  if (S.phase === 'over') return;
+  const m = mousePos(ev);
+
+  // 넥서스 클릭 → 능력치 표시 + 넥서스 탭으로
+  if (dist(m.x, m.y, CX, CY) <= NEXUS_R + 12) {
+    sel = { kind: 'nexus' };
+    setTab('nexus');
+    syncUI();
+    return;
+  }
+  // 영웅 클릭
+  let picked = null, bestD = 24;
+  for (const h of S.heroes) {
+    const d = dist(m.x, m.y, h.x, h.y);
+    if (d < bestD) { bestD = d; picked = h; }
+  }
+  sel = picked ? { kind: 'hero', h: picked } : null;
+  if (picked) setTab('hero');
+  syncUI();
+});
+
+$('btnUp').onclick = () => {
+  if (!sel || sel.kind !== 'hero') return;
+  const h = sel.h;
+  if (h.lv >= CFG.maxLevel) return;
+  const c = upCost(h);
+  if (S.gold < c) return;
+  S.gold -= c; h.invested += c; h.lv++;
+  syncUI();
+};
+
+$('btnSell').onclick = () => {
+  if (!sel || sel.kind !== 'hero') return;
+  const h = sel.h;
+  S.gold += Math.floor(h.invested * CFG.sellRatio);
+  S.heroes = S.heroes.filter(x => x !== h);
+  sel = null;
+  refreshAura();
+  syncUI();
+};
+
+$('btnWave').onclick = startWave;
+$('uiSpeed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 3 : 1; syncUI(); };
+
+$('btnSortie').onclick = () => { newGame(); setTab('nexus'); show('game'); };
+$('btnShop').onclick = () => show('shop');
+$('btnShopBack').onclick = () => show('menu');
+$('btnRestart').onclick = () => { newGame(); setTab('nexus'); show('game'); };
+$('btnToMenu').onclick = () => { $('over').classList.remove('on'); show('menu'); };
+
+addEventListener('keydown', ev => {
+  if (screen !== 'game') {
+    if (ev.key === 'Escape' && screen === 'shop') show('menu');
+    return;
+  }
+  if (ev.code === 'Space') { ev.preventDefault(); startWave(); return; }
+  if (ev.key === 'Escape') { sel = null; syncUI(); return; }
+  const i = ['1', '2', '3', '4'].indexOf(ev.key);
+  if (i >= 0 && HEROES[i]) hire(HEROES[i]);
+});
+
+/* ══════════════════════════════════════════════════════════
+   루프
+   ══════════════════════════════════════════════════════════ */
+
+let uiTick = 0;
+function loop(ts) {
+  const raw = Math.min(0.05, (ts - last) / 1000 || 0);
+  last = ts;
+
+  if (screen === 'game') {
+    if (S.phase !== 'over') {
+      // 자동 웨이브 카운트다운은 배속과 무관하게 실제 시간으로 흐른다
+      if (S.phase === 'build' && S.autoT > 0) {
+        S.autoT -= raw;
+        if (S.autoT <= 0) { S.autoT = 0; startWave(); }
+      }
+      for (let i = 0; i < speed; i++) update(raw);
+    }
+    draw();
+    uiTick += raw;
+    if (uiTick > 0.12) { uiTick = 0; if (S.phase !== 'over') syncUI(); }
+  }
+  requestAnimationFrame(loop);
+}
+
+loadSave();
+buildShops();
+newGame();
+show('menu');
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
