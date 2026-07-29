@@ -1357,6 +1357,12 @@ document.addEventListener('visibilitychange', () => {
    레이아웃 크기가 다르므로(메인/상점/게임) 매번 새로 잰다. */
 function fitScreen() {
   const app = $('app'), wrap = $('appWrap');
+  // wrap 의 크기를 먼저 풀어줘야 app 이 눌리지 않은 원래(자연) 크기로 측정된다.
+  // 그대로 두면 다음 호출 때 지난번에 줄인 크기를 기준으로 또 줄이게 되어
+  // 리사이즈 이벤트가 연달아 발생할 때(모바일 스크롤·핀치 등) 화면이
+  // 점점 0에 가깝게 쪼그라드는 되먹임 버그가 생긴다.
+  wrap.style.width = '';
+  wrap.style.height = '';
   app.style.transform = 'none';
   const w = app.offsetWidth, h = app.offsetHeight;
   const pad = 16;
@@ -1365,8 +1371,14 @@ function fitScreen() {
   wrap.style.width = (w * scale) + 'px';
   wrap.style.height = (h * scale) + 'px';
 }
-addEventListener('resize', fitScreen);
-addEventListener('orientationchange', fitScreen);
+let fitScreenQueued = false;
+function requestFitScreen() {
+  if (fitScreenQueued) return;
+  fitScreenQueued = true;
+  requestAnimationFrame(() => { fitScreenQueued = false; fitScreen(); });
+}
+addEventListener('resize', requestFitScreen);
+addEventListener('orientationchange', requestFitScreen);
 
 loadSave();
 buildShops();
