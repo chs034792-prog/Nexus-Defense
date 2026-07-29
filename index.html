@@ -335,7 +335,7 @@
     <div class="box">
       <div class="tabs">
         <div class="tab on" data-tab="nexus">넥서스</div>
-        <div class="tab" data-tab="hero">영웅</div>
+        <div class="tab" data-tab="hero" style="display:none">영웅</div>
         <div class="tab" data-tab="ground" style="display:none">지상</div>
         <div class="tab" data-tab="mech" style="display:none">기갑</div>
         <div class="tab" data-tab="air" style="display:none">공중</div>
@@ -489,10 +489,6 @@ const NEXUS_UPS = [
   { id:'regen', name:'체력 재생',     desc:'초당 HP +0.5 회복',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.regen += 0.5; } },
-  // 한 번만 사는 해금 항목 — 사고 나면 영웅 탭이 열린다
-  { id:'heroshop', name:'영웅 상점', desc:'영웅 탭을 열어 영웅을 고용할 수 있게 된다',
-    once: true, cost: () => 120,
-    apply: s => { s.heroShop = true; } },
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
@@ -512,6 +508,8 @@ const META = [
   { id:'minc',  name:'수입 증대',       max:Infinity, base:75,
     desc: lv => `골드 획득 +${lv * 5}%` },
   // 테크트리 해금 — 구입하면 게임 내 해당 탭이 열린다
+  { id:'t_hero',   name:'영웅 병과 해금', max:1, base:3000,
+    desc: lv => lv ? '영웅 탭 해금됨' : '게임 내 영웅 유닛 탭을 해금한다' },
   { id:'t_ground', name:'지상 병과 해금', max:1, base:80,
     desc: lv => lv ? '지상 탭 해금됨' : '게임 내 지상 유닛 탭을 해금한다' },
   { id:'t_mech',   name:'기갑 병과 해금', max:1, base:120,
@@ -628,7 +626,7 @@ function newGame() {
     dmgMul: 1,                           // 영웅 강화로 오르는 영웅 공격력 배율
     goldMul: 1 + mlv('minc') * 0.05,     // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
-    heroShop: false,                     // 넥서스 강화에서 '영웅 상점'을 사면 열린다
+    heroShop: mlv('t_hero') > 0,          // 영구 상점에서 해금
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
@@ -648,7 +646,7 @@ function resumeGame(snap) {
   S.wave = snap.wave;
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
-  S.heroShop = !!snap.heroShop;
+  S.heroShop = mlv('t_hero') > 0;
   S.dmgMul = snap.dmgMul ?? 1;
   S.goldMul = snap.goldMul ?? 1;
   S.incomeMul = snap.incomeMul ?? 1;
@@ -1422,7 +1420,7 @@ function renderHeroShop() {
   const msg = $('heroShop').querySelector('.lockmsg');
   msg.style.display = locked ? '' : 'none';
   msg.textContent = CFG.heroesLocked ? '영웅 고용은 현재 잠겨 있습니다.'
-                                     : '넥서스 강화의 「영웅 상점」을 먼저 구입하십시오.';
+                                     : '영구 상점에서 「영웅 병과」를 먼저 해금하십시오.';
 }
 
 // 카드 어디를 누르든(비용 버튼 포함) 한 번에 강화된다
@@ -1505,14 +1503,14 @@ function syncUI() {
                 : S.phase === 'over'   ? '게임 오버'
                 : S.autoT > 0          ? `웨이브 ${S.wave} 시작 (${Math.ceil(S.autoT)})`
                 :                        `웨이브 ${S.wave} 시작`;
-  renderHeroShop(); renderNexusShop(); renderSel(); syncHeroTab(); syncTechTabs();
+  renderHeroShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
 const heroTabLocked = () => !S || !S.heroShop;
 const SHOP_PANELS = ['nexus', 'hero', 'ground', 'mech', 'air'];
-const TECH_TABS = { ground: 't_ground', mech: 't_mech', air: 't_air' };
+const TECH_TABS = { hero: 't_hero', ground: 't_ground', mech: 't_mech', air: 't_air' };
 
 document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
@@ -1531,14 +1529,6 @@ function setTab(name) {
     const el = $(p === 'nexus' ? 'nexusShop' : p === 'hero' ? 'heroShop' : p + 'Shop');
     if (el) el.style.display = tab === p ? '' : 'none';
   }
-}
-
-// 영웅 탭 잠금 표시 — 넥서스 강화에서 '영웅 상점'을 사기 전까지 누를 수 없다
-function syncHeroTab() {
-  const el = document.querySelector('.tabs .tab[data-tab="hero"]');
-  const locked = heroTabLocked();
-  el.classList.toggle('locked', locked);
-  el.textContent = locked ? '영웅 🔒' : '영웅';
 }
 
 // 테크트리 탭 — 영구 상점에서 해금해야 보인다
