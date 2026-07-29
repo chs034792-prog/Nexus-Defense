@@ -336,9 +336,15 @@
       <div class="tabs">
         <div class="tab on" data-tab="nexus">넥서스</div>
         <div class="tab" data-tab="hero">영웅</div>
+        <div class="tab" data-tab="ground" style="display:none">지상</div>
+        <div class="tab" data-tab="mech" style="display:none">기갑</div>
+        <div class="tab" data-tab="air" style="display:none">공중</div>
       </div>
       <div id="nexusShop"></div>
       <div id="heroShop" style="display:none"></div>
+      <div id="groundShop" style="display:none"><p class="hint" style="margin:8px 0;color:#6d7ba0">지상 유닛이 곧 추가됩니다.</p></div>
+      <div id="mechShop" style="display:none"><p class="hint" style="margin:8px 0;color:#6d7ba0">기갑 유닛이 곧 추가됩니다.</p></div>
+      <div id="airShop" style="display:none"><p class="hint" style="margin:8px 0;color:#6d7ba0">공중 유닛이 곧 추가됩니다.</p></div>
     </div>
 
     <div class="box">
@@ -505,6 +511,13 @@ const META = [
     desc: lv => `초당 HP 재생 +${(lv * 0.3).toFixed(1)}` },
   { id:'minc',  name:'수입 증대',       max:Infinity, base:75,
     desc: lv => `골드 획득 +${lv * 5}%` },
+  // 테크트리 해금 — 구입하면 게임 내 해당 탭이 열린다
+  { id:'t_ground', name:'지상 병과 해금', max:1, base:80,
+    desc: lv => lv ? '지상 탭 해금됨' : '게임 내 지상 유닛 탭을 해금한다' },
+  { id:'t_mech',   name:'기갑 병과 해금', max:1, base:120,
+    desc: lv => lv ? '기갑 탭 해금됨' : '게임 내 기갑 유닛 탭을 해금한다' },
+  { id:'t_air',    name:'공중 병과 해금', max:1, base:160,
+    desc: lv => lv ? '공중 탭 해금됨' : '게임 내 공중 유닛 탭을 해금한다' },
 ];
 const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
 const coreReward = cleared => Math.floor(6 * Math.pow(Math.max(0, cleared), 1.25));
@@ -1492,24 +1505,32 @@ function syncUI() {
                 : S.phase === 'over'   ? '게임 오버'
                 : S.autoT > 0          ? `웨이브 ${S.wave} 시작 (${Math.ceil(S.autoT)})`
                 :                        `웨이브 ${S.wave} 시작`;
-  renderHeroShop(); renderNexusShop(); renderSel(); syncHeroTab();
+  renderHeroShop(); renderNexusShop(); renderSel(); syncHeroTab(); syncTechTabs();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
 const heroTabLocked = () => !S || !S.heroShop;
+const SHOP_PANELS = ['nexus', 'hero', 'ground', 'mech', 'air'];
+const TECH_TABS = { ground: 't_ground', mech: 't_mech', air: 't_air' };
+
 document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
-    if (el.dataset.tab === 'hero' && heroTabLocked()) return;
-    setTab(el.dataset.tab);
+    const t = el.dataset.tab;
+    if (t === 'hero' && heroTabLocked()) return;
+    if (TECH_TABS[t] && !mlv(TECH_TABS[t])) return;
+    setTab(t);
   };
 });
 function setTab(name) {
   if (name === 'hero' && heroTabLocked()) name = 'nexus';
+  if (TECH_TABS[name] && !mlv(TECH_TABS[name])) name = 'nexus';
   tab = name;
   document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
-  $('heroShop').style.display  = tab === 'hero'  ? '' : 'none';
-  $('nexusShop').style.display = tab === 'nexus' ? '' : 'none';
+  for (const p of SHOP_PANELS) {
+    const el = $(p === 'nexus' ? 'nexusShop' : p === 'hero' ? 'heroShop' : p + 'Shop');
+    if (el) el.style.display = tab === p ? '' : 'none';
+  }
 }
 
 // 영웅 탭 잠금 표시 — 넥서스 강화에서 '영웅 상점'을 사기 전까지 누를 수 없다
@@ -1518,6 +1539,14 @@ function syncHeroTab() {
   const locked = heroTabLocked();
   el.classList.toggle('locked', locked);
   el.textContent = locked ? '영웅 🔒' : '영웅';
+}
+
+// 테크트리 탭 — 영구 상점에서 해금해야 보인다
+function syncTechTabs() {
+  for (const [tabName, metaId] of Object.entries(TECH_TABS)) {
+    const el = document.querySelector(`.tabs .tab[data-tab="${tabName}"]`);
+    if (el) el.style.display = mlv(metaId) > 0 ? '' : 'none';
+  }
 }
 
 /* ══════════════════════════════════════════════════════════
