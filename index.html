@@ -331,6 +331,9 @@ const ENEMY_HP_GROW = 1.005;
 // 이 웨이브부터 적 체력과 공격력이 이 배율만큼 뛴다
 const HARD_WAVE = 40, HARD_MUL = 2;
 
+// 보스 체력 = BOSS_HP_BASE × (웨이브/10)^BOSS_HP_EXP
+const BOSS_HP_BASE = 417, BOSS_HP_EXP = 1.35;
+
 /* 10웨이브마다 한 단계씩 올라가며 인접한 두 단계가 함께 나온다.
    웨이브 20 → 2·3단계, 30 → 3·4단계 … 90 이상은 9·10단계로 고정. */
 function getActiveTypes(w) {
@@ -596,7 +599,9 @@ function spawn(type) {
   const baseRew = type === 'boss' ? (S.wave / 10) * 50 : e.rew;
   if (type === 'boss') {
     const tier = S.wave / 10;
-    e = { ...e, hp: 1250 + (tier - 1) * 750, dmg: 135 + (tier - 1) * 30 };
+    // 첫 보스(웨이브 10)를 맛보기 수준으로 두고 거기서부터 완만하게 올린다
+    const hp = Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP));
+    e = { ...e, hp, dmg: 135 + (tier - 1) * 30 };
   }
   // 웨이브 HARD_WAVE 부터 체력·공격력이 한 번에 뛴다.
   // def 는 ENEMIES 의 공용 객체이므로 반드시 복사해서 고쳐야 한다.
