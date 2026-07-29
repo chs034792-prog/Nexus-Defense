@@ -310,17 +310,17 @@ const defById = id => HEROES.find(d => d.id === id);
 const UP = { dmg:1.30, range:1.045, rate:1.06, costBase:0.75, costGrow:1.65 };
 
 const ENEMIES = {
-  normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:6,   rew:1,  sides:0, from:1,   to:30  },
-  fast:    { name:'질주',   color:'#f2c14e', hp:8,    spd:110, r:9,  dmg:4,   rew:2,  sides:3, from:6,   to:40  },
-  tank:    { name:'중갑',   color:'#9b6bff', hp:45,   spd:34,  r:18, dmg:13,  rew:3,  sides:6, from:11,  to:50  },
-  venom:   { name:'독충',   color:'#3ddc84', hp:25,   spd:60,  r:11, dmg:10,  rew:4,  sides:5, from:20,  to:60  },
-  charger: { name:'돌격병', color:'#ff8a50', hp:40,   spd:78,  r:13, dmg:16,  rew:5,  sides:0, from:30,  to:70  },
-  heavy:   { name:'철갑',   color:'#607d8b', hp:95,   spd:28,  r:20, dmg:22,  rew:6,  sides:6, from:40,  to:80  },
-  assassin:{ name:'암살자', color:'#e040fb', hp:20,   spd:135, r:8,  dmg:24,  rew:7,  sides:4, from:50,  to:90  },
-  crusher: { name:'파괴자', color:'#ff1744', hp:75,   spd:50,  r:16, dmg:28,  rew:8,  sides:0, from:60,  to:Infinity },
-  mage:    { name:'마법사', color:'#40c4ff', hp:30,   spd:38,  r:12, dmg:14,  rew:9,  sides:5, from:70,  to:Infinity, ranged:200, atkRate:0.8, projSpd:300 },
-  cannon:  { name:'포격수', color:'#ffd600', hp:55,   spd:26,  r:14, dmg:35,  rew:10, sides:8, from:80,  to:Infinity, ranged:250, atkRate:0.45, projSpd:240 },
-  boss:    { name:'보스',   color:'#ff4d4d', hp:250,  spd:24,  r:30, dmg:45,  rew:15, sides:8 },
+  normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0, from:1,   to:30  },
+  fast:    { name:'질주',   color:'#f2c14e', hp:20,   spd:110, r:9,  dmg:15,  rew:2,  sides:3, from:11,  to:40  },
+  tank:    { name:'중갑',   color:'#9b6bff', hp:45,   spd:34,  r:18, dmg:26,  rew:3,  sides:6, from:11,  to:50  },
+  venom:   { name:'독충',   color:'#3ddc84', hp:25,   spd:60,  r:11, dmg:20,  rew:4,  sides:5, from:20,  to:60  },
+  charger: { name:'돌격병', color:'#ff8a50', hp:40,   spd:78,  r:13, dmg:32,  rew:5,  sides:0, from:30,  to:70  },
+  heavy:   { name:'철갑',   color:'#607d8b', hp:95,   spd:28,  r:20, dmg:44,  rew:6,  sides:6, from:40,  to:80  },
+  assassin:{ name:'암살자', color:'#e040fb', hp:20,   spd:135, r:8,  dmg:48,  rew:7,  sides:4, from:50,  to:90  },
+  crusher: { name:'파괴자', color:'#ff1744', hp:75,   spd:50,  r:16, dmg:56,  rew:8,  sides:0, from:60,  to:Infinity },
+  mage:    { name:'마법사', color:'#40c4ff', hp:30,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, from:70,  to:Infinity, ranged:200, atkRate:0.8, projSpd:300 },
+  cannon:  { name:'포격수', color:'#ffd600', hp:55,   spd:26,  r:14, dmg:70,  rew:10, sides:8, from:80,  to:Infinity, ranged:250, atkRate:0.45, projSpd:240 },
+  boss:    { name:'보스',   color:'#ff4d4d', hp:250,  spd:24,  r:30, dmg:135, rew:15, sides:8 },
 };
 
 const waveCount = w => 6 + Math.floor(w * 1.6);
@@ -383,11 +383,11 @@ const META = [
   { id:'power', name:'공격력 강화',     max:Infinity, base:55,
     desc: lv => `넥서스 공격력 +${lv * 4}` },
   { id:'spd',   name:'공격속도 강화',   max:Infinity, base:60,
-    desc: lv => `넥서스 공격속도 +${(lv * 0.1).toFixed(1)}` },
+    desc: lv => `넥서스 공격속도 +${(lv * 0.2).toFixed(1)}` },
   { id:'rng',   name:'사거리 강화',     max:Infinity, base:65,
-    desc: lv => `넥서스 사거리 +${lv * 10}` },
+    desc: lv => `넥서스 사거리 +${lv * 2}` },
   { id:'armor', name:'최대체력 강화',   max:Infinity, base:60,
-    desc: lv => `넥서스 최대 체력 +${lv * 30}` },
+    desc: lv => `넥서스 최대 체력 +${lv * 15}` },
   { id:'mregen',name:'체력재생 강화',   max:Infinity, base:70,
     desc: lv => `초당 HP 재생 +${(lv * 0.3).toFixed(1)}` },
 ];
@@ -432,13 +432,13 @@ const GOLDEN = 2.39996;                  // 대기 위치를 고르게 흩는 �
 let S, screen = 'menu', speed = 1, paused = false, sel = null, hover = null, last = 0;
 
 function newGame() {
-  const hp = CFG.nexusHp + mlv('armor') * 30;
+  const hp = CFG.nexusHp + mlv('armor') * 15;
   S = {
     phase: 'build',                      // build | combat | over
     wave: 1,
     gold: CFG.startGold + mlv('fund') * 40,
     nexus: { hp, maxHp: hp, dmg: CFG.nexusDmg + mlv('power') * 4,
-             range: CFG.nexusRange + mlv('rng') * 10, rate: CFG.nexusRate + mlv('spd') * 0.1,
+             range: CFG.nexusRange + mlv('rng') * 2, rate: CFG.nexusRate + mlv('spd') * 0.2,
              regen: mlv('mregen') * 0.3, cd: 0, hitFlash: 0, ang: 0 },
     nexusLv: Object.fromEntries(NEXUS_UPS.map(u => [u.id, 0])),
     heroes: [], enemies: [], bullets: [], eBullets: [], parts: [], texts: [],
@@ -542,7 +542,7 @@ function spawn(type) {
   const baseRew = type === 'boss' ? (S.wave / 10) * 50 : e.rew;
   if (type === 'boss') {
     const tier = S.wave / 10;
-    e = { ...e, hp: 250 + (tier - 1) * 150, dmg: 45 + (tier - 1) * 10 };
+    e = { ...e, hp: 250 + (tier - 1) * 150, dmg: 135 + (tier - 1) * 30 };
   }
   // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
   // 하한(0.24초)에 닿는 웨이브 97 이후로 난이도가 완전히 고정되어,
