@@ -357,6 +357,10 @@ const CFG = {
 const POP_UP = { base: 80, grow: 1.7, step: 2 };
 const popCost = lv => Math.floor(POP_UP.base * Math.pow(POP_UP.grow, lv));
 
+// 영웅 강화 — 가진 영웅 전부의 공격력이 한꺼번에 오른다
+const HERO_UP = { base: 100, grow: 1.55, step: 0.25 };
+const heroUpCost = lv => Math.floor(HERO_UP.base * Math.pow(HERO_UP.grow, lv));
+
 // 영웅 — 고용하면 넥서스 주변에 나타나고, 적이 오면 직접 요격하러 간다
 const HEROES = [
   { id:'scout', name:'순찰병', cost:90, color:'#5b9dff', accent:'#a8ccff',
@@ -452,7 +456,7 @@ const NEXUS_UPS = [
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
 const META = [
   { id:'fund',  name:'초기 자금',       max:Infinity, base:50,
-    desc: lv => `시작 골드 +${lv * 40}` },
+    desc: lv => `시작 골드 +${lv * 20}` },
   { id:'power', name:'공격력 강화',     max:Infinity, base:55,
     desc: lv => `넥서스 공격력 +${lv * 4}` },
   { id:'spd',   name:'공격속도 강화',   max:Infinity, base:60,
@@ -520,7 +524,7 @@ function saveRun() {
   const snap = {
     wave: S.wave, gold: S.gold, hired: S.hired, heroShop: S.heroShop,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
-    popLv: S.popLv, maxPop: S.maxPop,
+    popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
@@ -564,7 +568,7 @@ function newGame() {
   S = {
     phase: 'build',                      // build | combat | over
     wave: 1,
-    gold: CFG.startGold + mlv('fund') * 40,
+    gold: CFG.startGold + mlv('fund') * 20,
     nexus: { hp, maxHp: hp, dmg: CFG.nexusDmg + mlv('power') * 4,
              range: CFG.nexusRange + mlv('rng') * 2, rate: CFG.nexusRate + mlv('spd') * 0.2,
              regen: mlv('mregen') * 0.3, cd: 0, hitFlash: 0, ang: 0 },
@@ -572,12 +576,13 @@ function newGame() {
     heroes: [], enemies: [], bullets: [], eBullets: [], parts: [], texts: [],
     queue: [], spawnT: 0, shake: 0, hired: 0,
     autoT: 0,
-    dmgMul: 1,
+    dmgMul: 1,                           // 영웅 강화로 오르는 영웅 공격력 배율
     goldMul: 1 + mlv('minc') * 0.05,     // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     heroShop: false,                     // 넥서스 강화에서 '영웅 상점'을 사면 열린다
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
+    heroUpLv: 0,                         // 영웅 강화 횟수
   };
   sel = null;
   speed = DEFAULT_SPEED;
@@ -600,6 +605,7 @@ function resumeGame(snap) {
   S.incomeMul = snap.incomeMul ?? 1;
   S.popLv = snap.popLv ?? 0;
   S.maxPop = snap.maxPop ?? (CFG.basePop + S.popLv * POP_UP.step);
+  S.heroUpLv = snap.heroUpLv ?? 0;
   Object.assign(S.nexus, snap.nexus);
   Object.assign(S.nexusLv, snap.nexusLv);
   S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
@@ -1252,7 +1258,7 @@ function renderMeta() {
 
 /* 상점 목록은 처음에 한 번만 만든다.
    매 프레임 innerHTML 을 다시 쓰면 버튼이 눌리는 도중에 교체되어 클릭이 씹힌다. */
-const els = { nexus: [], hero: [], pop: null };
+const els = { nexus: [], hero: [], pop: null, heroUp: null };
 
 function buildShops() {
   $('nexusShop').innerHTML = NEXUS_UPS.map(u => `
@@ -1279,6 +1285,14 @@ function buildShops() {
         <div class="ds">영웅을 ${POP_UP.step}기 더 둘 수 있다</div>
       </div>
       <button class="buy"></button>
+    </div>
+    <div class="card" id="heroUpCard">
+      <div class="swatch" style="background:#ff8a50;color:#ff8a50"></div>
+      <div>
+        <div class="nm">영웅 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">모든 영웅 공격력 +${(HERO_UP.step * 100).toFixed(0)}%</div>
+      </div>
+      <button class="buy"></button>
     </div>`
     + HEROES.map(d => `
     <div class="card" data-h="${d.id}">
@@ -1295,6 +1309,11 @@ function buildShops() {
   els.pop = { card: popCard, btn: popCard.querySelector('button'), lv: popCard.querySelector('.lv') };
   popCard.onclick = buyPop;
   els.pop.btn.onclick = ev => { ev.stopPropagation(); buyPop(); };
+
+  const hupCard = $('heroUpCard');
+  els.heroUp = { card: hupCard, btn: hupCard.querySelector('button'), lv: hupCard.querySelector('.lv') };
+  hupCard.onclick = buyHeroUp;
+  els.heroUp.btn.onclick = ev => { ev.stopPropagation(); buyHeroUp(); };
 
   els.hero = HEROES.map(d => {
     const card = $('heroShop').querySelector(`.card[data-h="${d.id}"]`);
@@ -1315,6 +1334,16 @@ function buyPop() {
   syncUI();
 }
 
+function buyHeroUp() {
+  if (!S.heroShop) return;
+  const c = heroUpCost(S.heroUpLv);
+  if (S.gold < c) return;
+  S.gold -= c; S.heroUpLv++; S.dmgMul += HERO_UP.step;
+  addText(CX, CY - 88, `영웅 공격력 ×${S.dmgMul.toFixed(2)}`, '#ff8a50');
+  saveRun();
+  syncUI();
+}
+
 function renderHeroShop() {
   const locked = CFG.heroesLocked || !S.heroShop;
 
@@ -1323,6 +1352,12 @@ function renderHeroShop() {
   els.pop.btn.textContent = locked ? '잠김' : pc + 'G';
   els.pop.btn.disabled = popOff;
   els.pop.card.classList.toggle('poor', popOff);
+
+  const hc = heroUpCost(S.heroUpLv), hupOff = locked || S.gold < hc;
+  els.heroUp.lv.textContent = `(×${S.dmgMul.toFixed(2)})`;
+  els.heroUp.btn.textContent = locked ? '잠김' : hc + 'G';
+  els.heroUp.btn.disabled = hupOff;
+  els.heroUp.card.classList.toggle('poor', hupOff);
 
   for (const e of els.hero) {
     const c = heroCost(e.d), owned = ownedCount(e.d.id), blocked = heroBlocked(e.d);
