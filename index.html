@@ -59,6 +59,7 @@
   #shopScreen .back { width: 200px; margin-top: 24px; }
 
   /* ── 게임 화면 ─────────────────────────────── */
+  #gameScreen.on { flex-direction: column; align-items: center; }
   #stage { position: relative; }
   canvas {
     display: block;
@@ -87,8 +88,8 @@
   #hpfill { height: 100%; width: 100%; background: linear-gradient(90deg,#4de3a2,#2fb37c); transition: width .15s; }
 
   #panel {
-    width: 276px; display: flex; flex-direction: column; gap: 10px;
-    max-height: 722px; overflow-y: auto; padding-right: 6px;
+    width: 960px; max-width: 100%; display: flex; flex-direction: column; gap: 10px;
+    max-height: 320px; overflow-y: auto; padding-right: 6px;
   }
   #panel::-webkit-scrollbar { width: 6px; }
   #panel::-webkit-scrollbar-thumb { background: #2b3550; border-radius: 3px; }
@@ -436,6 +437,7 @@ function show(name) {
     $(id).classList.toggle('on', (id === 'gameScreen' ? 'game' : id === 'shopScreen' ? 'shop' : 'menu') === name);
   if (name === 'menu') renderMenu();
   if (name === 'shop') renderMeta();
+  fitScreen();
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1350,15 +1352,18 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* ── 화면 크기에 맞춰 축소 ─────────────────────────
-   #app 은 항상 1254×744 고정 해상도로 그려지고, 화면이 그보다
-   작으면 transform: scale 로 통째로 줄여서 보여준다. */
-const NATURAL_W = 1254, NATURAL_H = 744;
+   현재 보이는 화면(.screen.on)의 실제 크기를 재서, 화면이 그보다
+   작으면 transform: scale 로 통째로 줄여서 보여준다. 화면마다
+   레이아웃 크기가 다르므로(메인/상점/게임) 매번 새로 잰다. */
 function fitScreen() {
+  const app = $('app'), wrap = $('appWrap');
+  app.style.transform = 'none';
+  const w = app.offsetWidth, h = app.offsetHeight;
   const pad = 16;
-  const scale = Math.min(1, (window.innerWidth - pad) / NATURAL_W, (window.innerHeight - pad) / NATURAL_H);
-  $('app').style.transform = `scale(${scale})`;
-  $('appWrap').style.width = (NATURAL_W * scale) + 'px';
-  $('appWrap').style.height = (NATURAL_H * scale) + 'px';
+  const scale = w && h ? Math.min(1, (window.innerWidth - pad) / w, (window.innerHeight - pad) / h) : 1;
+  app.style.transform = `scale(${scale})`;
+  wrap.style.width = (w * scale) + 'px';
+  wrap.style.height = (h * scale) + 'px';
 }
 addEventListener('resize', fitScreen);
 addEventListener('orientationchange', fitScreen);
@@ -1367,7 +1372,6 @@ loadSave();
 buildShops();
 newGame();
 show('menu');
-fitScreen();
 requestAnimationFrame(loop);
 </script>
 </body>
