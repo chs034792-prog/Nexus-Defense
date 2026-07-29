@@ -292,6 +292,7 @@ const CFG = {
 const HEROES = [
   { id:'scout', name:'순찰병', cost:90, color:'#5b9dff', accent:'#a8ccff',
     dmg:14, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
+    roam:265,                        // 사거리와 별개로, 이 반경까지 나가서 싸운다
     desc:'값싸고 발이 빠른 기본 영웅' },
   { id:'sniper', name:'저격수', cost:260, color:'#c86bff', accent:'#e6c2ff',
     dmg:95, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
@@ -314,7 +315,7 @@ const ENEMIES = {
   crusher: { name:'파괴자', color:'#ff1744', hp:150,  spd:50,  r:16, dmg:56,  rew:8,  sides:0 },
   mage:    { name:'마법사', color:'#40c4ff', hp:60,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, ranged:200, atkRate:0.8, projSpd:300 },
   cannon:  { name:'포격수', color:'#ffd600', hp:110,  spd:26,  r:14, dmg:70,  rew:10, sides:8, ranged:250, atkRate:0.45, projSpd:240 },
-  boss:    { name:'보스',   color:'#ff4d4d', hp:1250, spd:24,  r:30, dmg:135, rew:15, sides:8 },
+  boss:    { name:'보스',   color:'#ff4d4d', hp:1250, spd:12,  r:30, dmg:135, rew:15, sides:8 },
 };
 
 // 약한 순서 = 등장 순서. 여기 순서가 곧 1단계~10단계다.
@@ -464,11 +465,6 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 
 const AUTO_WAVE_SEC = 2.5;
 const GOLDEN = 2.39996;                  // 대기 위치를 고르게 흩는 황금각
-
-/* 테스트용 배속 — 주소 뒤에 ?dev=1 을 붙이면 배속에 x10 이 더 열린다.
-   브라우저에서 도는 코드라 완전한 차단은 아니고, 일반 플레이어가 우연히
-   쓰지 않게 감춰두는 정도다. */
-const DEV = new URLSearchParams(location.search).get('dev') === '1';
 
 const DEFAULT_SPEED = 3;                 // 출격하면 이 배속으로 시작한다
 
@@ -763,8 +759,8 @@ function update(dt) {
   }
 
   /* 영웅 — 이동 후 사격.
-     영웅은 자기 배치 자리를 중심으로 사거리만큼의 원 안에서만 움직인다.
-     그 원 밖의 적은 쫓아가지 않고, 원 안으로 들어올 때까지 기다린다. */
+     영웅은 자기 배치 자리를 중심으로 활동 반경(roam, 없으면 사거리) 안에서만
+     움직인다. 그 원 밖의 적은 쫓아가지 않고, 원 안으로 들어올 때까지 기다린다. */
   for (const h of S.heroes) {
     const st = heroStat(h);
     if (h.spawnT > 0) h.spawnT -= dt;
@@ -773,11 +769,12 @@ function update(dt) {
 
     const home = homePos(h);
     const hold = !!h.def.hold;              // 제자리형 영웅은 배치 자리에서 사거리로만 싸운다
+    const roam = h.def.roam ?? st.range;    // 사거리보다 넓게 돌아다닐 수 있다
     if (hold) { h.x = home.x; h.y = home.y; }
 
     // 사거리 안에 적이 있으면 그놈을, 없으면 자기 활동 원 안으로 들어온 적을 노린다
     const inRange = pickTarget(h.x, h.y, st.range);
-    const goal = inRange || (hold ? null : pickTarget(home.x, home.y, st.range));
+    const goal = inRange || (hold ? null : pickTarget(home.x, home.y, roam));
     h.target = goal || null;
     if (goal) h.ang = Math.atan2(goal.y - h.y, goal.x - h.x);
 
@@ -809,9 +806,9 @@ function update(dt) {
 
       // 활동 반경을 벗어나면 원 안으로 되돌린다
       const off = dist(h.x, h.y, home.x, home.y);
-      if (off > st.range) {
-        h.x = home.x + (h.x - home.x) / off * st.range;
-        h.y = home.y + (h.y - home.y) / off * st.range;
+      if (off > roam) {
+        h.x = home.x + (h.x - home.x) / off * roam;
+        h.y = home.y + (h.y - home.y) / off * roam;
       }
     }
 
@@ -899,12 +896,13 @@ function draw() {
   for (let j = 1; j < ROWS; j++) { ctx.moveTo(0, j * CELL); ctx.lineTo(W, j * CELL); }
   ctx.stroke();
 
-  // 영웅 활동 반경 — 배치 자리를 중심으로 사거리만큼
+  // 영웅 활동 반경 — 배치 자리를 중심으로 roam(없으면 사거리)만큼
   ctx.strokeStyle = 'rgba(90,140,255,.09)';
   ctx.setLineDash([5, 10]);
   for (const h of S.heroes) {
+    if (h.def.hold) continue;                       // 제자리형은 활동 반경이 없다
     const p = homePos(h);
-    ctx.beginPath(); ctx.arc(p.x, p.y, heroStat(h).range, 0, 6.284); ctx.stroke();
+    ctx.beginPath(); ctx.arc(p.x, p.y, h.def.roam ?? heroStat(h).range, 0, 6.284); ctx.stroke();
   }
   ctx.setLineDash([]);
 
@@ -1385,8 +1383,7 @@ $('btnSell').onclick = () => {
 };
 
 $('btnWave').onclick = startWave;
-// 일반은 x1~x5, 운영자(?dev=1)는 여기에 x10 이 더 붙는다
-const SPEEDS = DEV ? [1, 2, 3, 4, 5, 10] : [1, 2, 3, 4, 5];
+const SPEEDS = [1, 2, 3, 4, 5, 10];      // x5 다음은 바로 x10
 $('uiSpeed').onclick = () => {
   speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
   syncUI();
