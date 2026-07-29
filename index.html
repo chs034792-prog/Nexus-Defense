@@ -309,18 +309,22 @@ const defById = id => HEROES.find(d => d.id === id);
 const UP = { dmg:1.30, range:1.045, rate:1.06, costBase:0.75, costGrow:1.65 };
 
 const ENEMIES = {
-  normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0, from:1,   to:30  },
-  fast:    { name:'질주',   color:'#f2c14e', hp:20,   spd:110, r:9,  dmg:15,  rew:2,  sides:3, from:11,  to:40  },
-  tank:    { name:'중갑',   color:'#9b6bff', hp:90,   spd:34,  r:18, dmg:26,  rew:3,  sides:6, from:11,  to:50  },
-  venom:   { name:'독충',   color:'#3ddc84', hp:50,   spd:60,  r:11, dmg:20,  rew:4,  sides:5, from:20,  to:60  },
-  charger: { name:'돌격병', color:'#ff8a50', hp:80,   spd:78,  r:13, dmg:32,  rew:5,  sides:0, from:30,  to:70  },
-  heavy:   { name:'철갑',   color:'#607d8b', hp:190,  spd:28,  r:20, dmg:44,  rew:6,  sides:6, from:40,  to:80  },
-  assassin:{ name:'암살자', color:'#e040fb', hp:40,   spd:135, r:8,  dmg:48,  rew:7,  sides:4, from:50,  to:90  },
-  crusher: { name:'파괴자', color:'#ff1744', hp:150,  spd:50,  r:16, dmg:56,  rew:8,  sides:0, from:60,  to:Infinity },
-  mage:    { name:'마법사', color:'#40c4ff', hp:60,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, from:70,  to:Infinity, ranged:200, atkRate:0.8, projSpd:300 },
-  cannon:  { name:'포격수', color:'#ffd600', hp:110,  spd:26,  r:14, dmg:70,  rew:10, sides:8, from:80,  to:Infinity, ranged:250, atkRate:0.45, projSpd:240 },
+  normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0 },
+  fast:    { name:'질주',   color:'#f2c14e', hp:20,   spd:110, r:9,  dmg:15,  rew:2,  sides:3 },
+  tank:    { name:'중갑',   color:'#9b6bff', hp:90,   spd:34,  r:18, dmg:26,  rew:3,  sides:6 },
+  venom:   { name:'독충',   color:'#3ddc84', hp:50,   spd:60,  r:11, dmg:20,  rew:4,  sides:5 },
+  charger: { name:'돌격병', color:'#ff8a50', hp:80,   spd:78,  r:13, dmg:32,  rew:5,  sides:0 },
+  heavy:   { name:'철갑',   color:'#607d8b', hp:190,  spd:28,  r:20, dmg:44,  rew:6,  sides:6 },
+  assassin:{ name:'암살자', color:'#e040fb', hp:40,   spd:135, r:8,  dmg:48,  rew:7,  sides:4 },
+  crusher: { name:'파괴자', color:'#ff1744', hp:150,  spd:50,  r:16, dmg:56,  rew:8,  sides:0 },
+  mage:    { name:'마법사', color:'#40c4ff', hp:60,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, ranged:200, atkRate:0.8, projSpd:300 },
+  cannon:  { name:'포격수', color:'#ffd600', hp:110,  spd:26,  r:14, dmg:70,  rew:10, sides:8, ranged:250, atkRate:0.45, projSpd:240 },
   boss:    { name:'보스',   color:'#ff4d4d', hp:1250, spd:24,  r:30, dmg:135, rew:15, sides:8 },
 };
+
+// 약한 순서 = 등장 순서. 여기 순서가 곧 1단계~10단계다.
+const TIERS = ['normal', 'fast', 'tank', 'venom', 'charger',
+               'heavy', 'assassin', 'crusher', 'mage', 'cannon'];
 
 const waveCount = w => 6 + Math.floor(w * 1.6);
 const waveGap   = w => Math.max(0.24, 1.6 - w * 0.014);
@@ -329,10 +333,15 @@ const waveBonus = w => 25 + w * 6;
 // 웨이브당 적 체력 증가율 — 판이 무한정 이어지지 않게 하는 값이다
 const ENEMY_HP_GROW = 1.005;
 
+// 이 웨이브부터 적 체력과 공격력이 이 배율만큼 뛴다
+const HARD_WAVE = 40, HARD_MUL = 2;
+
+/* 10웨이브마다 한 단계씩 올라가며 인접한 두 단계가 함께 나온다.
+   웨이브 20 → 2·3단계, 30 → 3·4단계 … 90 이상은 9·10단계로 고정. */
 function getActiveTypes(w) {
-  return Object.entries(ENEMIES)
-    .filter(([k, e]) => k !== 'boss' && e.from <= w && e.to >= w)
-    .map(([k]) => k);
+  if (w < 10) return [TIERS[0]];
+  const base = Math.min(Math.floor(w / 10), TIERS.length - 1);
+  return [TIERS[base - 1], TIERS[base]];
 }
 
 function buildWave(w) {
@@ -389,6 +398,8 @@ const META = [
     desc: lv => `넥서스 최대 체력 +${lv * 15}` },
   { id:'mregen',name:'체력재생 강화',   max:Infinity, base:70,
     desc: lv => `초당 HP 재생 +${(lv * 0.3).toFixed(1)}` },
+  { id:'minc',  name:'수입 증대',       max:Infinity, base:75,
+    desc: lv => `골드 획득 +${lv * 5}%` },
 ];
 const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
 const coreReward = cleared => Math.floor(6 * Math.pow(Math.max(0, cleared), 1.25));
@@ -431,12 +442,14 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const AUTO_WAVE_SEC = 5;
 const GOLDEN = 2.39996;                  // 대기 위치를 고르게 흩는 황금각
 
-/* 테스트용 배속 — 주소 뒤에 ?dev=1 을 붙였을 때만 배속 버튼이 나온다.
+/* 테스트용 배속 — 주소 뒤에 ?dev=1 을 붙이면 배속에 x10 이 더 열린다.
    브라우저에서 도는 코드라 완전한 차단은 아니고, 일반 플레이어가 우연히
    쓰지 않게 감춰두는 정도다. */
 const DEV = new URLSearchParams(location.search).get('dev') === '1';
 
-let S, screen = 'menu', speed = 1, paused = false, sel = null, hover = null, last = 0;
+const DEFAULT_SPEED = 3;                 // 출격하면 이 배속으로 시작한다
+
+let S, screen = 'menu', speed = DEFAULT_SPEED, paused = false, sel = null, hover = null, last = 0;
 
 function newGame() {
   const hp = CFG.nexusHp + mlv('armor') * 15;
@@ -452,11 +465,13 @@ function newGame() {
     queue: [], spawnT: 0, shake: 0, hired: 0,
     autoT: 0,
     dmgMul: 1,
-    goldMul: 1,
+    goldMul: 1 + mlv('minc') * 0.05,     // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     heroShop: false,                     // 넥서스 강화에서 '영웅 상점'을 사면 열린다
   };
   sel = null;
+  speed = DEFAULT_SPEED;
+  paused = false;
   $('over').classList.remove('on');
   syncUI();
 }
@@ -551,10 +566,14 @@ function spawn(type) {
     const tier = S.wave / 10;
     e = { ...e, hp: 1250 + (tier - 1) * 750, dmg: 135 + (tier - 1) * 30 };
   }
+  // 웨이브 HARD_WAVE 부터 체력·공격력이 한 번에 뛴다.
+  // def 는 ENEMIES 의 공용 객체이므로 반드시 복사해서 고쳐야 한다.
+  const hard = S.wave >= HARD_WAVE ? HARD_MUL : 1;
+  if (hard > 1) e = { ...e, dmg: e.dmg * hard };
   // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
   // 하한(0.24초)에 닿는 웨이브 97 이후로 난이도가 완전히 고정되어,
   // 영구 강화가 쌓이는 순간 판이 끝나지 않는다. (보스는 자체 공식으로 이미 커진다)
-  const hp = type === 'boss' ? e.hp : e.hp * Math.pow(ENEMY_HP_GROW, S.wave);
+  const hp = (type === 'boss' ? e.hp : e.hp * Math.pow(ENEMY_HP_GROW, S.wave)) * hard;
   S.enemies.push({
     type, def: e, x: CX + Math.cos(a) * d, y: CY + Math.sin(a) * d,
     hp, maxHp: hp, spd: e.spd,
@@ -1332,8 +1351,8 @@ $('btnSell').onclick = () => {
 };
 
 $('btnWave').onclick = startWave;
-// 일반은 x1~x4, 운영자(?dev=1)는 여기에 x10 이 더 붙는다
-const SPEEDS = DEV ? [1, 2, 3, 4, 10] : [1, 2, 3, 4];
+// 일반은 x1~x5, 운영자(?dev=1)는 여기에 x10 이 더 붙는다
+const SPEEDS = DEV ? [1, 2, 3, 4, 5, 10] : [1, 2, 3, 4, 5];
 $('uiSpeed').onclick = () => {
   speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
   syncUI();
