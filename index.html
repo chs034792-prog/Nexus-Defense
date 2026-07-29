@@ -472,11 +472,16 @@ const defById = id => ALL_DEFS.find(d => d.id === id);
 
 const ZONE_ENEMIES = {
   초원: {
-    t1:{ name:'들쥐',   color:'#e0556e', hp:15,  spd:55,  r:12, dmg:12,  rew:1, sides:0 },
-    t2:{ name:'토끼',   color:'#f2c14e', hp:20,  spd:110, r:9,  dmg:15,  rew:2, sides:3 },
-    t3:{ name:'멧돼지', color:'#9b6bff', hp:90,  spd:34,  r:18, dmg:26,  rew:3, sides:6 },
-    t4:{ name:'독뱀',   color:'#3ddc84', hp:50,  spd:60,  r:11, dmg:20,  rew:4, sides:5 },
-    t5:{ name:'늑대',   color:'#ff8a50', hp:80,  spd:78,  r:13, dmg:32,  rew:5, sides:0 },
+    t1:{ name:'들쥐',     color:'#e0556e', hp:15,  spd:55,  r:12, dmg:12,  rew:1, sides:0 },
+    t2:{ name:'토끼',     color:'#f2c14e', hp:20,  spd:110, r:9,  dmg:15,  rew:2, sides:3 },
+    t3:{ name:'멧돼지',   color:'#9b6bff', hp:90,  spd:34,  r:18, dmg:26,  rew:3, sides:6 },
+    t4:{ name:'독뱀',     color:'#3ddc84', hp:50,  spd:60,  r:11, dmg:20,  rew:4, sides:5 },
+    t5:{ name:'늑대',     color:'#ff8a50', hp:80,  spd:78,  r:13, dmg:32,  rew:5, sides:0 },
+    t6:{ name:'곰',       color:'#607d8b', hp:190, spd:28,  r:20, dmg:44,  rew:6, sides:6 },
+    t7:{ name:'살쾡이',   color:'#e040fb', hp:40,  spd:135, r:8,  dmg:48,  rew:7, sides:4 },
+    t8:{ name:'들소',     color:'#ff1744', hp:150, spd:50,  r:16, dmg:56,  rew:8, sides:0 },
+    t9:{ name:'매',       color:'#40c4ff', hp:60,  spd:38,  r:12, dmg:28,  rew:9, sides:5, ranged:200, atkRate:0.8, projSpd:300 },
+    t10:{ name:'독수리',  color:'#ffd600', hp:110, spd:26,  r:14, dmg:70,  rew:10, sides:8, ranged:250, atkRate:0.45, projSpd:240 },
     boss:{ name:'초원의 군주', color:'#ff4d4d', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
   },
   숲: {
@@ -485,6 +490,11 @@ const ZONE_ENEMIES = {
     t3:{ name:'거미',     color:'#4e342e', hp:100, spd:38,  r:14, dmg:30,  rew:3, sides:8 },
     t4:{ name:'독버섯',   color:'#76ff03', hp:60,  spd:30,  r:16, dmg:24,  rew:4, sides:0 },
     t5:{ name:'숲곰',     color:'#5d4037', hp:110, spd:70,  r:15, dmg:38,  rew:5, sides:0 },
+    t6:{ name:'트렌트',   color:'#2e7d32', hp:210, spd:22,  r:22, dmg:48,  rew:6, sides:6 },
+    t7:{ name:'늑대거미', color:'#6d4c41', hp:45,  spd:130, r:9,  dmg:52,  rew:7, sides:8 },
+    t8:{ name:'멧돼지왕', color:'#795548', hp:170, spd:55,  r:18, dmg:60,  rew:8, sides:0 },
+    t9:{ name:'요정궁수', color:'#81c784', hp:65,  spd:40,  r:11, dmg:32,  rew:9, sides:3, ranged:190, atkRate:0.85, projSpd:310 },
+    t10:{ name:'숲의 마녀', color:'#4caf50', hp:120, spd:28,  r:13, dmg:75, rew:10, sides:5, ranged:240, atkRate:0.5, projSpd:250 },
     boss:{ name:'숲의 수호자', color:'#2e7d32', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
   },
   산: {
@@ -609,12 +619,15 @@ const ZONE_ENEMIES = {
   },
 };
 
-const ZONE_TIERS = ['t1','t2','t3','t4','t5'];
 function getZoneEnemies(w) {
   const z = currentZone(w);
   return ZONE_ENEMIES[z.name] || ZONE_ENEMIES['초원'];
 }
-function getZoneBoss(w) { return getZoneEnemies(w).boss; }
+function zoneTiers(w) {
+  const ze = getZoneEnemies(w);
+  const keys = Object.keys(ze).filter(k => k.startsWith('t')).sort((a,b) => +a.slice(1) - +b.slice(1));
+  return keys;
+}
 
 const ENEMIES = ZONE_ENEMIES['초원'];
 
@@ -639,7 +652,7 @@ const ZONES = [
 ];
 const currentZone = w => ZONES.find(z => w >= z.from && w <= z.to) || ZONES[ZONES.length - 1];
 
-const TIERS = ZONE_TIERS;
+const TIERS = ['t1','t2','t3','t4','t5'];
 
 const waveCount = w => 6 + Math.floor(w * 1.6);
 const waveGap   = w => Math.max(0.24, 1.6 - w * 0.014);
@@ -657,9 +670,11 @@ const BOSS_HP_BASE = 417, BOSS_HP_EXP = 1.35;
 function getActiveTypes(w) {
   const z = currentZone(w);
   const local = w - z.from;
-  if (local < 20) return [TIERS[0]];
-  const base = Math.min(Math.floor(local / 20), TIERS.length - 1);
-  return [TIERS[base - 1], TIERS[base]];
+  const tiers = zoneTiers(w);
+  const cycle = tiers.length >= 10 ? 10 : 20;
+  if (local < cycle) return [tiers[0]];
+  const base = Math.min(Math.floor(local / cycle), tiers.length - 1);
+  return [tiers[base - 1], tiers[base]];
 }
 
 function buildWave(w) {
@@ -670,7 +685,9 @@ function buildWave(w) {
   for (let i = 0; i < n; i++) {
     list.push(types[i % types.length]);
   }
-  if (w % 20 === 0) list.push('boss');
+  const tiers = zoneTiers(w);
+  const bossInterval = tiers.length >= 10 ? 10 : 20;
+  if (w % bossInterval === 0) list.push('boss');
   return list;
 }
 
@@ -1001,9 +1018,10 @@ function spawn(type) {
   if (!e) e = ze.t1;
   const a = Math.random() * Math.PI * 2;
   const d = 560;
-  const baseRew = type === 'boss' ? (S.wave / 20) * 50 : e.rew;
+  const bi = zoneTiers(S.wave).length >= 10 ? 10 : 20;
+  const baseRew = type === 'boss' ? (S.wave / bi) * 50 : e.rew;
   if (type === 'boss') {
-    const tier = S.wave / 20;
+    const tier = S.wave / bi;
     const hp = Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP));
     e = { ...e, hp, dmg: 135 + (tier - 1) * 30 };
   }
