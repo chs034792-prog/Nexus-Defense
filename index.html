@@ -764,6 +764,8 @@ const META = [
     desc: lv => lv ? '영웅 탭 해금됨' : '게임 내 영웅 유닛 탭을 해금한다' },
   { id:'z_forest', name:'숲 출격 해금',   max:1, base:800,
     desc: lv => lv ? '숲(웨이브 101) 출격 가능' : '숲 지역부터 출격할 수 있다 (넥서스 강화 상태로 시작)' },
+  { id:'p_mech',   name:'수리공 영구 배치', max:1, base:5000,
+    desc: lv => lv ? '매 판 시작 시 수리공 자동 배치 (인구 미차감)' : '게임 시작 시 수리공이 자동으로 배치된다 (인구 차지 안 함)' },
 ];
 const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
 const coreReward = cleared => Math.floor(10 * Math.pow(Math.max(0, cleared), 1.3));
@@ -901,6 +903,16 @@ function newGame(startWave) {
     hasMechanic: false,
     drone: null,
   };
+  if (mlv('p_mech') > 0) {
+    const mechDef = defById('mechanic');
+    const ang = 0;
+    S.heroes.push({
+      def: mechDef, invested: 0, homeAng: ang,
+      x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR,
+      cd: 0, ang: 0, recoil: 0, spawnT: 0.6, permaMech: true,
+    });
+    S.hasMechanic = true;
+  }
   sel = null;
   speed = DEFAULT_SPEED;
   paused = false;
@@ -970,7 +982,7 @@ function show(name, fromPop) {
 
 const ownedCount = id => S.heroes.filter(h => h.def.id === id).length;
 const heroCost = def => Math.floor(def.cost * Math.pow(CFG.heroCostGrow, ownedCount(def.id)));
-const popFull = () => S.heroes.length >= S.maxPop;
+const popFull = () => S.heroes.filter(h => !h.permaMech).length >= S.maxPop;
 const heroBlocked = def => CFG.heroesLocked || !S.heroShop || popFull() ||
                            (CFG.heroUnique && ownedCount(def.id) > 0);
 
@@ -2059,6 +2071,7 @@ $('selModal').onclick = ev => { if (ev.target === $('selModal')) closeSel(); };
 $('btnSell').onclick = () => {
   if (!sel || sel.kind !== 'hero') return;
   const h = sel.h;
+  if (h.permaMech) { alert('영구 배치된 수리공은 해고할 수 없습니다.'); return; }
   S.gold += Math.floor(h.invested * CFG.sellRatio);
   if (h.def.id === 'mechanic') {
     S.hasMechanic = false;
