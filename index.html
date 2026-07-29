@@ -432,6 +432,11 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const AUTO_WAVE_SEC = 5;
 const GOLDEN = 2.39996;                  // 대기 위치를 고르게 흩는 황금각
 
+/* 테스트용 배속 — 주소 뒤에 ?dev=1 을 붙였을 때만 배속 버튼이 나온다.
+   브라우저에서 도는 코드라 완전한 차단은 아니고, 일반 플레이어가 우연히
+   쓰지 않게 감춰두는 정도다. */
+const DEV = new URLSearchParams(location.search).get('dev') === '1';
+
 let S, screen = 'menu', speed = 1, paused = false, sel = null, hover = null, last = 0;
 
 function newGame() {
@@ -1329,7 +1334,12 @@ $('btnSell').onclick = () => {
 };
 
 $('btnWave').onclick = startWave;
-$('uiSpeed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 3 : speed === 3 ? 4 : 1; syncUI(); };
+// 일반은 x1~x4, 운영자(?dev=1)는 여기에 x10 이 더 붙는다
+const SPEEDS = DEV ? [1, 2, 3, 4, 10] : [1, 2, 3, 4];
+$('uiSpeed').onclick = () => {
+  speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+  syncUI();
+};
 $('uiPause').onclick = () => { if (!S || S.phase === 'over') return; paused = !paused; syncUI(); };
 
 // 메뉴로 돌아가기 — 우리가 쌓아둔 히스토리 항목이 있으면 그걸 되감아
