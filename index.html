@@ -414,7 +414,29 @@ const HEROES = [
     hold:true,                       // 제자리에서만 쏜다 — 적을 쫓아가지 않는다
     desc:'제자리에서 멀리 있는 적을 저격한다' },
 ];
-const defById = id => HEROES.find(d => d.id === id);
+
+const GROUND_UNITS = [
+  { id:'swordsman', name:'검사', cost:100, color:'#4ade80', accent:'#a7f3d0',
+    dmg:14, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
+    roam:265,
+    desc:'발이 빠르고 범용적인 지상 전투원' },
+  { id:'g_sniper', name:'저격수', cost:280, color:'#f472b6', accent:'#fbcfe8',
+    dmg:95, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
+    hold:true,
+    desc:'먼 적을 정확히 저격한다' },
+  { id:'buffer', name:'버퍼', cost:220, color:'#38bdf8', accent:'#bae6fd',
+    dmg:6, range:80, rate:1.2, bspd:400, spd:120, splash:0, slow:0.4, slowT:2.0,
+    roam:265,
+    aura:true, auraDmg:8, auraRange:80,
+    desc:'적을 느리게 하고 주변에 지속 피해를 준다' },
+  { id:'mechanic', name:'수리공', cost:400, color:'#fbbf24', accent:'#fde68a',
+    dmg:0, range:0, rate:0, bspd:0, spd:100, splash:0, slow:0, slowT:0,
+    hold:true, unique:true, noCombat:true,
+    desc:'넥서스에 드론 시스템을 설치한다 (1기 한정)' },
+];
+
+const ALL_DEFS = [...HEROES, ...GROUND_UNITS];
+const defById = id => ALL_DEFS.find(d => d.id === id);
 
 const ENEMIES = {
   normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0 },
@@ -489,6 +511,22 @@ const NEXUS_UPS = [
   { id:'inc',   name:'수입 증대',     desc:'웨이브 클리어 보상 +5%',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.incomeMul += 0.05; } },
+  { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
+    cost: lv => Math.floor(150 * Math.pow(UP_COST_GROW, lv)),
+    max: 10,
+    cond: () => S && S.hasMechanic,
+    apply: s => {
+      if (!s.drone) s.drone = { count:0, dmg:12, orbitR:70, spd:2.0, baseAng:0, cds:[] };
+      s.drone.count++; s.drone.cds.push(0);
+    } },
+  { id:'droneDmg', name:'드론 공격력',   desc:'드론 충돌 피해 +4',
+    cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
+    cond: () => S && S.drone && S.drone.count > 0,
+    apply: s => { s.drone.dmg += 4; } },
+  { id:'droneRng', name:'드론 범위',     desc:'드론 궤도 반경 +10',
+    cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
+    cond: () => S && S.drone && S.drone.count > 0,
+    apply: s => { s.drone.orbitR += 10; } },
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
@@ -570,6 +608,7 @@ function saveRun() {
   const n = S.nexus;
   const snap = {
     wave: S.wave, gold: S.gold, hired: S.hired, heroShop: S.heroShop,
+    groundShop: S.groundShop, hasMechanic: S.hasMechanic, drone: S.drone,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
@@ -627,9 +666,12 @@ function newGame() {
     goldMul: 1 + mlv('minc') * 0.05,     // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     heroShop: mlv('t_hero') > 0,          // 영구 상점에서 해금
+    groundShop: mlv('t_ground') > 0,
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
+    hasMechanic: false,
+    drone: null,
   };
   sel = null;
   speed = DEFAULT_SPEED;
@@ -647,6 +689,13 @@ function resumeGame(snap) {
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
   S.heroShop = mlv('t_hero') > 0;
+  S.groundShop = mlv('t_ground') > 0;
+  S.hasMechanic = snap.hasMechanic ?? false;
+  S.drone = snap.drone ?? null;
+  if (S.drone) {
+    S.drone.cds = Array(S.drone.count).fill(0);
+    S.drone.baseAng = S.drone.baseAng || 0;
+  }
   S.dmgMul = snap.dmgMul ?? 1;
   S.goldMul = snap.goldMul ?? 1;
   S.incomeMul = snap.incomeMul ?? 1;
@@ -716,6 +765,27 @@ function hire(def) {
   addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
   saveRun();
   syncUI();
+}
+
+const groundCost = def => Math.floor(def.cost * Math.pow(CFG.heroCostGrow, ownedCount(def.id)));
+const groundBlocked = def => !S.groundShop || popFull() ||
+                             (def.unique && ownedCount(def.id) > 0);
+
+function hireGround(def) {
+  const cost = groundCost(def);
+  if (S.gold < cost || groundBlocked(def)) return;
+  S.gold -= cost;
+  const ang = S.hired * GOLDEN;
+  const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
+  S.heroes.push({
+    def, invested: cost, homeAng: ang,
+    x: post.x, y: post.y, cd: 0, ang: 0,
+    recoil: 0, spawnT: 0.6,
+  });
+  S.hired++;
+  if (def.id === 'mechanic') S.hasMechanic = true;
+  addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
+  saveRun(); syncUI();
 }
 
 const homePos = h => ({ x: CX + Math.cos(h.homeAng) * CFG.postR,
@@ -958,10 +1028,45 @@ function update(dt) {
       }
     }
 
+    if (h.def.noCombat) { h.cd = 1; continue; }
+
     if (inRange && h.cd <= 0) {
       h.cd = 1 / st.rate;
       h.recoil = 1;
       fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent);
+    }
+
+    // 버퍼 오라 — 주변 적에게 초당 피해
+    if (h.def.aura) {
+      for (const e of S.enemies) {
+        if (e.dead) continue;
+        if (dist(h.x, h.y, e.x, e.y) <= h.def.auraRange + e.def.r) {
+          damage(e, h.def.auraDmg * S.dmgMul * dt, 0, 0);
+        }
+      }
+    }
+  }
+
+  /* 드론 — 넥서스 주변을 선회하며 부딪히는 적에게 피해 */
+  if (S.drone && S.drone.count > 0) {
+    const dr = S.drone;
+    dr.baseAng += dt * dr.spd;
+    for (let i = 0; i < dr.count; i++) {
+      if (dr.cds[i] > 0) dr.cds[i] -= dt;
+      const ang = dr.baseAng + i * 6.2832 / dr.count;
+      const dx = CX + Math.cos(ang) * dr.orbitR;
+      const dy = CY + Math.sin(ang) * dr.orbitR;
+      if (dr.cds[i] <= 0) {
+        for (const e of S.enemies) {
+          if (e.dead) continue;
+          if (dist(dx, dy, e.x, e.y) <= e.def.r + 8) {
+            damage(e, dr.dmg, 0, 0);
+            burst(dx, dy, '#fbbf24', 6);
+            dr.cds[i] = 0.3;
+            break;
+          }
+        }
+      }
     }
   }
 
@@ -1098,6 +1203,41 @@ function draw() {
     ctx.fillStyle = h.def.accent;
     ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.284); ctx.fill();
     ctx.restore();
+  }
+
+  /* 버퍼 오라 표시 */
+  ctx.strokeStyle = 'rgba(56,189,248,.12)';
+  ctx.setLineDash([4, 8]);
+  for (const h of S.heroes) {
+    if (!h.def.aura) continue;
+    ctx.beginPath(); ctx.arc(h.x, h.y, h.def.auraRange, 0, 6.284); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  /* 드론 */
+  if (S.drone && S.drone.count > 0) {
+    const dr = S.drone;
+    // 궤도 점선
+    ctx.strokeStyle = 'rgba(251,191,36,.12)';
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath(); ctx.arc(CX, CY, dr.orbitR, 0, 6.284); ctx.stroke();
+    ctx.setLineDash([]);
+    for (let i = 0; i < dr.count; i++) {
+      const ang = (dr.baseAng || 0) + i * 6.2832 / dr.count;
+      const dx = CX + Math.cos(ang) * dr.orbitR;
+      const dy = CY + Math.sin(ang) * dr.orbitR;
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(ang + Math.PI / 2);
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(0, -7); ctx.lineTo(5, 5); ctx.lineTo(-5, 5);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.2;
+      ctx.beginPath(); ctx.arc(0, 0, 9, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
   }
 
   /* 적 */
@@ -1305,7 +1445,7 @@ function renderMeta() {
 
 /* 상점 목록은 처음에 한 번만 만든다.
    매 프레임 innerHTML 을 다시 쓰면 버튼이 눌리는 도중에 교체되어 클릭이 씹힌다. */
-const els = { nexus: [], hero: [], pop: null, heroUp: null };
+const els = { nexus: [], hero: [], ground: [], pop: null, heroUp: null };
 
 function buildShops() {
   $('nexusShop').innerHTML = NEXUS_UPS.map(u => `
@@ -1369,6 +1509,25 @@ function buildShops() {
     btn.onclick = ev => { ev.stopPropagation(); hire(d); };
     return { d, card, btn, cnt: card.querySelector('.cnt') };
   });
+
+  // 지상 유닛 상점
+  $('groundShop').innerHTML = GROUND_UNITS.map(d => `
+    <div class="card" data-g="${d.id}">
+      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
+      <div>
+        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${d.desc}</div>
+      </div>
+      <button class="buy"></button>
+    </div>`).join('');
+
+  els.ground = GROUND_UNITS.map(d => {
+    const card = $('groundShop').querySelector(`.card[data-g="${d.id}"]`);
+    const btn = card.querySelector('button');
+    card.onclick = () => hireGround(d);
+    btn.onclick = ev => { ev.stopPropagation(); hireGround(d); };
+    return { d, card, btn, cnt: card.querySelector('.cnt') };
+  });
 }
 
 function buyPop() {
@@ -1428,7 +1587,8 @@ function buyNexusUp(id) {
   const u = NEXUS_UPS.find(x => x.id === id);
   if (!u) return;
   const lv = S.nexusLv[u.id];
-  if (u.once && lv > 0) return;                 // 한 번만 살 수 있는 항목
+  if (u.once && lv > 0) return;
+  if (u.max && lv >= u.max) return;
   const c = u.cost(lv);
   if (S.gold < c) return;
   S.gold -= c; S.nexusLv[u.id]++; u.apply(S);
@@ -1437,13 +1597,29 @@ function buyNexusUp(id) {
   syncUI();
 }
 
+function renderGroundShop() {
+  for (const e of els.ground) {
+    const c = groundCost(e.d), owned = ownedCount(e.d.id), blocked = groundBlocked(e.d);
+    const off = blocked || S.gold < c;
+    e.cnt.textContent = owned ? '×' + owned : '';
+    e.btn.textContent = popFull() ? '인구 초과'
+                      : (e.d.unique && owned > 0) ? '보유중'
+                      : c + 'G';
+    e.btn.disabled = off;
+    e.card.classList.toggle('poor', off);
+  }
+}
+
 function renderNexusShop() {
   for (const e of els.nexus) {
     const lv = S.nexusLv[e.u.id], c = e.u.cost(lv);
-    const bought = e.u.once && lv > 0;
-    const off = bought || S.gold < c;
-    e.lv.textContent = e.u.once ? (bought ? '보유' : '') : 'Lv.' + lv;
-    e.btn.textContent = bought ? '구매완료' : c + 'G';
+    const maxed = (e.u.once && lv > 0) || (e.u.max && lv >= e.u.max);
+    const hidden = e.u.cond && !e.u.cond();
+    e.card.style.display = hidden ? 'none' : '';
+    if (hidden) continue;
+    const off = maxed || S.gold < c;
+    e.lv.textContent = e.u.max ? `${lv}/${e.u.max}` : e.u.once ? (maxed ? '보유' : '') : 'Lv.' + lv;
+    e.btn.textContent = maxed ? '최대' : c + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
   }
@@ -1503,7 +1679,7 @@ function syncUI() {
                 : S.phase === 'over'   ? '게임 오버'
                 : S.autoT > 0          ? `웨이브 ${S.wave} 시작 (${Math.ceil(S.autoT)})`
                 :                        `웨이브 ${S.wave} 시작`;
-  renderHeroShop(); renderNexusShop(); renderSel(); syncTechTabs();
+  renderHeroShop(); renderGroundShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
@@ -1575,6 +1751,11 @@ $('btnSell').onclick = () => {
   if (!sel || sel.kind !== 'hero') return;
   const h = sel.h;
   S.gold += Math.floor(h.invested * CFG.sellRatio);
+  if (h.def.id === 'mechanic') {
+    S.hasMechanic = false;
+    S.drone = null;
+    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0; S.nexusLv.droneRng = 0;
+  }
   S.heroes = S.heroes.filter(x => x !== h);
   saveRun();
   closeSel();
