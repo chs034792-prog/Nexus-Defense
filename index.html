@@ -416,6 +416,9 @@ const popCost = lv => Math.floor(POP_UP.base * Math.pow(POP_UP.grow, lv));
 const HERO_UP = { base: 60, grow: 1.18, step: 0.05 };
 const heroUpCost = lv => Math.floor(HERO_UP.base * Math.pow(HERO_UP.grow, lv));
 
+const GROUND_UP = { base: 50, grow: 1.18, step: 0.05 };
+const groundUpCost = lv => Math.floor(GROUND_UP.base * Math.pow(GROUND_UP.grow, lv));
+
 // 영웅 — 고용하면 넥서스 주변에 나타나고, 적이 오면 직접 요격하러 간다
 const HEROES = [
   { id:'scout', name:'순찰병', cost:90, color:'#5b9dff', accent:'#a8ccff',
@@ -624,6 +627,7 @@ function saveRun() {
     groundShop: S.groundShop, hasMechanic: S.hasMechanic, drone: S.drone,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
+    groundUpLv: S.groundUpLv, groundDmgMul: S.groundDmgMul,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
@@ -683,6 +687,8 @@ function newGame() {
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
+    groundUpLv: 0,                       // 지상군 강화 횟수
+    groundDmgMul: 1,                     // 지상군 공격력 배율
     hasMechanic: false,
     drone: null,
   };
@@ -715,6 +721,8 @@ function resumeGame(snap) {
   S.popLv = snap.popLv ?? 0;
   S.maxPop = snap.maxPop ?? (CFG.basePop + S.popLv * POP_UP.step);
   S.heroUpLv = snap.heroUpLv ?? 0;
+  S.groundUpLv = snap.groundUpLv ?? 0;
+  S.groundDmgMul = snap.groundDmgMul ?? 1;
   Object.assign(S.nexus, snap.nexus);
   Object.assign(S.nexusLv, snap.nexusLv);
   S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
@@ -757,8 +765,9 @@ const popFull = () => S.heroes.length >= S.maxPop;
 const heroBlocked = def => CFG.heroesLocked || !S.heroShop || popFull() ||
                            (CFG.heroUnique && ownedCount(def.id) > 0);
 
+const isGround = def => GROUND_UNITS.some(g => g.id === def.id);
 const heroStat = h => ({
-  dmg:   h.def.dmg   * S.dmgMul,
+  dmg:   h.def.dmg * (isGround(h.def) ? S.groundDmgMul : S.dmgMul),
   range: h.def.range,
   rate:  h.def.rate,
 });
@@ -1558,7 +1567,15 @@ function buildShops() {
         <div class="ds">${d.desc}</div>
       </div>
       <button class="buy"></button>
-    </div>`).join('');
+    </div>`).join('')
+    + `<div class="card" id="groundUpCard">
+      <div class="swatch" style="background:#4ade80;color:#4ade80"></div>
+      <div>
+        <div class="nm">지상군 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">모든 지상 유닛 공격력 +${(GROUND_UP.step * 100).toFixed(0)}%</div>
+      </div>
+      <button class="buy"></button>
+    </div>`;
 
   els.ground = GROUND_UNITS.map(d => {
     const card = $('groundShop').querySelector(`.card[data-g="${d.id}"]`);
@@ -1567,6 +1584,11 @@ function buildShops() {
     btn.onclick = ev => { ev.stopPropagation(); hireGround(d); };
     return { d, card, btn, cnt: card.querySelector('.cnt') };
   });
+
+  const gupCard = $('groundUpCard');
+  els.groundUp = { card: gupCard, btn: gupCard.querySelector('button'), lv: gupCard.querySelector('.lv') };
+  gupCard.onclick = buyGroundUp;
+  els.groundUp.btn.onclick = ev => { ev.stopPropagation(); buyGroundUp(); };
 }
 
 function buyPop() {
@@ -1575,6 +1597,16 @@ function buyPop() {
   if (S.gold < c) return;
   S.gold -= c; S.popLv++; S.maxPop += POP_UP.step;
   addText(CX, CY - 88, '최대 인구 ' + S.maxPop, '#ffd45e');
+  saveRun();
+  syncUI();
+}
+
+function buyGroundUp() {
+  if (!S.groundShop) return;
+  const c = groundUpCost(S.groundUpLv);
+  if (S.gold < c) return;
+  S.gold -= c; S.groundUpLv++; S.groundDmgMul += GROUND_UP.step;
+  addText(CX, CY - 88, `지상군 공격력 ×${S.groundDmgMul.toFixed(2)}`, '#4ade80');
   saveRun();
   syncUI();
 }
@@ -1647,6 +1679,12 @@ function renderGroundShop() {
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
   }
+
+  const gc = groundUpCost(S.groundUpLv), gOff = !S.groundShop || S.gold < gc;
+  els.groundUp.lv.textContent = `(×${S.groundDmgMul.toFixed(2)})`;
+  els.groundUp.btn.textContent = gc + 'G';
+  els.groundUp.btn.disabled = gOff;
+  els.groundUp.card.classList.toggle('poor', gOff);
 }
 
 function renderNexusShop() {
