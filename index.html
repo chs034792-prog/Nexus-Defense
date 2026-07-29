@@ -357,8 +357,9 @@ const CFG = {
 const POP_UP = { base: 80, grow: 1.7, step: 2 };
 const popCost = lv => Math.floor(POP_UP.base * Math.pow(POP_UP.grow, lv));
 
-// 영웅 강화 — 가진 영웅 전부의 공격력이 한꺼번에 오른다
-const HERO_UP = { base: 100, grow: 1.55, step: 0.25 };
+// 영웅 강화 — 가진 영웅 전부의 공격력이 한꺼번에 오른다.
+// step 은 배수가 아니라 더하는 값이라 100 → 105 → 110 처럼 일정하게 오른다.
+const HERO_UP = { base: 60, grow: 1.18, step: 0.05 };
 const heroUpCost = lv => Math.floor(HERO_UP.base * Math.pow(HERO_UP.grow, lv));
 
 // 영웅 — 고용하면 넥서스 주변에 나타나고, 적이 오면 직접 요격하러 간다
