@@ -82,7 +82,7 @@
   }
 
   /* ── 게임 화면 ─────────────────────────────── */
-  #gameScreen.on { flex-direction: column; align-items: center; overflow-y: auto; padding-right: 2px; }
+  #gameScreen.on { flex-direction: column; align-items: center; overflow: hidden; padding-right: 2px; }
   #stage { position: relative; width: 100%; max-width: 1100px; aspect-ratio: 960 / 720; flex-shrink: 0; }
   canvas {
     display: block;
@@ -119,9 +119,11 @@
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
 
+  /* 캔버스가 쓰고 남은 세로 공간을 전부 차지한다.
+     min-height:0 이 없으면 flex 항목이 내용 높이 밑으로 줄지 못해 스크롤이 죽는다. */
   #panel {
     width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 10px;
-    max-height: 560px; overflow-y: auto; padding-right: 6px;
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 6px; margin-top: 8px;
   }
   #panel::-webkit-scrollbar { width: 6px; }
   #panel::-webkit-scrollbar-thumb { background: #2b3550; border-radius: 3px; }
@@ -184,6 +186,19 @@
   .stat { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: #aab6d0; }
   .stat b { color: #dfe6f5; }
   .hint { font-size: 11px; color: #66728f; line-height: 1.5; }
+
+  #selModal {
+    position: fixed; inset: 0; z-index: 60;
+    display: flex; justify-content: center; align-items: center; padding: 16px;
+    background: rgba(6,9,16,.72);
+  }
+  #selModal #selBox {
+    width: 100%; max-width: 340px; max-height: 82vh; overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+  }
+  .selHead { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .selHead h3 { flex: 1; margin: 0; }
+  .selHead button { width: 30px; padding: 4px 0; font-size: 13px; line-height: 1; }
 
   #over {
     position: absolute; inset: 0; display: none;
@@ -278,20 +293,26 @@
       <div id="heroShop" style="display:none"></div>
     </div>
 
-    <div class="box" id="selBox" style="display:none">
-      <h3 id="selName">정보</h3>
-      <div id="selStats"></div>
-      <div class="row" style="margin-top:9px" id="selBtns">
-        <button id="btnUp">강화</button>
-        <button id="btnSell" class="danger" style="width:78px">해고</button>
-      </div>
-    </div>
-
     <div class="box">
       <p class="hint">
         영웅 카드를 누르면 넥서스 주변에 배치됩니다<br>
         넥서스·영웅을 클릭하면 능력치 확인 · Space 웨이브 시작
       </p>
+    </div>
+  </div>
+
+  <!-- 넥서스·영웅 정보 — 열려 있는 동안 게임은 멈춘다 -->
+  <div id="selModal" style="display:none">
+    <div class="box" id="selBox">
+      <div class="selHead">
+        <h3 id="selName">정보</h3>
+        <button id="btnSelClose" class="ghost">✕</button>
+      </div>
+      <div id="selStats"></div>
+      <div class="row" style="margin-top:9px" id="selBtns">
+        <button id="btnUp">강화</button>
+        <button id="btnSell" class="danger" style="width:78px">해고</button>
+      </div>
     </div>
   </div>
 </div>
@@ -545,6 +566,7 @@ function newGame() {
   sel = null;
   speed = DEFAULT_SPEED;
   paused = false;
+  pausedBySel = false;
   clearRun();
   $('over').classList.remove('on');
   syncUI();
@@ -1103,7 +1125,8 @@ function draw() {
   ctx.textAlign = 'left';
   ctx.restore();
 
-  if (paused) {
+  // 정보 창 때문에 멈춘 경우엔 창이 이미 화면을 덮고 있으므로 안내를 겹쳐 그리지 않는다
+  if (paused && !sel) {
     ctx.fillStyle = 'rgba(8,10,20,.55)';
     ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center';
@@ -1296,12 +1319,31 @@ function renderNexusShop() {
   }
 }
 
+/* 정보 창은 게임을 멈춘 채 뜬다. 창 때문에 멈춘 것인지(pausedBySel)를
+   따로 기억해서, 사용자가 직접 눌러둔 일시정지를 창을 닫으며 풀어버리지 않게 한다. */
+let pausedBySel = false;
+
+function openSel(s) {
+  sel = s;
+  if (!paused) { paused = true; pausedBySel = true; }
+  syncUI();
+}
+
+function closeSel() {
+  sel = null;
+  if (pausedBySel) { paused = false; pausedBySel = false; }
+  syncUI();
+}
+
 function renderSel() {
-  const box = $('selBox');
+  const modal = $('selModal');
   if (!sel || (sel.kind === 'hero' && !S.heroes.includes(sel.h))) {
-    sel = null; box.style.display = 'none'; return;
+    // 대상이 사라졌으면(해고 등) 창을 닫고 멈춤도 함께 푼다
+    if (sel) { sel = null; if (pausedBySel) { paused = false; pausedBySel = false; } }
+    modal.style.display = 'none';
+    return;
   }
-  box.style.display = '';
+  modal.style.display = '';
 
   if (sel.kind === 'nexus') {
     const n = S.nexus;
@@ -1399,9 +1441,8 @@ cv.addEventListener('click', ev => {
 
   // 넥서스 클릭 → 능력치 표시 + 넥서스 탭으로
   if (dist(m.x, m.y, CX, CY) <= NEXUS_R + 12) {
-    sel = { kind: 'nexus' };
     setTab('nexus');
-    syncUI();
+    openSel({ kind: 'nexus' });
     return;
   }
   // 영웅 클릭
@@ -1410,10 +1451,13 @@ cv.addEventListener('click', ev => {
     const d = dist(m.x, m.y, h.x, h.y);
     if (d < bestD) { bestD = d; picked = h; }
   }
-  sel = picked ? { kind: 'hero', h: picked } : null;
-  if (picked) setTab('hero');
-  syncUI();
+  if (picked) { setTab('hero'); openSel({ kind: 'hero', h: picked }); }
+  else closeSel();
 });
+
+$('btnSelClose').onclick = closeSel;
+// 창 바깥(어두운 배경)을 눌러도 닫힌다
+$('selModal').onclick = ev => { if (ev.target === $('selModal')) closeSel(); };
 
 $('btnUp').onclick = () => {
   if (!sel || sel.kind !== 'hero') return;
@@ -1431,9 +1475,8 @@ $('btnSell').onclick = () => {
   const h = sel.h;
   S.gold += Math.floor(h.invested * CFG.sellRatio);
   S.heroes = S.heroes.filter(x => x !== h);
-  sel = null;
   saveRun();
-  syncUI();
+  closeSel();
 };
 
 $('btnWave').onclick = startWave;
@@ -1562,7 +1605,7 @@ addEventListener('keydown', ev => {
     return;
   }
   if (ev.code === 'Space') { ev.preventDefault(); startWave(); return; }
-  if (ev.key === 'Escape') { sel = null; syncUI(); return; }
+  if (ev.key === 'Escape') { closeSel(); return; }
   if (ev.key === 'p' || ev.key === 'P') { if (S && S.phase !== 'over') { paused = !paused; syncUI(); } return; }
   const i = ['1', '2', '3', '4'].indexOf(ev.key);
   if (i >= 0 && HEROES[i]) hire(HEROES[i]);
