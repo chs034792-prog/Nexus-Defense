@@ -26,11 +26,13 @@
 
   #menu, #shopScreen {
     width: 100%; max-width: 1254px; max-height: 100%; overflow-y: auto;
-    flex-direction: column; justify-content: center; align-items: center;
+    flex-direction: column; align-items: center;
     padding: clamp(16px, 4vw, 40px) 16px;
     background: radial-gradient(circle at 50% 45%, #182140 0%, #0d1120 62%);
     border: 1px solid #232b41; border-radius: 8px;
   }
+  #menu { justify-content: center; }
+  #shopScreen { justify-content: flex-start; }
   #menu .title {
     font-size: clamp(30px, 8vw, 62px); font-weight: 800; letter-spacing: .1em; text-align: center;
     background: linear-gradient(180deg,#cfe6ff,#4b8ff0);
@@ -366,17 +368,17 @@ const NEXUS_UPS = [
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
 const META = [
-  { id:'fund',  name:'초기 자금',       max:5, base:50,
+  { id:'fund',  name:'초기 자금',       max:Infinity, base:50,
     desc: lv => `시작 골드 +${lv * 40}` },
-  { id:'power', name:'공격력 강화',     max:5, base:55,
+  { id:'power', name:'공격력 강화',     max:Infinity, base:55,
     desc: lv => `넥서스 공격력 +${lv * 4}` },
-  { id:'spd',   name:'공격속도 강화',   max:5, base:60,
+  { id:'spd',   name:'공격속도 강화',   max:Infinity, base:60,
     desc: lv => `넥서스 공격속도 +${(lv * 0.1).toFixed(1)}` },
-  { id:'rng',   name:'사거리 강화',     max:5, base:65,
+  { id:'rng',   name:'사거리 강화',     max:Infinity, base:65,
     desc: lv => `넥서스 사거리 +${lv * 10}` },
-  { id:'armor', name:'최대체력 강화',   max:5, base:60,
+  { id:'armor', name:'최대체력 강화',   max:Infinity, base:60,
     desc: lv => `넥서스 최대 체력 +${lv * 30}` },
-  { id:'mregen',name:'체력재생 강화',   max:5, base:70,
+  { id:'mregen',name:'체력재생 강화',   max:Infinity, base:70,
     desc: lv => `초당 HP 재생 +${(lv * 0.3).toFixed(1)}` },
 ];
 const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
@@ -1051,7 +1053,8 @@ function renderMeta() {
   $('sCores').textContent = save.cores;
   $('metaList').innerHTML = META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
-    const pips = Array.from({ length: m.max },
+    const pipMax = Number.isFinite(m.max) ? m.max : 10;
+    const pips = Array.from({ length: pipMax },
       (_, i) => `<div class="pip ${i < lv ? 'on' : ''}"></div>`).join('');
     return `<div class="meta ${maxed ? 'max' : ''}">
       <div class="info">
