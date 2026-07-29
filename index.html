@@ -1331,9 +1331,12 @@ $('uiPause').onclick = () => { if (!S || S.phase === 'over') return; paused = !p
 
 // 메뉴로 돌아가기 — 우리가 쌓아둔 히스토리 항목이 있으면 그걸 되감아
 // 뒤로가기 동작과 화면 상태가 어긋나지 않게 한다.
+// leavingToMenu 는 그때 발생하는 popstate 가 '확인 절차를 이미 거친 이동'임을 알려,
+// popstate 핸들러가 확인창을 다시 띄우지 않게 한다.
+let leavingToMenu = false;
 function goMenu() {
   $('over').classList.remove('on');
-  if (navDepth > 0) history.back();       // popstate 핸들러가 show('menu', true) 를 부른다
+  if (navDepth > 0) { leavingToMenu = true; history.back(); }
   else show('menu');
 }
 
@@ -1356,12 +1359,16 @@ $('uiBack').onclick = leaveToMenu;
 
 // 폰 뒤로가기로 메인 화면에 돌아온다
 addEventListener('popstate', () => {
-  // 판이 진행 중이면 확인부터 받는다. 취소하면 방금 소비된 히스토리 항목을
-  // 다시 쌓아서(navDepth 는 그대로) 다음 뒤로가기도 여기로 오게 한다.
-  if (runInProgress() && !confirmAbandon()) {
+  // goMenu() 가 되감아서 온 popstate 는 이미 확인을 마친 이동이다
+  if (!leavingToMenu && runInProgress()) {
+    // 방금 소비된 히스토리 항목을 '먼저' 되돌려 놓는다. confirm 은 화면을 멈추는
+    // 대화상자라, 답을 받은 뒤에 되돌리면 브라우저가 이미 이동을 끝낸 뒤여서
+    // 항목이 제대로 쌓이지 않는다. 그래서 복구를 먼저 하고 질문은 나중에 한다.
     history.pushState({ screen: 'game' }, '');
+    setTimeout(() => { if (confirmAbandon()) goMenu(); }, 0);
     return;
   }
+  leavingToMenu = false;
   navDepth = Math.max(0, navDepth - 1);
   if (screen === 'menu') return;
   $('over').classList.remove('on');
