@@ -285,7 +285,6 @@ const CFG = {
   heroUnique: false,     // true 로 두면 영웅을 종류당 1기만 고용
   heroCostGrow: 1.55,    // 같은 영웅을 또 고용할 때 비용 증가율
   postR: 112,            // 넥서스 주변 대기 반경
-  leash: 380,            // 이 거리 밖의 적은 쫓지 않는다
 };
 
 // 영웅 — 고용하면 넥서스 주변에 나타나고, 적이 오면 직접 요격하러 간다
@@ -312,15 +311,15 @@ const UP = { dmg:1.30, range:1.045, rate:1.06, costBase:0.75, costGrow:1.65 };
 const ENEMIES = {
   normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0, from:1,   to:30  },
   fast:    { name:'질주',   color:'#f2c14e', hp:20,   spd:110, r:9,  dmg:15,  rew:2,  sides:3, from:11,  to:40  },
-  tank:    { name:'중갑',   color:'#9b6bff', hp:45,   spd:34,  r:18, dmg:26,  rew:3,  sides:6, from:11,  to:50  },
-  venom:   { name:'독충',   color:'#3ddc84', hp:25,   spd:60,  r:11, dmg:20,  rew:4,  sides:5, from:20,  to:60  },
-  charger: { name:'돌격병', color:'#ff8a50', hp:40,   spd:78,  r:13, dmg:32,  rew:5,  sides:0, from:30,  to:70  },
-  heavy:   { name:'철갑',   color:'#607d8b', hp:95,   spd:28,  r:20, dmg:44,  rew:6,  sides:6, from:40,  to:80  },
-  assassin:{ name:'암살자', color:'#e040fb', hp:20,   spd:135, r:8,  dmg:48,  rew:7,  sides:4, from:50,  to:90  },
-  crusher: { name:'파괴자', color:'#ff1744', hp:75,   spd:50,  r:16, dmg:56,  rew:8,  sides:0, from:60,  to:Infinity },
-  mage:    { name:'마법사', color:'#40c4ff', hp:30,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, from:70,  to:Infinity, ranged:200, atkRate:0.8, projSpd:300 },
-  cannon:  { name:'포격수', color:'#ffd600', hp:55,   spd:26,  r:14, dmg:70,  rew:10, sides:8, from:80,  to:Infinity, ranged:250, atkRate:0.45, projSpd:240 },
-  boss:    { name:'보스',   color:'#ff4d4d', hp:250,  spd:24,  r:30, dmg:135, rew:15, sides:8 },
+  tank:    { name:'중갑',   color:'#9b6bff', hp:90,   spd:34,  r:18, dmg:26,  rew:3,  sides:6, from:11,  to:50  },
+  venom:   { name:'독충',   color:'#3ddc84', hp:50,   spd:60,  r:11, dmg:20,  rew:4,  sides:5, from:20,  to:60  },
+  charger: { name:'돌격병', color:'#ff8a50', hp:80,   spd:78,  r:13, dmg:32,  rew:5,  sides:0, from:30,  to:70  },
+  heavy:   { name:'철갑',   color:'#607d8b', hp:190,  spd:28,  r:20, dmg:44,  rew:6,  sides:6, from:40,  to:80  },
+  assassin:{ name:'암살자', color:'#e040fb', hp:40,   spd:135, r:8,  dmg:48,  rew:7,  sides:4, from:50,  to:90  },
+  crusher: { name:'파괴자', color:'#ff1744', hp:150,  spd:50,  r:16, dmg:56,  rew:8,  sides:0, from:60,  to:Infinity },
+  mage:    { name:'마법사', color:'#40c4ff', hp:60,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, from:70,  to:Infinity, ranged:200, atkRate:0.8, projSpd:300 },
+  cannon:  { name:'포격수', color:'#ffd600', hp:110,  spd:26,  r:14, dmg:70,  rew:10, sides:8, from:80,  to:Infinity, ranged:250, atkRate:0.45, projSpd:240 },
+  boss:    { name:'보스',   color:'#ff4d4d', hp:1250, spd:24,  r:30, dmg:135, rew:15, sides:8 },
 };
 
 const waveCount = w => 6 + Math.floor(w * 1.6);
@@ -550,7 +549,7 @@ function spawn(type) {
   const baseRew = type === 'boss' ? (S.wave / 10) * 50 : e.rew;
   if (type === 'boss') {
     const tier = S.wave / 10;
-    e = { ...e, hp: 250 + (tier - 1) * 150, dmg: 135 + (tier - 1) * 30 };
+    e = { ...e, hp: 1250 + (tier - 1) * 750, dmg: 135 + (tier - 1) * 30 };
   }
   // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
   // 하한(0.24초)에 닿는 웨이브 97 이후로 난이도가 완전히 고정되어,
@@ -615,18 +614,6 @@ function pickTarget(x, y, range) {
     if (e.dead) continue;
     if (dist(x, y, e.x, e.y) > range + e.def.r) continue;
     const d = dist(e.x, e.y, CX, CY);
-    if (d < bestD) { bestD = d; best = e; }
-  }
-  return best;
-}
-
-// 요격하러 갈 대상 — 리시 범위 안에서 넥서스에 가장 가까운 적
-function pickIntercept() {
-  let best = null, bestD = Infinity;
-  for (const e of S.enemies) {
-    if (e.dead) continue;
-    const d = dist(e.x, e.y, CX, CY);
-    if (d > CFG.leash) continue;
     if (d < bestD) { bestD = d; best = e; }
   }
   return best;
@@ -717,18 +704,20 @@ function update(dt) {
     if (t) { n.cd = 1 / n.rate; fire({ x: CX, y: CY }, t, n.dmg, 560, 0, 0, 0, '#7fe7ff'); }
   }
 
-  /* 영웅 — 이동 후 사격 */
+  /* 영웅 — 이동 후 사격.
+     영웅은 자기 배치 자리를 중심으로 사거리만큼의 원 안에서만 움직인다.
+     그 원 밖의 적은 쫓아가지 않고, 원 안으로 들어올 때까지 기다린다. */
   refreshAura();
-  const intercept = pickIntercept();
   for (const h of S.heroes) {
     const st = heroStat(h);
     if (h.spawnT > 0) h.spawnT -= dt;
     if (h.recoil > 0) h.recoil -= dt * 6;
     h.cd -= dt;
 
-    // 사거리 안에 적이 있으면 그놈을, 없으면 요격 대상 쪽으로 이동
+    const home = homePos(h);
+    // 사거리 안에 적이 있으면 그놈을, 없으면 자기 활동 원 안으로 들어온 적을 노린다
     const inRange = pickTarget(h.x, h.y, st.range);
-    const goal = inRange || intercept;
+    const goal = inRange || pickTarget(home.x, home.y, st.range);
     h.target = goal || null;
 
     let dx = 0, dy = 0;
@@ -739,9 +728,8 @@ function update(dt) {
       const keep = st.range * 0.8;
       if (d > keep) { dx = (goal.x - h.x) / d; dy = (goal.y - h.y) / d; }
     } else {
-      const p = homePos(h);
-      const d = dist(h.x, h.y, p.x, p.y);
-      if (d > 4) { dx = (p.x - h.x) / d; dy = (p.y - h.y) / d; h.ang = Math.atan2(dy, dx); }
+      const d = dist(h.x, h.y, home.x, home.y);
+      if (d > 4) { dx = (home.x - h.x) / d; dy = (home.y - h.y) / d; h.ang = Math.atan2(dy, dx); }
     }
 
     // 영웅끼리 겹치지 않게 살짝 밀어낸다
@@ -756,6 +744,13 @@ function update(dt) {
       const step = h.def.spd * dt;
       h.x = clamp(h.x + dx / m * step, 14, W - 14);
       h.y = clamp(h.y + dy / m * step, 14, H - 14);
+    }
+
+    // 활동 반경을 벗어나면 원 안으로 되돌린다
+    const off = dist(h.x, h.y, home.x, home.y);
+    if (off > st.range) {
+      h.x = home.x + (h.x - home.x) / off * st.range;
+      h.y = home.y + (h.y - home.y) / off * st.range;
     }
 
     if (inRange && h.cd <= 0) {
@@ -842,10 +837,13 @@ function draw() {
   for (let j = 1; j < ROWS; j++) { ctx.moveTo(0, j * CELL); ctx.lineTo(W, j * CELL); }
   ctx.stroke();
 
-  // 요격 한계선
+  // 영웅 활동 반경 — 배치 자리를 중심으로 사거리만큼
   ctx.strokeStyle = 'rgba(90,140,255,.09)';
   ctx.setLineDash([5, 10]);
-  ctx.beginPath(); ctx.arc(CX, CY, CFG.leash, 0, 6.284); ctx.stroke();
+  for (const h of S.heroes) {
+    const p = homePos(h);
+    ctx.beginPath(); ctx.arc(p.x, p.y, heroStat(h).range, 0, 6.284); ctx.stroke();
+  }
   ctx.setLineDash([]);
 
   // 대기 위치
