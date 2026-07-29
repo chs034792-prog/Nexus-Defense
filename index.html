@@ -516,17 +516,13 @@ const NEXUS_UPS = [
     max: 10,
     cond: () => S && S.hasMechanic,
     apply: s => {
-      if (!s.drone) s.drone = { count:0, dmg:12, orbitR:70, spd:2.0, baseAng:0, cds:[] };
+      if (!s.drone) s.drone = { count:0, dmg:12, orbitR:250, spd:2.0, baseAng:0, cds:[] };
       s.drone.count++; s.drone.cds.push(0);
     } },
   { id:'droneDmg', name:'드론 공격력',   desc:'드론 충돌 피해 +4',
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
     cond: () => S && S.drone && S.drone.count > 0,
     apply: s => { s.drone.dmg += 4; } },
-  { id:'droneRng', name:'드론 범위',     desc:'드론 궤도 반경 +10',
-    cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
-    cond: () => S && S.drone && S.drone.count > 0,
-    apply: s => { s.drone.orbitR += 10; } },
   { id:'droneSpd', name:'드론 속도',     desc:'드론 선회 속도 +0.3',
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
     cond: () => S && S.drone && S.drone.count > 0,
@@ -1758,7 +1754,7 @@ $('btnSell').onclick = () => {
   if (h.def.id === 'mechanic') {
     S.hasMechanic = false;
     S.drone = null;
-    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0; S.nexusLv.droneRng = 0; S.nexusLv.droneSpd = 0;
+    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0; S.nexusLv.droneSpd = 0;
   }
   S.heroes = S.heroes.filter(x => x !== h);
   saveRun();
