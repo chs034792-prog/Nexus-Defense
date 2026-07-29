@@ -325,6 +325,9 @@ const waveCount = w => 6 + Math.floor(w * 1.6);
 const waveGap   = w => Math.max(0.24, 1.6 - w * 0.014);
 const waveBonus = w => 25 + w * 6;
 
+// 웨이브당 적 체력 증가율 — 판이 무한정 이어지지 않게 하는 값이다
+const ENEMY_HP_GROW = 1.005;
+
 function getActiveTypes(w) {
   return Object.entries(ENEMIES)
     .filter(([k, e]) => k !== 'boss' && e.from <= w && e.to >= w)
@@ -534,7 +537,10 @@ function spawn(type) {
     const tier = S.wave / 10;
     e = { ...e, hp: 250 + (tier - 1) * 150, dmg: 45 + (tier - 1) * 10 };
   }
-  const hp = e.hp;
+  // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
+  // 하한(0.24초)에 닿는 웨이브 97 이후로 난이도가 완전히 고정되어,
+  // 영구 강화가 쌓이는 순간 판이 끝나지 않는다. (보스는 자체 공식으로 이미 커진다)
+  const hp = type === 'boss' ? e.hp : e.hp * Math.pow(ENEMY_HP_GROW, S.wave);
   S.enemies.push({
     type, def: e, x: CX + Math.cos(a) * d, y: CY + Math.sin(a) * d,
     hp, maxHp: hp, spd: e.spd,
