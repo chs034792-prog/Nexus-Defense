@@ -1308,10 +1308,13 @@ function goMenu() {
   else show('menu');
 }
 
-// 진행 중인 판을 버리고 메인으로 — 코어는 게임 오버 때만 지급되므로 한 번 확인한다
+// 코어는 게임 오버 때만 지급되므로, 진행 중인 판을 버리고 나갈 때는 한 번 확인한다
+const runInProgress = () => screen === 'game' && S && S.phase !== 'over';
+const confirmAbandon = () => confirm(
+  `웨이브 ${S.wave} 진행 중입니다.\n지금 나가면 이번 판의 기록과 코어를 얻지 못합니다.\n포기하고 메인으로 나갈까요?`);
+
 function leaveToMenu() {
-  if (screen === 'game' && S && S.phase !== 'over' &&
-      !confirm('진행 중인 판을 포기하고 메인으로 나갑니다. 계속할까요?')) return;
+  if (runInProgress() && !confirmAbandon()) return;
   goMenu();
 }
 
@@ -1324,6 +1327,12 @@ $('uiBack').onclick = leaveToMenu;
 
 // 폰 뒤로가기로 메인 화면에 돌아온다
 addEventListener('popstate', () => {
+  // 판이 진행 중이면 확인부터 받는다. 취소하면 방금 소비된 히스토리 항목을
+  // 다시 쌓아서(navDepth 는 그대로) 다음 뒤로가기도 여기로 오게 한다.
+  if (runInProgress() && !confirmAbandon()) {
+    history.pushState({ screen: 'game' }, '');
+    return;
+  }
   navDepth = Math.max(0, navDepth - 1);
   if (screen === 'menu') return;
   $('over').classList.remove('on');
