@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Nexus Defense</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,7 +14,8 @@
     min-height: 100vh; padding: 12px;
     user-select: none;
   }
-  #app { display: flex; gap: 12px; align-items: flex-start; }
+  #appWrap { overflow: hidden; }
+  #app { display: flex; gap: 12px; align-items: flex-start; transform-origin: top left; }
 
   /* ── 화면 전환 ─────────────────────────────── */
   .screen { display: none; }
@@ -159,6 +161,7 @@
 </style>
 </head>
 <body>
+<div id="appWrap">
 <div id="app">
 
 <!-- ── 메인 화면 ────────────────────────────── -->
@@ -201,6 +204,7 @@
         </div>
       </div>
       <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiSpeed">1x</div>
+      <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiPause">⏸</div>
     </div>
     <div id="over">
       <h1>넥서스 파괴됨</h1>
@@ -240,6 +244,7 @@
   </div>
 </div>
 
+</div>
 </div>
 
 <script>
@@ -398,7 +403,7 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const AUTO_WAVE_SEC = 5;
 const GOLDEN = 2.39996;                  // 대기 위치를 고르게 흩는 황금각
 
-let S, screen = 'menu', speed = 1, sel = null, hover = null, last = 0;
+let S, screen = 'menu', speed = 1, paused = false, sel = null, hover = null, last = 0;
 
 function newGame() {
   const hp = CFG.nexusHp + mlv('armor') * 30;
@@ -949,6 +954,19 @@ function draw() {
   }
   ctx.textAlign = 'left';
   ctx.restore();
+
+  if (paused) {
+    ctx.fillStyle = 'rgba(8,10,20,.55)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#7fe7ff';
+    ctx.font = 'bold 34px "Malgun Gothic", sans-serif';
+    ctx.fillText('일시정지', CX, CY);
+    ctx.font = '14px "Malgun Gothic", sans-serif';
+    ctx.fillStyle = 'rgba(200,220,255,.75)';
+    ctx.fillText('⏸ 버튼을 눌러 계속하기', CX, CY + 30);
+    ctx.textAlign = 'left';
+  }
 }
 
 function drawNexus() {
@@ -1166,6 +1184,7 @@ function syncUI() {
   $('uiHp').textContent = `${Math.ceil(S.nexus.hp)}/${S.nexus.maxHp}`;
   $('hpfill').style.width = clamp(S.nexus.hp / S.nexus.maxHp, 0, 1) * 100 + '%';
   $('uiSpeed').textContent = speed + 'x';
+  $('uiPause').textContent = paused ? '▶' : '⏸';
 
   const b = $('btnWave');
   b.disabled = S.phase !== 'build';
@@ -1244,6 +1263,7 @@ $('btnSell').onclick = () => {
 
 $('btnWave').onclick = startWave;
 $('uiSpeed').onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 3 : speed === 3 ? 4 : 1; syncUI(); };
+$('uiPause').onclick = () => { if (!S || S.phase === 'over') return; paused = !paused; syncUI(); };
 
 $('btnSortie').onclick = () => { newGame(); setTab('nexus'); show('game'); };
 $('btnShop').onclick = () => show('shop');
@@ -1258,6 +1278,7 @@ addEventListener('keydown', ev => {
   }
   if (ev.code === 'Space') { ev.preventDefault(); startWave(); return; }
   if (ev.key === 'Escape') { sel = null; syncUI(); return; }
+  if (ev.key === 'p' || ev.key === 'P') { if (S && S.phase !== 'over') { paused = !paused; syncUI(); } return; }
   const i = ['1', '2', '3', '4'].indexOf(ev.key);
   if (i >= 0 && HEROES[i]) hire(HEROES[i]);
 });
@@ -1266,20 +1287,22 @@ addEventListener('keydown', ev => {
    루프
    ══════════════════════════════════════════════════════════ */
 
+function tick(dt) {
+  // 자동 웨이브 카운트다운은 배속과 무관하게 실제 시간으로 흐른다
+  if (S.phase === 'build' && S.autoT > 0) {
+    S.autoT -= dt;
+    if (S.autoT <= 0) { S.autoT = 0; startWave(); }
+  }
+  for (let i = 0; i < speed; i++) update(dt);
+}
+
 let uiTick = 0;
 function loop(ts) {
   const raw = Math.min(0.05, (ts - last) / 1000 || 0);
   last = ts;
 
   if (screen === 'game') {
-    if (S.phase !== 'over') {
-      // 자동 웨이브 카운트다운은 배속과 무관하게 실제 시간으로 흐른다
-      if (S.phase === 'build' && S.autoT > 0) {
-        S.autoT -= raw;
-        if (S.autoT <= 0) { S.autoT = 0; startWave(); }
-      }
-      for (let i = 0; i < speed; i++) update(raw);
-    }
+    if (S.phase !== 'over' && !paused) tick(raw);
     draw();
     uiTick += raw;
     if (uiTick > 0.12) { uiTick = 0; if (S.phase !== 'over') syncUI(); }
@@ -1287,10 +1310,63 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 
+/* ── 백그라운드(오프라인) 진행 ──────────────────────────
+   탭이 숨겨지면 requestAnimationFrame이 사실상 멈추므로,
+   숨겨진 시각을 기록해뒀다가 화면에 돌아왔을 때 그 사이 흐른
+   실제 시간만큼 한꺼번에 시뮬레이션해서 따라잡는다. */
+const MAX_CATCHUP_SEC = 3 * 3600;   // 오프라인 보정 상한 3시간
+const CATCHUP_DT = 0.05;
+const CATCHUP_BUDGET_MS = 900;      // 계산에 쓸 최대 실제 시간(브라우저 멈춤 방지)
+let hiddenAt = null;
+
+function catchUp(elapsedMs) {
+  if (!S || screen !== 'game' || S.phase === 'over' || paused) return;
+  const elapsed = Math.min(elapsedMs / 1000, MAX_CATCHUP_SEC);
+  if (elapsed < 1) return;
+  const w0 = S.wave, g0 = S.gold;
+  const budgetStart = performance.now();
+  let simulated = 0;
+  while (simulated < elapsed && S.phase !== 'over') {
+    tick(CATCHUP_DT);
+    simulated += CATCHUP_DT;
+    if (performance.now() - budgetStart > CATCHUP_BUDGET_MS) break;
+  }
+  last = performance.now();
+  if (S.phase !== 'over') {
+    const dw = S.wave - w0, dg = Math.floor(S.gold - g0);
+    addText(CX, CY - 100, `오프라인 ${Math.floor(simulated)}초 경과 · 웨이브 +${dw} · 골드 +${dg}`, '#7fe7ff');
+  }
+  syncUI();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    hiddenAt = Date.now();
+  } else if (hiddenAt) {
+    catchUp(Date.now() - hiddenAt);
+    hiddenAt = null;
+  }
+});
+
+/* ── 화면 크기에 맞춰 축소 ─────────────────────────
+   #app 은 항상 1254×744 고정 해상도로 그려지고, 화면이 그보다
+   작으면 transform: scale 로 통째로 줄여서 보여준다. */
+const NATURAL_W = 1254, NATURAL_H = 744;
+function fitScreen() {
+  const pad = 16;
+  const scale = Math.min(1, (window.innerWidth - pad) / NATURAL_W, (window.innerHeight - pad) / NATURAL_H);
+  $('app').style.transform = `scale(${scale})`;
+  $('appWrap').style.width = (NATURAL_W * scale) + 'px';
+  $('appWrap').style.height = (NATURAL_H * scale) + 'px';
+}
+addEventListener('resize', fitScreen);
+addEventListener('orientationchange', fitScreen);
+
 loadSave();
 buildShops();
 newGame();
 show('menu');
+fitScreen();
 requestAnimationFrame(loop);
 </script>
 </body>
