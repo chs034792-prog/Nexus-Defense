@@ -319,6 +319,12 @@
     <div id="zoneList" style="margin-top:9px;display:flex;flex-direction:column;gap:4px"></div>
   </div>
 
+  <div id="sortieBox" style="display:none">
+    <h3>출격 지역 선택</h3>
+    <p class="hint">도달했던 지역부터 시작할 수 있습니다. 스킵한 웨이브만큼 시작 골드가 보정됩니다.</p>
+    <div id="sortieList" style="margin-top:9px;display:flex;flex-direction:column;gap:4px"></div>
+  </div>
+
   <p class="hint" style="margin-top:22px;color:#4e5872">사방에서 몰려오는 적으로부터 중앙 넥서스를 지켜내십시오.</p>
 </div>
 
@@ -852,12 +858,20 @@ const DEFAULT_SPEED = 3;                 // 출격하면 이 배속으로 시작
 
 let S, screen = 'menu', speed = DEFAULT_SPEED, paused = false, sel = null, hover = null, last = 0;
 
-function newGame() {
+function skipGold(startWave) {
+  if (startWave <= 1) return 0;
+  let g = 0;
+  for (let w = 1; w < startWave; w++) g += waveBonus(w);
+  return Math.floor(g * 0.4);
+}
+
+function newGame(startWave) {
+  startWave = startWave || 1;
   const hp = CFG.nexusHp + mlv('armor') * 15;
   S = {
     phase: 'build',                      // build | combat | over
-    wave: 1,
-    gold: CFG.startGold + mlv('fund') * 20,
+    wave: startWave,
+    gold: CFG.startGold + mlv('fund') * 20 + skipGold(startWave),
     nexus: { hp, maxHp: hp, dmg: CFG.nexusDmg + mlv('power') * 4,
              range: CFG.nexusRange + mlv('rng') * 2, rate: CFG.nexusRate + mlv('spd') * 0.5,
              regen: mlv('mregen') * 0.3, cd: 0, hitFlash: 0, ang: 0 },
@@ -2100,10 +2114,37 @@ function leaveToMenu() {
   goMenu();
 }
 
+function renderSortieList() {
+  const box = $('sortieBox');
+  const list = $('sortieList');
+  list.innerHTML = '';
+  const unlocked = ZONES.filter(z => z.from === 1 || save.best >= z.from);
+  unlocked.forEach(z => {
+    const bonus = skipGold(z.from);
+    const label = z.from === 1
+      ? `${z.name} (웨이브 ${z.from})`
+      : `${z.name} (웨이브 ${z.from}) · 보정 +${bonus}G`;
+    const btn = document.createElement('button');
+    btn.className = 'ghost';
+    btn.style.cssText = `border-color:${z.color}55;color:${z.color};text-align:left;padding:8px 14px`;
+    btn.textContent = label;
+    btn.onclick = () => {
+      const run = readRun();
+      if (run && !confirm(`이어할 수 있는 판(웨이브 ${run.wave})이 있습니다.\n새로 시작하면 그 판은 사라집니다. 계속할까요?`)) return;
+      box.style.display = 'none';
+      newGame(z.from); setTab('nexus'); show('game');
+    };
+    list.appendChild(btn);
+  });
+}
+
 $('btnSortie').onclick = () => {
-  const run = readRun();
-  if (run && !confirm(`이어할 수 있는 판(웨이브 ${run.wave})이 있습니다.\n새로 시작하면 그 판은 사라집니다. 계속할까요?`)) return;
-  newGame(); setTab('nexus'); show('game');
+  $('backupBox').style.display = 'none';
+  $('zoneBox').style.display = 'none';
+  const box = $('sortieBox');
+  const open = box.style.display === 'none';
+  box.style.display = open ? '' : 'none';
+  if (open) renderSortieList();
 };
 $('btnContinue').onclick = () => {
   const run = readRun();
@@ -2115,6 +2156,7 @@ $('btnShopBack').onclick = goMenu;
 
 $('btnBackup').onclick = () => {
   $('zoneBox').style.display = 'none';
+  $('sortieBox').style.display = 'none';
   const box = $('backupBox');
   const open = box.style.display === 'none';
   box.style.display = open ? '' : 'none';
@@ -2123,6 +2165,7 @@ $('btnBackup').onclick = () => {
 
 $('btnZones').onclick = () => {
   $('backupBox').style.display = 'none';
+  $('sortieBox').style.display = 'none';
   const box = $('zoneBox');
   const open = box.style.display === 'none';
   box.style.display = open ? '' : 'none';
