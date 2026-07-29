@@ -310,8 +310,7 @@
       </div>
       <div id="selStats"></div>
       <div class="row" style="margin-top:9px" id="selBtns">
-        <button id="btnUp">강화</button>
-        <button id="btnSell" class="danger" style="width:78px">해고</button>
+        <button id="btnSell" class="danger">해고</button>
       </div>
     </div>
   </div>
@@ -334,7 +333,6 @@ const CFG = {
   nexusRange: 165,
   nexusRate: 1.0,        // 초당 발사 수
   sellRatio: 0.7,        // 해고 시 투자금 환급률
-  maxLevel: 10,
   heroesLocked: false,   // 영웅 고용 전면 차단 스위치 — true 면 '영웅 상점'을 사도 막힌다
   heroUnique: false,     // true 로 두면 영웅을 종류당 1기만 고용
   heroCostGrow: 1.55,    // 같은 영웅을 또 고용할 때 비용 증가율
@@ -358,9 +356,6 @@ const HEROES = [
     desc:'제자리에서 멀리 있는 적을 저격한다' },
 ];
 const defById = id => HEROES.find(d => d.id === id);
-
-// 레벨당 증가율
-const UP = { dmg:1.30, range:1.045, rate:1.06, costBase:0.75, costGrow:1.65 };
 
 const ENEMIES = {
   normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0 },
@@ -515,7 +510,7 @@ function saveRun() {
     popLv: S.popLv, maxPop: S.maxPop,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
-    heroes: S.heroes.map(h => ({ id: h.def.id, lv: h.lv, invested: h.invested, homeAng: h.homeAng })),
+    heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
   };
   try { localStorage.setItem(RUN_KEY, JSON.stringify(snap)); } catch (e) {}
 }
@@ -597,7 +592,7 @@ function resumeGame(snap) {
   S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
     const def = defById(h.id);
     const post = { x: CX + Math.cos(h.homeAng) * CFG.postR, y: CY + Math.sin(h.homeAng) * CFG.postR };
-    return { def, lv: h.lv, invested: h.invested, homeAng: h.homeAng,
+    return { def, invested: h.invested, homeAng: h.homeAng,
              x: post.x, y: post.y, cd: 0, ang: 0, recoil: 0, spawnT: 0 };
   });
   S.autoT = AUTO_WAVE_SEC;
@@ -635,11 +630,10 @@ const heroBlocked = def => CFG.heroesLocked || !S.heroShop || popFull() ||
                            (CFG.heroUnique && ownedCount(def.id) > 0);
 
 const heroStat = h => ({
-  dmg:   h.def.dmg   * Math.pow(UP.dmg,   h.lv - 1) * S.dmgMul,
-  range: h.def.range * Math.pow(UP.range, h.lv - 1),
-  rate:  h.def.rate  * Math.pow(UP.rate,  h.lv - 1),
+  dmg:   h.def.dmg   * S.dmgMul,
+  range: h.def.range,
+  rate:  h.def.rate,
 });
-const upCost = h => Math.floor(h.def.cost * UP.costBase * Math.pow(UP.costGrow, h.lv - 1));
 
 function hire(def) {
   const cost = heroCost(def);
@@ -648,7 +642,7 @@ function hire(def) {
   const ang = S.hired * GOLDEN;                   // 대기 위치를 골고루 배분
   const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
   S.heroes.push({
-    def, lv: 1, invested: cost, homeAng: ang,
+    def, invested: cost, homeAng: ang,
     x: post.x, y: post.y, cd: 0, ang: 0,
     recoil: 0, spawnT: 0.6,
   });
@@ -1038,11 +1032,6 @@ function draw() {
     ctx.fillStyle = h.def.accent;
     ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.284); ctx.fill();
     ctx.restore();
-
-    for (let i = 0; i < h.lv; i++) {
-      ctx.fillStyle = h.def.accent;
-      ctx.fillRect(h.x - 14 + (i % 5) * 6, h.y + 13 - Math.floor(i / 5) * 4, 4, 2.5);
-    }
   }
 
   /* 적 */
@@ -1391,20 +1380,15 @@ function renderSel() {
   modal.style.display = '';
 
   const h = sel.h, st = heroStat(h);
-  const maxed = h.lv >= CFG.maxLevel, cost = upCost(h);
   $('selBtns').style.display = '';
-  $('selName').textContent = `★ ${h.def.name} Lv.${h.lv}`;
-  const nextDmg = h.def.dmg * Math.pow(UP.dmg, h.lv) * S.dmgMul;
+  $('selName').textContent = `★ ${h.def.name}`;
   $('selStats').innerHTML = `
-    <div class="stat"><span>공격력</span><b>${st.dmg.toFixed(1)}${maxed ? '' : ` → ${nextDmg.toFixed(1)}`}</b></div>
+    <div class="stat"><span>공격력</span><b>${st.dmg.toFixed(1)}</b></div>
     <div class="stat"><span>공격속도</span><b>${st.rate.toFixed(2)} 발/초</b></div>
     <div class="stat"><span>초당 피해량</span><b>${(st.dmg * st.rate).toFixed(1)}</b></div>
     <div class="stat"><span>사거리</span><b>${st.range.toFixed(0)}</b></div>
     <div class="stat"><span>이동속도</span><b>${h.def.spd}</b></div>
     ${h.def.splash ? `<div class="stat"><span>범위</span><b>${h.def.splash}</b></div>` : ''}`;
-  const btn = $('btnUp');
-  btn.disabled = maxed || S.gold < cost;
-  btn.textContent = maxed ? '최대 레벨' : `강화 ${cost}G`;
   $('btnSell').textContent = `해고 ${Math.floor(h.invested * CFG.sellRatio)}G`;
 }
 
@@ -1475,24 +1459,13 @@ cv.addEventListener('click', ev => {
     const d = dist(m.x, m.y, h.x, h.y);
     if (d < bestD) { bestD = d; picked = h; }
   }
-  if (picked) { setTab('hero'); openSel({ kind: 'hero', h: picked }); }
+  if (picked) openSel({ kind: 'hero', h: picked });
   else closeSel();
 });
 
 $('btnSelClose').onclick = closeSel;
 // 창 바깥(어두운 배경)을 눌러도 닫힌다
 $('selModal').onclick = ev => { if (ev.target === $('selModal')) closeSel(); };
-
-$('btnUp').onclick = () => {
-  if (!sel || sel.kind !== 'hero') return;
-  const h = sel.h;
-  if (h.lv >= CFG.maxLevel) return;
-  const c = upCost(h);
-  if (S.gold < c) return;
-  S.gold -= c; h.invested += c; h.lv++;
-  saveRun();
-  syncUI();
-};
 
 $('btnSell').onclick = () => {
   if (!sel || sel.kind !== 'hero') return;
