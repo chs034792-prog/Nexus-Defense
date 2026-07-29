@@ -392,7 +392,10 @@ const META = [
     desc: lv => `초당 HP 재생 +${(lv * 0.3).toFixed(1)}` },
 ];
 const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
-const coreReward = cleared => Math.floor(3 * Math.pow(Math.max(0, cleared), 1.25));
+const coreReward = cleared => Math.floor(6 * Math.pow(Math.max(0, cleared), 1.25));
+
+// 중도 포기해도 이 웨이브를 넘겼다면 코어를 준다 (그 아래는 보상 없음)
+const ABANDON_MIN_WAVE = 10;
 
 const SAVE_KEY = 'nexusdefense.save';
 let save = { best: 0, cores: 0, runs: 0, meta: {} };
@@ -1340,13 +1343,35 @@ function goMenu() {
   else show('menu');
 }
 
-// 코어는 게임 오버 때만 지급되므로, 진행 중인 판을 버리고 나갈 때는 한 번 확인한다
 const runInProgress = () => screen === 'game' && S && S.phase !== 'over';
-const confirmAbandon = () => confirm(
-  `웨이브 ${S.wave} 진행 중입니다.\n지금 나가면 이번 판의 기록과 코어를 얻지 못합니다.\n포기하고 메인으로 나갈까요?`);
+
+// 중도 포기 — ABANDON_MIN_WAVE 를 넘겼다면 거기까지의 코어를 주고 기록도 남긴다
+const abandonCores = () => S.wave > ABANDON_MIN_WAVE ? coreReward(S.wave - 1) : 0;
+
+const confirmAbandon = () => {
+  const cores = abandonCores();
+  const gain = cores > 0 ? `여기까지의 코어 +${cores} 를 받고 종료합니다.`
+                         : `웨이브 ${ABANDON_MIN_WAVE + 1} 이전에는 코어를 받을 수 없습니다.`;
+  return confirm(`웨이브 ${S.wave} 진행 중입니다.\n${gain}\n포기하고 메인으로 나갈까요?`);
+};
+
+function payoutAbandon() {
+  const cleared = S.wave - 1;
+  const cores = abandonCores();
+  if (cores > 0) {
+    save.cores += cores;
+    save.runs++;
+    if (cleared > save.best) save.best = cleared;
+  }
+  writeSave();
+  S.phase = 'over';                 // 판을 닫아 두 번 지급되지 않게 한다
+}
 
 function leaveToMenu() {
-  if (runInProgress() && !confirmAbandon()) return;
+  if (runInProgress()) {
+    if (!confirmAbandon()) return;
+    payoutAbandon();
+  }
   goMenu();
 }
 
@@ -1365,7 +1390,7 @@ addEventListener('popstate', () => {
     // 대화상자라, 답을 받은 뒤에 되돌리면 브라우저가 이미 이동을 끝낸 뒤여서
     // 항목이 제대로 쌓이지 않는다. 그래서 복구를 먼저 하고 질문은 나중에 한다.
     history.pushState({ screen: 'game' }, '');
-    setTimeout(() => { if (confirmAbandon()) goMenu(); }, 0);
+    setTimeout(() => { if (confirmAbandon()) { payoutAbandon(); goMenu(); } }, 0);
     return;
   }
   leavingToMenu = false;
