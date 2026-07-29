@@ -527,6 +527,10 @@ const NEXUS_UPS = [
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
     cond: () => S && S.drone && S.drone.count > 0,
     apply: s => { s.drone.orbitR += 10; } },
+  { id:'droneSpd', name:'드론 속도',     desc:'드론 선회 속도 +0.3',
+    cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
+    cond: () => S && S.drone && S.drone.count > 0,
+    apply: s => { s.drone.spd += 0.3; } },
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
@@ -1754,7 +1758,7 @@ $('btnSell').onclick = () => {
   if (h.def.id === 'mechanic') {
     S.hasMechanic = false;
     S.drone = null;
-    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0; S.nexusLv.droneRng = 0;
+    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0; S.nexusLv.droneRng = 0; S.nexusLv.droneSpd = 0;
   }
   S.heroes = S.heroes.filter(x => x !== h);
   saveRun();
