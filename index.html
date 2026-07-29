@@ -81,6 +81,22 @@
   .meta button .unit { font-size: 10px; font-weight: 600; opacity: .7; letter-spacing: .06em; }
   #shopScreen .back { width: 200px; margin-top: 24px; }
 
+  #zoneBox {
+    width: 100%; max-width: 380px; margin-top: 14px;
+    background: #141926; border: 1px solid #232b41; border-radius: 8px; padding: 13px 15px;
+  }
+  #zoneBox h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .zone-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: 6px; background: #1a2133; border: 1px solid #263050;
+    font-size: 12px;
+  }
+  .zone-row.reached { border-color: #3f6ac0; }
+  .zone-row.locked { opacity: .4; }
+  .zone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .zone-name { font-weight: 700; flex: 1; }
+  .zone-wave { color: #7b88a8; font-size: 11px; white-space: nowrap; }
+
   #backupBox {
     width: 100%; max-width: 380px; margin-top: 14px;
     background: #141926; border: 1px solid #232b41; border-radius: 8px; padding: 13px 15px;
@@ -283,6 +299,7 @@
     <button id="btnSortie">출 격</button>
     <button id="btnShop" class="ghost">상 점</button>
     <button id="btnBackup" class="ghost">코드 관리</button>
+    <button id="btnZones" class="ghost">지역 정보</button>
   </div>
 
   <div id="backupBox" style="display:none">
@@ -294,6 +311,12 @@
       <button id="btnBackupLoad" class="ghost">코드 불러오기</button>
     </div>
     <textarea id="backupText" readonly placeholder="코드가 여기에 나옵니다"></textarea>
+  </div>
+
+  <div id="zoneBox" style="display:none">
+    <h3>지역 정보</h3>
+    <p class="hint">웨이브가 진행될수록 새로운 지역이 열립니다.</p>
+    <div id="zoneList" style="margin-top:9px;display:flex;flex-direction:column;gap:4px"></div>
   </div>
 
   <p class="hint" style="margin-top:22px;color:#4e5872">사방에서 몰려오는 적으로부터 중앙 넥서스를 지켜내십시오.</p>
@@ -455,18 +478,39 @@ const ALL_DEFS = [...HEROES, ...GROUND_UNITS];
 const defById = id => ALL_DEFS.find(d => d.id === id);
 
 const ENEMIES = {
-  normal:  { name:'졸개',   color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0 },
-  fast:    { name:'질주',   color:'#f2c14e', hp:20,   spd:110, r:9,  dmg:15,  rew:2,  sides:3 },
-  tank:    { name:'중갑',   color:'#9b6bff', hp:90,   spd:34,  r:18, dmg:26,  rew:3,  sides:6 },
-  venom:   { name:'독충',   color:'#3ddc84', hp:50,   spd:60,  r:11, dmg:20,  rew:4,  sides:5 },
-  charger: { name:'돌격병', color:'#ff8a50', hp:80,   spd:78,  r:13, dmg:32,  rew:5,  sides:0 },
-  heavy:   { name:'철갑',   color:'#607d8b', hp:190,  spd:28,  r:20, dmg:44,  rew:6,  sides:6 },
-  assassin:{ name:'암살자', color:'#e040fb', hp:40,   spd:135, r:8,  dmg:48,  rew:7,  sides:4 },
-  crusher: { name:'파괴자', color:'#ff1744', hp:150,  spd:50,  r:16, dmg:56,  rew:8,  sides:0 },
-  mage:    { name:'마법사', color:'#40c4ff', hp:60,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, ranged:200, atkRate:0.8, projSpd:300 },
-  cannon:  { name:'포격수', color:'#ffd600', hp:110,  spd:26,  r:14, dmg:70,  rew:10, sides:8, ranged:250, atkRate:0.45, projSpd:240 },
-  boss:    { name:'보스',   color:'#ff4d4d', hp:1250, spd:12,  r:30, dmg:135, rew:15, sides:8 },
+  normal:  { name:'들쥐',     color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0 },
+  fast:    { name:'토끼',     color:'#f2c14e', hp:20,   spd:110, r:9,  dmg:15,  rew:2,  sides:3 },
+  tank:    { name:'멧돼지',   color:'#9b6bff', hp:90,   spd:34,  r:18, dmg:26,  rew:3,  sides:6 },
+  venom:   { name:'독뱀',     color:'#3ddc84', hp:50,   spd:60,  r:11, dmg:20,  rew:4,  sides:5 },
+  charger: { name:'늑대',     color:'#ff8a50', hp:80,   spd:78,  r:13, dmg:32,  rew:5,  sides:0 },
+  heavy:   { name:'곰',       color:'#607d8b', hp:190,  spd:28,  r:20, dmg:44,  rew:6,  sides:6 },
+  assassin:{ name:'살쾡이',   color:'#e040fb', hp:40,   spd:135, r:8,  dmg:48,  rew:7,  sides:4 },
+  crusher: { name:'들소',     color:'#ff1744', hp:150,  spd:50,  r:16, dmg:56,  rew:8,  sides:0 },
+  mage:    { name:'매',       color:'#40c4ff', hp:60,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, ranged:200, atkRate:0.8, projSpd:300 },
+  cannon:  { name:'독수리',   color:'#ffd600', hp:110,  spd:26,  r:14, dmg:70,  rew:10, sides:8, ranged:250, atkRate:0.45, projSpd:240 },
+  boss:    { name:'초원의 군주', color:'#ff4d4d', hp:1250, spd:12,  r:30, dmg:135, rew:15, sides:8 },
 };
+
+const ZONES = [
+  { name:'초원',       from:1,    to:100,  color:'#6bbd5b' },
+  { name:'숲',         from:101,  to:200,  color:'#2d8a4e' },
+  { name:'산',         from:201,  to:300,  color:'#8b7355' },
+  { name:'사막',       from:301,  to:400,  color:'#d4a843' },
+  { name:'바다',       from:401,  to:500,  color:'#3b8ecf' },
+  { name:'도시',       from:501,  to:600,  color:'#9ca3af' },
+  { name:'하늘',       from:601,  to:700,  color:'#7ec8e3' },
+  { name:'지구',       from:701,  to:800,  color:'#4a90d9' },
+  { name:'달',         from:801,  to:900,  color:'#c0c0c0' },
+  { name:'행성',       from:901,  to:1000, color:'#e07050' },
+  { name:'태양',       from:1001, to:1200, color:'#ff9933' },
+  { name:'은하',       from:1201, to:1400, color:'#9b59b6' },
+  { name:'성운',       from:1401, to:1600, color:'#e056a0' },
+  { name:'블랙홀',     from:1601, to:1800, color:'#2c2c54' },
+  { name:'차원의 틈',  from:1801, to:2000, color:'#8e44ad' },
+  { name:'혼돈의 바다', from:2001, to:2200, color:'#c0392b' },
+  { name:'종말의 끝',  from:2201, to:2500, color:'#1a1a2e' },
+];
+const currentZone = w => ZONES.find(z => w >= z.from && w <= z.to) || ZONES[ZONES.length - 1];
 
 // 약한 순서 = 등장 순서. 여기 순서가 곧 1단계~10단계다.
 const TIERS = ['normal', 'fast', 'tank', 'venom', 'charger',
@@ -1926,10 +1970,28 @@ $('btnShop').onclick = () => show('shop');
 $('btnShopBack').onclick = goMenu;
 
 $('btnBackup').onclick = () => {
+  $('zoneBox').style.display = 'none';
   const box = $('backupBox');
   const open = box.style.display === 'none';
   box.style.display = open ? '' : 'none';
   if (!open) $('backupText').value = '';
+};
+
+$('btnZones').onclick = () => {
+  $('backupBox').style.display = 'none';
+  const box = $('zoneBox');
+  const open = box.style.display === 'none';
+  box.style.display = open ? '' : 'none';
+  if (open) {
+    $('zoneList').innerHTML = ZONES.map(z => {
+      const reached = save.best >= z.from;
+      return `<div class="zone-row ${reached ? 'reached' : 'locked'}">
+        <div class="zone-dot" style="background:${z.color}"></div>
+        <span class="zone-name">${reached ? z.name : '???'}</span>
+        <span class="zone-wave">${z.from} ~ ${z.to}</span>
+      </div>`;
+    }).join('');
+  }
 };
 
 $('btnBackupCopy').onclick = async () => {
