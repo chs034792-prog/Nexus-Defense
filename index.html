@@ -1143,12 +1143,12 @@ function draw() {
 function drawNexus() {
   const n = S.nexus;
   const pulse = 1 + Math.sin(performance.now() / 400) * 0.03;
-  const picked = sel && sel.kind === 'nexus';
 
-  ctx.strokeStyle = picked ? 'rgba(127,231,255,.35)' : 'rgba(127,231,255,.08)';
-  ctx.fillStyle = picked ? 'rgba(127,231,255,.04)' : 'transparent';
+  // 넥서스 사거리는 항상 보이게 그린다
+  ctx.strokeStyle = 'rgba(127,231,255,.30)';
+  ctx.fillStyle = 'rgba(127,231,255,.035)';
   ctx.beginPath(); ctx.arc(CX, CY, n.range, 0, 6.284);
-  if (picked) ctx.fill();
+  ctx.fill();
   ctx.stroke();
 
   const g = ctx.createRadialGradient(CX, CY, 8, CX, CY, NEXUS_R * 2.1);
@@ -1337,30 +1337,13 @@ function closeSel() {
 
 function renderSel() {
   const modal = $('selModal');
-  if (!sel || (sel.kind === 'hero' && !S.heroes.includes(sel.h))) {
+  if (!sel || !S.heroes.includes(sel.h)) {
     // 대상이 사라졌으면(해고 등) 창을 닫고 멈춤도 함께 푼다
     if (sel) { sel = null; if (pausedBySel) { paused = false; pausedBySel = false; } }
     modal.style.display = 'none';
     return;
   }
   modal.style.display = '';
-
-  if (sel.kind === 'nexus') {
-    const n = S.nexus;
-    $('selName').textContent = '넥서스';
-    $('selStats').innerHTML = `
-      <div class="stat"><span>체력</span><b>${Math.ceil(n.hp)} / ${n.maxHp}</b></div>
-      <div class="stat"><span>공격력</span><b>${n.dmg.toFixed(1)}</b></div>
-      <div class="stat"><span>공격속도</span><b>${n.rate.toFixed(2)} 발/초</b></div>
-      <div class="stat"><span>초당 피해량</span><b>${(n.dmg * n.rate).toFixed(1)}</b></div>
-      <div class="stat"><span>사거리</span><b>${n.range.toFixed(0)}</b></div>
-      <div class="stat"><span>체력 재생</span><b>${n.regen.toFixed(1)}/초</b></div>
-      <div class="stat"><span>수입 배율</span><b>×${S.incomeMul.toFixed(2)}</b></div>
-      <div class="stat"><span>강화 횟수</span><b>${
-        NEXUS_UPS.map(u => S.nexusLv[u.id]).reduce((a, b) => a + b, 0)}</b></div>`;
-    $('selBtns').style.display = 'none';
-    return;
-  }
 
   const h = sel.h, st = heroStat(h);
   const maxed = h.lv >= CFG.maxLevel, cost = upCost(h);
@@ -1439,12 +1422,8 @@ cv.addEventListener('click', ev => {
   if (S.phase === 'over') return;
   const m = mousePos(ev);
 
-  // 넥서스 클릭 → 능력치 표시 + 넥서스 탭으로
-  if (dist(m.x, m.y, CX, CY) <= NEXUS_R + 12) {
-    setTab('nexus');
-    openSel({ kind: 'nexus' });
-    return;
-  }
+  // 넥서스 클릭 → 강화 탭으로 (사거리는 늘 화면에 그려진다)
+  if (dist(m.x, m.y, CX, CY) <= NEXUS_R + 12) { setTab('nexus'); syncUI(); return; }
   // 영웅 클릭
   let picked = null, bestD = 24;
   for (const h of S.heroes) {
