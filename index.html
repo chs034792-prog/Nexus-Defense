@@ -290,18 +290,12 @@ const CFG = {
 // 영웅 — 고용하면 넥서스 주변에 나타나고, 적이 오면 직접 요격하러 간다
 const HEROES = [
   { id:'scout', name:'순찰병', cost:90, color:'#5b9dff', accent:'#a8ccff',
-    dmg:14, range:120, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
+    dmg:14, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
     desc:'값싸고 발이 빠른 기본 영웅' },
   { id:'sniper', name:'저격수', cost:260, color:'#c86bff', accent:'#e6c2ff',
     dmg:95, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
-    desc:'멀리서 한 발씩 확실하게' },
-  { id:'pyro', name:'화염술사', cost:300, color:'#ff5f3d', accent:'#ffb199',
-    dmg:46, range:140, rate:0.85, bspd:340, spd:104, splash:74, slow:0, slowT:0,
-    desc:'몰린 적을 통째로 태운다' },
-  { id:'engi', name:'정비공', cost:240, color:'#5ce8a0', accent:'#b6f7d6',
-    dmg:16, range:130, rate:1.25, bspd:520, spd:118, splash:0, slow:0, slowT:0,
-    aura: { rate:0.35, range:150 },
-    desc:'주변 아군 공격속도 +35%' },
+    hold:true,                       // 제자리에서만 쏜다 — 적을 쫓아가지 않는다
+    desc:'제자리에서 멀리 있는 적을 저격한다' },
 ];
 const defById = id => HEROES.find(d => d.id === id);
 
@@ -439,7 +433,7 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
    게임 상태
    ══════════════════════════════════════════════════════════ */
 
-const AUTO_WAVE_SEC = 5;
+const AUTO_WAVE_SEC = 2.5;
 const GOLDEN = 2.39996;                  // 대기 위치를 고르게 흩는 황금각
 
 /* 테스트용 배속 — 주소 뒤에 ?dev=1 을 붙이면 배속에 x10 이 더 열린다.
@@ -508,7 +502,7 @@ const heroBlocked = def => CFG.heroesLocked || !S.heroShop || (CFG.heroUnique &&
 const heroStat = h => ({
   dmg:   h.def.dmg   * Math.pow(UP.dmg,   h.lv - 1) * S.dmgMul,
   range: h.def.range * Math.pow(UP.range, h.lv - 1),
-  rate:  h.def.rate  * Math.pow(UP.rate,  h.lv - 1) * (1 + (h.buffRate || 0)),
+  rate:  h.def.rate  * Math.pow(UP.rate,  h.lv - 1),
 });
 const upCost = h => Math.floor(h.def.cost * UP.costBase * Math.pow(UP.costGrow, h.lv - 1));
 
@@ -520,7 +514,7 @@ function hire(def) {
   const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
   S.heroes.push({
     def, lv: 1, invested: cost, homeAng: ang,
-    x: post.x, y: post.y, cd: 0, ang: 0, buffRate: 0,
+    x: post.x, y: post.y, cd: 0, ang: 0,
     recoil: 0, spawnT: 0.6,
   });
   S.hired++;
@@ -530,19 +524,6 @@ function hire(def) {
 
 const homePos = h => ({ x: CX + Math.cos(h.homeAng) * CFG.postR,
                         y: CY + Math.sin(h.homeAng) * CFG.postR });
-
-// 정비공 아우라 — 사거리 안의 다른 영웅 공격속도를 올린다
-function refreshAura() {
-  for (const h of S.heroes) h.buffRate = 0;
-  for (const a of S.heroes) {
-    if (!a.def.aura) continue;
-    for (const h of S.heroes) {
-      if (h === a) continue;
-      if (dist(a.x, a.y, h.x, h.y) <= a.def.aura.range)
-        h.buffRate = Math.max(h.buffRate, a.def.aura.rate);
-    }
-  }
-}
 
 /* ══════════════════════════════════════════════════════════
    웨이브 진행
@@ -726,7 +707,6 @@ function update(dt) {
   /* 영웅 — 이동 후 사격.
      영웅은 자기 배치 자리를 중심으로 사거리만큼의 원 안에서만 움직인다.
      그 원 밖의 적은 쫓아가지 않고, 원 안으로 들어올 때까지 기다린다. */
-  refreshAura();
   for (const h of S.heroes) {
     const st = heroStat(h);
     if (h.spawnT > 0) h.spawnT -= dt;
@@ -734,42 +714,47 @@ function update(dt) {
     h.cd -= dt;
 
     const home = homePos(h);
+    const hold = !!h.def.hold;              // 제자리형 영웅은 배치 자리에서 사거리로만 싸운다
+    if (hold) { h.x = home.x; h.y = home.y; }
+
     // 사거리 안에 적이 있으면 그놈을, 없으면 자기 활동 원 안으로 들어온 적을 노린다
     const inRange = pickTarget(h.x, h.y, st.range);
-    const goal = inRange || pickTarget(home.x, home.y, st.range);
+    const goal = inRange || (hold ? null : pickTarget(home.x, home.y, st.range));
     h.target = goal || null;
+    if (goal) h.ang = Math.atan2(goal.y - h.y, goal.x - h.x);
 
-    let dx = 0, dy = 0;
-    if (goal) {
-      const d = dist(h.x, h.y, goal.x, goal.y);
-      h.ang = Math.atan2(goal.y - h.y, goal.x - h.x);
-      // 사거리의 80%까지만 접근하고 그 자리에서 쏜다
-      const keep = st.range * 0.8;
-      if (d > keep) { dx = (goal.x - h.x) / d; dy = (goal.y - h.y) / d; }
-    } else {
-      const d = dist(h.x, h.y, home.x, home.y);
-      if (d > 4) { dx = (home.x - h.x) / d; dy = (home.y - h.y) / d; h.ang = Math.atan2(dy, dx); }
-    }
+    if (!hold) {
+      let dx = 0, dy = 0;
+      if (goal) {
+        const d = dist(h.x, h.y, goal.x, goal.y);
+        // 사거리의 80%까지만 접근하고 그 자리에서 쏜다
+        const keep = st.range * 0.8;
+        if (d > keep) { dx = (goal.x - h.x) / d; dy = (goal.y - h.y) / d; }
+      } else {
+        const d = dist(h.x, h.y, home.x, home.y);
+        if (d > 4) { dx = (home.x - h.x) / d; dy = (home.y - h.y) / d; h.ang = Math.atan2(dy, dx); }
+      }
 
-    // 영웅끼리 겹치지 않게 살짝 밀어낸다
-    for (const o of S.heroes) {
-      if (o === h) continue;
-      const d = dist(h.x, h.y, o.x, o.y);
-      if (d > 0 && d < 30) { dx += (h.x - o.x) / d * 0.6; dy += (h.y - o.y) / d * 0.6; }
-    }
+      // 영웅끼리 겹치지 않게 살짝 밀어낸다
+      for (const o of S.heroes) {
+        if (o === h) continue;
+        const d = dist(h.x, h.y, o.x, o.y);
+        if (d > 0 && d < 30) { dx += (h.x - o.x) / d * 0.6; dy += (h.y - o.y) / d * 0.6; }
+      }
 
-    const m = Math.hypot(dx, dy);
-    if (m > 0.01) {
-      const step = h.def.spd * dt;
-      h.x = clamp(h.x + dx / m * step, 14, W - 14);
-      h.y = clamp(h.y + dy / m * step, 14, H - 14);
-    }
+      const m = Math.hypot(dx, dy);
+      if (m > 0.01) {
+        const step = h.def.spd * dt;
+        h.x = clamp(h.x + dx / m * step, 14, W - 14);
+        h.y = clamp(h.y + dy / m * step, 14, H - 14);
+      }
 
-    // 활동 반경을 벗어나면 원 안으로 되돌린다
-    const off = dist(h.x, h.y, home.x, home.y);
-    if (off > st.range) {
-      h.x = home.x + (h.x - home.x) / off * st.range;
-      h.y = home.y + (h.y - home.y) / off * st.range;
+      // 활동 반경을 벗어나면 원 안으로 되돌린다
+      const off = dist(h.x, h.y, home.x, home.y);
+      if (off > st.range) {
+        h.x = home.x + (h.x - home.x) / off * st.range;
+        h.y = home.y + (h.y - home.y) / off * st.range;
+      }
     }
 
     if (inRange && h.cd <= 0) {
@@ -872,15 +857,6 @@ function draw() {
     ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, 6.284); ctx.fill();
   }
 
-  // 지원 아우라
-  for (const a of S.heroes) {
-    if (!a.def.aura) continue;
-    ctx.strokeStyle = 'rgba(92,232,160,.15)';
-    ctx.fillStyle = 'rgba(92,232,160,.03)';
-    ctx.beginPath(); ctx.arc(a.x, a.y, a.def.aura.range, 0, 6.284);
-    ctx.fill(); ctx.stroke();
-  }
-
   // 선택 표시
   if (sel && sel.kind === 'hero' && S.heroes.includes(sel.h)) {
     const st = heroStat(sel.h);
@@ -921,10 +897,6 @@ function draw() {
     ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.284); ctx.fill();
     ctx.restore();
 
-    if (h.buffRate > 0) {
-      ctx.fillStyle = '#5ce8a0';
-      ctx.beginPath(); ctx.arc(h.x + 13, h.y - 13, 3.2, 0, 6.284); ctx.fill();
-    }
     for (let i = 0; i < h.lv; i++) {
       ctx.fillStyle = h.def.accent;
       ctx.fillRect(h.x - 14 + (i % 5) * 6, h.y + 13 - Math.floor(i / 5) * 4, 4, 2.5);
@@ -1244,9 +1216,7 @@ function renderSel() {
     <div class="stat"><span>초당 피해량</span><b>${(st.dmg * st.rate).toFixed(1)}</b></div>
     <div class="stat"><span>사거리</span><b>${st.range.toFixed(0)}</b></div>
     <div class="stat"><span>이동속도</span><b>${h.def.spd}</b></div>
-    ${h.def.splash ? `<div class="stat"><span>범위</span><b>${h.def.splash}</b></div>` : ''}
-    ${h.def.aura ? `<div class="stat"><span>지원 아우라</span><b style="color:#5ce8a0">공속 +${(h.def.aura.rate * 100).toFixed(0)}%</b></div>` : ''}
-    ${h.buffRate > 0 ? `<div class="stat"><span>받는 버프</span><b style="color:#5ce8a0">공속 +${(h.buffRate * 100).toFixed(0)}%</b></div>` : ''}`;
+    ${h.def.splash ? `<div class="stat"><span>범위</span><b>${h.def.splash}</b></div>` : ''}`;
   const btn = $('btnUp');
   btn.disabled = maxed || S.gold < cost;
   btn.textContent = maxed ? '최대 레벨' : `강화 ${cost}G`;
@@ -1346,7 +1316,6 @@ $('btnSell').onclick = () => {
   S.gold += Math.floor(h.invested * CFG.sellRatio);
   S.heroes = S.heroes.filter(x => x !== h);
   sel = null;
-  refreshAura();
   syncUI();
 };
 
