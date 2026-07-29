@@ -123,6 +123,8 @@
   }
   .tabs .tab:hover { color: #aab6d0; }
   .tabs .tab.on { background: #24304d; border-color: #3f6ac0; color: #dfe6f5; }
+  .tabs .tab.locked { opacity: .45; cursor: not-allowed; }
+  .tabs .tab.locked:hover { color: #6d7ba0; }
 
   .card {
     display: flex; gap: 9px; align-items: center;
@@ -279,7 +281,7 @@ const CFG = {
   nexusRate: 1.0,        // 초당 발사 수
   sellRatio: 0.7,        // 해고 시 투자금 환급률
   maxLevel: 10,
-  heroesLocked: true,    // 영웅 고용 일시 차단 — false 로 바꾸면 다시 열린다
+  heroesLocked: false,   // 영웅 고용 전면 차단 스위치 — true 면 '영웅 상점'을 사도 막힌다
   heroUnique: false,     // true 로 두면 영웅을 종류당 1기만 고용
   heroCostGrow: 1.55,    // 같은 영웅을 또 고용할 때 비용 증가율
   postR: 112,            // 넥서스 주변 대기 반경
@@ -368,6 +370,10 @@ const NEXUS_UPS = [
   { id:'regen', name:'체력 재생',     desc:'초당 HP +0.5 회복',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.regen += 0.5; } },
+  // 한 번만 사는 해금 항목 — 사고 나면 영웅 탭이 열린다
+  { id:'heroshop', name:'영웅 상점', desc:'영웅 탭을 열어 영웅을 고용할 수 있게 된다',
+    once: true, cost: () => 120,
+    apply: s => { s.heroShop = true; } },
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
@@ -441,6 +447,7 @@ function newGame() {
     dmgMul: 1,
     goldMul: 1,
     incomeMul: 1,
+    heroShop: false,                     // 넥서스 강화에서 '영웅 상점'을 사면 열린다
   };
   sel = null;
   $('over').classList.remove('on');
@@ -474,7 +481,7 @@ function show(name, fromPop) {
 
 const ownedCount = id => S.heroes.filter(h => h.def.id === id).length;
 const heroCost = def => Math.floor(def.cost * Math.pow(CFG.heroCostGrow, ownedCount(def.id)));
-const heroBlocked = def => CFG.heroesLocked || (CFG.heroUnique && ownedCount(def.id) > 0);
+const heroBlocked = def => CFG.heroesLocked || !S.heroShop || (CFG.heroUnique && ownedCount(def.id) > 0);
 
 const heroStat = h => ({
   dmg:   h.def.dmg   * Math.pow(UP.dmg,   h.lv - 1) * S.dmgMul,
@@ -1141,30 +1148,39 @@ function renderHeroShop() {
     const c = heroCost(e.d), owned = ownedCount(e.d.id), blocked = heroBlocked(e.d);
     const off = blocked || S.gold < c;
     e.cnt.textContent = owned ? '×' + owned : '';
-    e.btn.textContent = CFG.heroesLocked ? '잠김' : blocked ? '보유중' : c + 'G';
+    e.btn.textContent = CFG.heroesLocked || !S.heroShop ? '잠김' : blocked ? '보유중' : c + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
   }
-  $('heroShop').querySelector('.lockmsg').style.display = CFG.heroesLocked ? '' : 'none';
+  const msg = $('heroShop').querySelector('.lockmsg');
+  msg.style.display = CFG.heroesLocked || !S.heroShop ? '' : 'none';
+  msg.textContent = CFG.heroesLocked ? '영웅 고용은 현재 잠겨 있습니다.'
+                                     : '넥서스 강화의 「영웅 상점」을 먼저 구입하십시오.';
 }
 
 // 카드 어디를 누르든(비용 버튼 포함) 한 번에 강화된다
 function buyNexusUp(id) {
   const u = NEXUS_UPS.find(x => x.id === id);
-  const c = u.cost(S.nexusLv[u.id]);
-  if (!u || S.gold < c) return;
+  if (!u) return;
+  const lv = S.nexusLv[u.id];
+  if (u.once && lv > 0) return;                 // 한 번만 살 수 있는 항목
+  const c = u.cost(lv);
+  if (S.gold < c) return;
   S.gold -= c; S.nexusLv[u.id]++; u.apply(S);
-  addText(CX, CY - 88, u.name + ' Lv.' + S.nexusLv[u.id], '#7fe7ff');
+  addText(CX, CY - 88, u.once ? u.name + ' 해금' : u.name + ' Lv.' + S.nexusLv[u.id], '#7fe7ff');
+  if (u.once && u.id === 'heroshop') setTab('hero');
   syncUI();
 }
 
 function renderNexusShop() {
   for (const e of els.nexus) {
     const lv = S.nexusLv[e.u.id], c = e.u.cost(lv);
-    e.lv.textContent = 'Lv.' + lv;
-    e.btn.textContent = c + 'G';
-    e.btn.disabled = S.gold < c;
-    e.card.classList.toggle('poor', S.gold < c);
+    const bought = e.u.once && lv > 0;
+    const off = bought || S.gold < c;
+    e.lv.textContent = e.u.once ? (bought ? '보유' : '') : 'Lv.' + lv;
+    e.btn.textContent = bought ? '구매완료' : c + 'G';
+    e.btn.disabled = off;
+    e.card.classList.toggle('poor', off);
   }
 }
 
@@ -1227,19 +1243,32 @@ function syncUI() {
                 : S.phase === 'over'   ? '게임 오버'
                 : S.autoT > 0          ? `웨이브 ${S.wave} 시작 (${Math.ceil(S.autoT)})`
                 :                        `웨이브 ${S.wave} 시작`;
-  renderHeroShop(); renderNexusShop(); renderSel();
+  renderHeroShop(); renderNexusShop(); renderSel(); syncHeroTab();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
+const heroTabLocked = () => !S || !S.heroShop;
 document.querySelectorAll('.tabs .tab').forEach(el => {
-  el.onclick = () => setTab(el.dataset.tab);
+  el.onclick = () => {
+    if (el.dataset.tab === 'hero' && heroTabLocked()) return;
+    setTab(el.dataset.tab);
+  };
 });
 function setTab(name) {
+  if (name === 'hero' && heroTabLocked()) name = 'nexus';
   tab = name;
   document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
   $('heroShop').style.display  = tab === 'hero'  ? '' : 'none';
   $('nexusShop').style.display = tab === 'nexus' ? '' : 'none';
+}
+
+// 영웅 탭 잠금 표시 — 넥서스 강화에서 '영웅 상점'을 사기 전까지 누를 수 없다
+function syncHeroTab() {
+  const el = document.querySelector('.tabs .tab[data-tab="hero"]');
+  const locked = heroTabLocked();
+  el.classList.toggle('locked', locked);
+  el.textContent = locked ? '영웅 🔒' : '영웅';
 }
 
 /* ══════════════════════════════════════════════════════════
