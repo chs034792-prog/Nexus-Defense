@@ -63,6 +63,19 @@
   .meta button { width: 110px; padding: 9px; }
   #shopScreen .back { width: 200px; margin-top: 24px; }
 
+  #backupBox {
+    width: 100%; max-width: 560px; margin-top: 18px;
+    background: #141926; border: 1px solid #232b41; border-radius: 8px; padding: 13px 15px;
+  }
+  #backupBox h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  #backupBox button { width: auto; flex: 1; padding: 9px; font-size: 12px; }
+  #backupText {
+    width: 100%; margin-top: 9px; min-height: 54px; resize: vertical;
+    background: #0e1320; border: 1px solid #263050; border-radius: 6px;
+    color: #aab6d0; font-family: monospace; font-size: 11px; padding: 7px;
+    word-break: break-all;
+  }
+
   /* ── 게임 화면 ─────────────────────────────── */
   #gameScreen.on { flex-direction: column; align-items: center; overflow-y: auto; padding-right: 2px; }
   #stage { position: relative; width: 100%; max-width: 1100px; aspect-ratio: 960 / 720; }
@@ -204,6 +217,18 @@
   <h2>영구 강화 상점</h2>
   <div class="cores">보유 코어 <span id="sCores">0</span></div>
   <div id="metaList"></div>
+
+  <div id="backupBox">
+    <h3>진행도 백업</h3>
+    <p class="hint">브라우저마다 저장 공간이 따로라 카카오톡·크롬은 기록이 이어지지 않습니다.<br>
+      코드를 복사해 다른 브라우저에서 불러오면 그대로 이어집니다.</p>
+    <div class="row" style="margin-top:9px">
+      <button id="btnBackupCopy">코드 복사</button>
+      <button id="btnBackupLoad" class="ghost">코드 불러오기</button>
+    </div>
+    <textarea id="backupText" readonly placeholder="코드가 여기에 나옵니다"></textarea>
+  </div>
+
   <button class="ghost back" id="btnShopBack">메인으로</button>
   <p class="hint" style="margin-top:12px;color:#4e5872">코어는 출격을 마칠 때 도달한 웨이브에 비례해 지급됩니다.</p>
 </div>
@@ -417,6 +442,28 @@ function loadSave() {
 }
 const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 const mlv = id => save.meta[id] || 0;
+
+/* ── 백업 코드 ────────────────────────────────────────
+   localStorage 는 브라우저마다 완전히 따로라 카카오톡 인앱 브라우저와
+   크롬은 서로의 기록을 볼 수 없다. 서버가 없으니 진행도를 글자로 뽑아
+   옮기게 한다. UTF-8 을 거쳐 base64 로 만든다(한글이 없어도 안전하게). */
+function exportSave() {
+  const body = JSON.stringify({ v: 1, best: save.best, cores: save.cores, runs: save.runs, meta: save.meta });
+  return btoa(String.fromCharCode(...new TextEncoder().encode(body)));
+}
+
+function importSave(code) {
+  const text = new TextDecoder().decode(
+    Uint8Array.from(atob(code.trim()), c => c.charCodeAt(0)));
+  const d = JSON.parse(text);
+  if (!d || typeof d !== 'object' || !d.meta) throw new Error('형식이 올바르지 않습니다');
+  save.best  = Math.max(0, +d.best  || 0);
+  save.cores = Math.max(0, +d.cores || 0);
+  save.runs  = Math.max(0, +d.runs  || 0);
+  save.meta = {};
+  for (const m of META) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
+  writeSave();
+}
 
 /* ── 진행 중인 판 저장 ──────────────────────────────────
    모바일 인앱 브라우저(카카오톡 등)는 다른 앱으로 전환하면 페이지를
@@ -1446,6 +1493,33 @@ $('btnContinue').onclick = () => {
 };
 $('btnShop').onclick = () => show('shop');
 $('btnShopBack').onclick = goMenu;
+
+$('btnBackupCopy').onclick = async () => {
+  const code = exportSave();
+  const box = $('backupText');
+  box.value = code;
+  box.select();
+  let copied = false;
+  try { await navigator.clipboard.writeText(code); copied = true; } catch (e) {
+    // 인앱 브라우저는 클립보드를 막아두기도 한다 — 그럴 땐 직접 복사하게 둔다
+    try { copied = document.execCommand('copy'); } catch (e2) {}
+  }
+  alert(copied ? '백업 코드를 복사했습니다.\n다른 브라우저에서 «코드 불러오기»에 붙여넣으십시오.'
+               : '아래 칸의 코드를 길게 눌러 직접 복사하십시오.');
+};
+
+$('btnBackupLoad').onclick = () => {
+  const code = prompt('백업 코드를 붙여넣으십시오.\n지금 이 브라우저의 기록은 덮어써집니다.');
+  if (!code) return;
+  try {
+    importSave(code);
+    clearRun();                     // 다른 기기의 진행 중인 판과 섞이지 않게 한다
+    renderMeta();
+    alert(`불러왔습니다.\n최고 웨이브 ${save.best} · 코어 ${save.cores}`);
+  } catch (e) {
+    alert('코드를 읽지 못했습니다. 복사한 코드 전체가 맞는지 확인해 주십시오.');
+  }
+};
 $('btnRestart').onclick = () => { newGame(); setTab('nexus'); show('game'); };
 $('btnToMenu').onclick = goMenu;
 $('uiBack').onclick = leaveToMenu;
