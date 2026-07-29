@@ -508,14 +508,14 @@ const META = [
   { id:'minc',  name:'수입 증대',       max:Infinity, base:75,
     desc: lv => `골드 획득 +${lv * 5}%` },
   // 테크트리 해금 — 구입하면 게임 내 해당 탭이 열린다
-  { id:'t_hero',   name:'영웅 병과 해금', max:1, base:3000,
-    desc: lv => lv ? '영웅 탭 해금됨' : '게임 내 영웅 유닛 탭을 해금한다' },
-  { id:'t_ground', name:'지상 병과 해금', max:1, base:80,
+  { id:'t_ground', name:'지상 병과 해금', max:1, base:25000,
     desc: lv => lv ? '지상 탭 해금됨' : '게임 내 지상 유닛 탭을 해금한다' },
-  { id:'t_mech',   name:'기갑 병과 해금', max:1, base:120,
+  { id:'t_mech',   name:'기갑 병과 해금', max:1, base:50000,
     desc: lv => lv ? '기갑 탭 해금됨' : '게임 내 기갑 유닛 탭을 해금한다' },
-  { id:'t_air',    name:'공중 병과 해금', max:1, base:160,
+  { id:'t_air',    name:'공중 병과 해금', max:1, base:75000,
     desc: lv => lv ? '공중 탭 해금됨' : '게임 내 공중 유닛 탭을 해금한다' },
+  { id:'t_hero',   name:'영웅 병과 해금', max:1, base:150000,
+    desc: lv => lv ? '영웅 탭 해금됨' : '게임 내 영웅 유닛 탭을 해금한다' },
 ];
 const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
 const coreReward = cleared => Math.floor(6 * Math.pow(Math.max(0, cleared), 1.25));
