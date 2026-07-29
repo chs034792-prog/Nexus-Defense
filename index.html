@@ -477,18 +477,18 @@ const NEXUS_UPS = [
   { id:'rate',  name:'공격속도 강화', desc:'넥서스 초당 발사 +0.2',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.rate += 0.2; } },
-  { id:'range', name:'사거리 증가',   desc:'넥서스 사거리 +0.5',
+  { id:'range', name:'사거리 증가',   desc:'넥서스 사거리 +1',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
-    apply: s => { s.nexus.range += 0.5; } },
+    apply: s => { s.nexus.range += 1; } },
   { id:'wall',  name:'최대체력 증가', desc:'최대 체력 +5 · 즉시 회복',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.maxHp += 5; s.nexus.hp = Math.min(s.nexus.maxHp, s.nexus.hp + 5); } },
-  { id:'inc',   name:'수입 증대',     desc:'웨이브 클리어 보상 +5%',
-    cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
-    apply: s => { s.incomeMul += 0.05; } },
   { id:'regen', name:'체력 재생',     desc:'초당 HP +0.5 회복',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.regen += 0.5; } },
+  { id:'inc',   name:'수입 증대',     desc:'웨이브 클리어 보상 +5%',
+    cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
+    apply: s => { s.incomeMul += 0.05; } },
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
