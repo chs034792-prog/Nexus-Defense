@@ -470,19 +470,153 @@ const GROUND_UNITS = [
 const ALL_DEFS = [...HEROES, ...GROUND_UNITS];
 const defById = id => ALL_DEFS.find(d => d.id === id);
 
-const ENEMIES = {
-  normal:  { name:'들쥐',     color:'#e0556e', hp:15,   spd:55,  r:12, dmg:12,  rew:1,  sides:0 },
-  fast:    { name:'토끼',     color:'#f2c14e', hp:20,   spd:110, r:9,  dmg:15,  rew:2,  sides:3 },
-  tank:    { name:'멧돼지',   color:'#9b6bff', hp:90,   spd:34,  r:18, dmg:26,  rew:3,  sides:6 },
-  venom:   { name:'독뱀',     color:'#3ddc84', hp:50,   spd:60,  r:11, dmg:20,  rew:4,  sides:5 },
-  charger: { name:'늑대',     color:'#ff8a50', hp:80,   spd:78,  r:13, dmg:32,  rew:5,  sides:0 },
-  heavy:   { name:'곰',       color:'#607d8b', hp:190,  spd:28,  r:20, dmg:44,  rew:6,  sides:6 },
-  assassin:{ name:'살쾡이',   color:'#e040fb', hp:40,   spd:135, r:8,  dmg:48,  rew:7,  sides:4 },
-  crusher: { name:'들소',     color:'#ff1744', hp:150,  spd:50,  r:16, dmg:56,  rew:8,  sides:0 },
-  mage:    { name:'매',       color:'#40c4ff', hp:60,   spd:38,  r:12, dmg:28,  rew:9,  sides:5, ranged:200, atkRate:0.8, projSpd:300 },
-  cannon:  { name:'독수리',   color:'#ffd600', hp:110,  spd:26,  r:14, dmg:70,  rew:10, sides:8, ranged:250, atkRate:0.45, projSpd:240 },
-  boss:    { name:'초원의 군주', color:'#ff4d4d', hp:1250, spd:12,  r:30, dmg:135, rew:15, sides:8 },
+const ZONE_ENEMIES = {
+  초원: {
+    t1:{ name:'들쥐',   color:'#e0556e', hp:15,  spd:55,  r:12, dmg:12,  rew:1, sides:0 },
+    t2:{ name:'토끼',   color:'#f2c14e', hp:20,  spd:110, r:9,  dmg:15,  rew:2, sides:3 },
+    t3:{ name:'멧돼지', color:'#9b6bff', hp:90,  spd:34,  r:18, dmg:26,  rew:3, sides:6 },
+    t4:{ name:'독뱀',   color:'#3ddc84', hp:50,  spd:60,  r:11, dmg:20,  rew:4, sides:5 },
+    t5:{ name:'늑대',   color:'#ff8a50', hp:80,  spd:78,  r:13, dmg:32,  rew:5, sides:0 },
+    boss:{ name:'초원의 군주', color:'#ff4d4d', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  숲: {
+    t1:{ name:'다람쥐',   color:'#a0522d', hp:18,  spd:65,  r:11, dmg:14,  rew:1, sides:0 },
+    t2:{ name:'여우',     color:'#ff6f00', hp:28,  spd:105, r:10, dmg:18,  rew:2, sides:3 },
+    t3:{ name:'거미',     color:'#4e342e', hp:100, spd:38,  r:14, dmg:30,  rew:3, sides:8 },
+    t4:{ name:'독버섯',   color:'#76ff03', hp:60,  spd:30,  r:16, dmg:24,  rew:4, sides:0 },
+    t5:{ name:'숲곰',     color:'#5d4037', hp:110, spd:70,  r:15, dmg:38,  rew:5, sides:0 },
+    boss:{ name:'숲의 수호자', color:'#2e7d32', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  산: {
+    t1:{ name:'산양',     color:'#bcaaa4', hp:22,  spd:58,  r:12, dmg:16,  rew:1, sides:0 },
+    t2:{ name:'독수리',   color:'#ffd600', hp:30,  spd:100, r:10, dmg:20,  rew:2, sides:3 },
+    t3:{ name:'바위골렘', color:'#78909c', hp:130, spd:28,  r:20, dmg:34,  rew:3, sides:6 },
+    t4:{ name:'산뱀',     color:'#66bb6a', hp:70,  spd:55,  r:11, dmg:28,  rew:4, sides:5 },
+    t5:{ name:'설표',     color:'#e0e0e0', hp:90,  spd:90,  r:12, dmg:42,  rew:5, sides:4 },
+    boss:{ name:'산의 왕', color:'#8d6e63', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  사막: {
+    t1:{ name:'전갈',     color:'#ffab00', hp:25,  spd:52,  r:11, dmg:18,  rew:1, sides:0 },
+    t2:{ name:'사막여우', color:'#ffe082', hp:32,  spd:115, r:9,  dmg:22,  rew:2, sides:3 },
+    t3:{ name:'모래거북', color:'#d4a843', hp:150, spd:22,  r:22, dmg:36,  rew:3, sides:6 },
+    t4:{ name:'독거미',   color:'#ff6e40', hp:75,  spd:60,  r:12, dmg:30,  rew:4, sides:8 },
+    t5:{ name:'사막늑대', color:'#c8b080', hp:100, spd:85,  r:13, dmg:46,  rew:5, sides:0 },
+    boss:{ name:'사막의 폭군', color:'#e65100', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  바다: {
+    t1:{ name:'해파리',   color:'#80deea', hp:28,  spd:48,  r:13, dmg:20,  rew:1, sides:0 },
+    t2:{ name:'날치',     color:'#4fc3f7', hp:35,  spd:120, r:9,  dmg:24,  rew:2, sides:3 },
+    t3:{ name:'거북이',   color:'#26a69a', hp:170, spd:20,  r:22, dmg:38,  rew:3, sides:6 },
+    t4:{ name:'복어',     color:'#e0f7fa', hp:80,  spd:55,  r:14, dmg:32,  rew:4, sides:0 },
+    t5:{ name:'상어',     color:'#0277bd', hp:120, spd:80,  r:15, dmg:50,  rew:5, sides:4 },
+    boss:{ name:'심해의 군주', color:'#01579b', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  도시: {
+    t1:{ name:'좀비',     color:'#8bc34a', hp:32,  spd:42,  r:12, dmg:22,  rew:1, sides:0 },
+    t2:{ name:'도둑',     color:'#9e9e9e', hp:38,  spd:110, r:10, dmg:26,  rew:2, sides:4 },
+    t3:{ name:'로봇',     color:'#607d8b', hp:190, spd:30,  r:18, dmg:40,  rew:3, sides:6 },
+    t4:{ name:'해커',     color:'#00e676', hp:85,  spd:58,  r:11, dmg:34,  rew:4, sides:5, ranged:180, atkRate:0.9, projSpd:280 },
+    t5:{ name:'폭주족',   color:'#ff5252', hp:130, spd:95,  r:13, dmg:54,  rew:5, sides:0 },
+    boss:{ name:'도시의 지배자', color:'#424242', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  하늘: {
+    t1:{ name:'참새',     color:'#90caf9', hp:35,  spd:70,  r:10, dmg:24,  rew:1, sides:3 },
+    t2:{ name:'매',       color:'#42a5f5', hp:40,  spd:130, r:9,  dmg:28,  rew:2, sides:3 },
+    t3:{ name:'구름정령', color:'#e3f2fd', hp:200, spd:26,  r:20, dmg:42,  rew:3, sides:0 },
+    t4:{ name:'번개새',   color:'#ffeb3b', hp:90,  spd:62,  r:11, dmg:36,  rew:4, sides:3 },
+    t5:{ name:'뇌조',     color:'#7e57c2', hp:140, spd:85,  r:14, dmg:58,  rew:5, sides:5 },
+    boss:{ name:'하늘의 제왕', color:'#1565c0', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  지구: {
+    t1:{ name:'돌연변이쥐', color:'#c6ff00', hp:38,  spd:60,  r:12, dmg:26,  rew:1, sides:0 },
+    t2:{ name:'사이보그',   color:'#b0bec5', hp:45,  spd:105, r:11, dmg:30,  rew:2, sides:6 },
+    t3:{ name:'기계거인',   color:'#546e7a', hp:220, spd:24,  r:22, dmg:44,  rew:3, sides:6 },
+    t4:{ name:'산성슬라임', color:'#69f0ae', hp:95,  spd:55,  r:14, dmg:38,  rew:4, sides:0 },
+    t5:{ name:'전투로봇',   color:'#ff3d00', hp:150, spd:80,  r:15, dmg:62,  rew:5, sides:4 },
+    boss:{ name:'지구의 파수꾼', color:'#2196f3', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  달: {
+    t1:{ name:'월석충',   color:'#bdbdbd', hp:42,  spd:55,  r:12, dmg:28,  rew:1, sides:0 },
+    t2:{ name:'달토끼',   color:'#e0e0e0', hp:50,  spd:115, r:10, dmg:32,  rew:2, sides:3 },
+    t3:{ name:'크레이터벌레', color:'#757575', hp:240, spd:22,  r:20, dmg:46,  rew:3, sides:8 },
+    t4:{ name:'우주먼지',  color:'#ce93d8', hp:100, spd:50,  r:15, dmg:40,  rew:4, sides:0 },
+    t5:{ name:'달의 기사', color:'#f5f5f5', hp:160, spd:78,  r:14, dmg:66,  rew:5, sides:6 },
+    boss:{ name:'달의 지배자', color:'#9e9e9e', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  행성: {
+    t1:{ name:'용암충',   color:'#ff6e40', hp:46,  spd:52,  r:13, dmg:30,  rew:1, sides:0 },
+    t2:{ name:'가스유령', color:'#b388ff', hp:55,  spd:110, r:10, dmg:34,  rew:2, sides:0 },
+    t3:{ name:'광석골렘', color:'#ff8a65', hp:260, spd:20,  r:22, dmg:48,  rew:3, sides:6 },
+    t4:{ name:'독가스체', color:'#aed581', hp:110, spd:48,  r:14, dmg:42,  rew:4, sides:5 },
+    t5:{ name:'혹성전사', color:'#e07050', hp:170, spd:82,  r:15, dmg:70,  rew:5, sides:4 },
+    boss:{ name:'행성의 의지', color:'#d84315', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  태양: {
+    t1:{ name:'화염정령', color:'#ff9100', hp:50,  spd:58,  r:12, dmg:32,  rew:1, sides:0 },
+    t2:{ name:'태양풍',   color:'#ffd54f', hp:60,  spd:120, r:9,  dmg:36,  rew:2, sides:3 },
+    t3:{ name:'용암거인', color:'#e64a19', hp:280, spd:18,  r:24, dmg:50,  rew:3, sides:6 },
+    t4:{ name:'플레어',   color:'#ffab40', hp:120, spd:52,  r:13, dmg:44,  rew:4, sides:5 },
+    t5:{ name:'코로나수호자', color:'#ff6d00', hp:180, spd:85,  r:15, dmg:74,  rew:5, sides:0 },
+    boss:{ name:'태양의 심장', color:'#ff3d00', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  은하: {
+    t1:{ name:'별먼지',   color:'#b39ddb', hp:55,  spd:55,  r:12, dmg:34,  rew:1, sides:0 },
+    t2:{ name:'유성',     color:'#ce93d8', hp:65,  spd:125, r:9,  dmg:38,  rew:2, sides:3 },
+    t3:{ name:'암흑물질', color:'#4a148c', hp:300, spd:18,  r:22, dmg:52,  rew:3, sides:0 },
+    t4:{ name:'성간포자', color:'#ea80fc', hp:130, spd:50,  r:14, dmg:46,  rew:4, sides:5 },
+    t5:{ name:'항성수호자', color:'#9c27b0', hp:190, spd:80,  r:16, dmg:78,  rew:5, sides:4 },
+    boss:{ name:'은하의 핵', color:'#6a1b9a', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  성운: {
+    t1:{ name:'가스구체', color:'#f48fb1', hp:60,  spd:52,  r:13, dmg:36,  rew:1, sides:0 },
+    t2:{ name:'이온충',   color:'#f06292', hp:70,  spd:118, r:10, dmg:40,  rew:2, sides:3 },
+    t3:{ name:'성운핵',   color:'#ad1457', hp:320, spd:16,  r:24, dmg:54,  rew:3, sides:6 },
+    t4:{ name:'플라즈마', color:'#ff80ab', hp:140, spd:48,  r:14, dmg:48,  rew:4, sides:0 },
+    t5:{ name:'성운파수꾼', color:'#c2185b', hp:200, spd:82,  r:16, dmg:82,  rew:5, sides:4 },
+    boss:{ name:'성운의 의지', color:'#880e4f', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  블랙홀: {
+    t1:{ name:'사건지평선', color:'#4527a0', hp:65,  spd:50,  r:14, dmg:38,  rew:1, sides:0 },
+    t2:{ name:'특이점충', color:'#651fff', hp:75,  spd:115, r:10, dmg:42,  rew:2, sides:5 },
+    t3:{ name:'중력거인', color:'#311b92', hp:340, spd:15,  r:24, dmg:56,  rew:3, sides:6 },
+    t4:{ name:'시공왜곡', color:'#7c4dff', hp:150, spd:45,  r:15, dmg:50,  rew:4, sides:0 },
+    t5:{ name:'암흑기사', color:'#1a237e', hp:210, spd:85,  r:16, dmg:86,  rew:5, sides:4 },
+    boss:{ name:'블랙홀의 심연', color:'#0d0d2b', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  '차원의 틈': {
+    t1:{ name:'차원충',   color:'#7e57c2', hp:70,  spd:48,  r:13, dmg:40,  rew:1, sides:0 },
+    t2:{ name:'위상이동체', color:'#b388ff', hp:80,  spd:120, r:10, dmg:44,  rew:2, sides:3 },
+    t3:{ name:'차원수호자', color:'#4a148c', hp:360, spd:14,  r:24, dmg:58,  rew:3, sides:6 },
+    t4:{ name:'공간균열', color:'#d1c4e9', hp:160, spd:42,  r:15, dmg:52,  rew:4, sides:5 },
+    t5:{ name:'차원기사', color:'#6200ea', hp:220, spd:82,  r:16, dmg:90,  rew:5, sides:4 },
+    boss:{ name:'차원의 파괴자', color:'#4a148c', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  '혼돈의 바다': {
+    t1:{ name:'혼돈의 파편', color:'#e53935', hp:75,  spd:46,  r:14, dmg:42,  rew:1, sides:0 },
+    t2:{ name:'혼돈의 그림자', color:'#ff1744', hp:85,  spd:118, r:10, dmg:46,  rew:2, sides:4 },
+    t3:{ name:'혼돈거인', color:'#b71c1c', hp:380, spd:13,  r:26, dmg:60,  rew:3, sides:6 },
+    t4:{ name:'혼돈의 눈', color:'#ff8a80', hp:170, spd:40,  r:15, dmg:54,  rew:4, sides:0 },
+    t5:{ name:'혼돈기사', color:'#d50000', hp:230, spd:80,  r:17, dmg:94,  rew:5, sides:4 },
+    boss:{ name:'혼돈의 군주', color:'#b71c1c', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
+  '종말의 끝': {
+    t1:{ name:'종말의 먼지', color:'#37474f', hp:80,  spd:44,  r:14, dmg:44,  rew:1, sides:0 },
+    t2:{ name:'종말의 사자', color:'#455a64', hp:90,  spd:115, r:11, dmg:48,  rew:2, sides:3 },
+    t3:{ name:'종말거인', color:'#263238', hp:400, spd:12,  r:26, dmg:62,  rew:3, sides:6 },
+    t4:{ name:'종말의 눈', color:'#78909c', hp:180, spd:38,  r:16, dmg:56,  rew:4, sides:5 },
+    t5:{ name:'종말기사', color:'#1a1a2e', hp:240, spd:82,  r:17, dmg:98,  rew:5, sides:4 },
+    boss:{ name:'종말의 왕', color:'#0d0d1a', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
+  },
 };
+
+const ZONE_TIERS = ['t1','t2','t3','t4','t5'];
+function getZoneEnemies(w) {
+  const z = currentZone(w);
+  return ZONE_ENEMIES[z.name] || ZONE_ENEMIES['초원'];
+}
+function getZoneBoss(w) { return getZoneEnemies(w).boss; }
+
+const ENEMIES = ZONE_ENEMIES['초원'];
 
 const ZONES = [
   { name:'초원',       from:1,    to:100,  color:'#6bbd5b' },
@@ -505,9 +639,7 @@ const ZONES = [
 ];
 const currentZone = w => ZONES.find(z => w >= z.from && w <= z.to) || ZONES[ZONES.length - 1];
 
-// 약한 순서 = 등장 순서. 여기 순서가 곧 1단계~10단계다.
-const TIERS = ['normal', 'fast', 'tank', 'venom', 'charger',
-               'heavy', 'assassin', 'crusher', 'mage', 'cannon'];
+const TIERS = ZONE_TIERS;
 
 const waveCount = w => 6 + Math.floor(w * 1.6);
 const waveGap   = w => Math.max(0.24, 1.6 - w * 0.014);
@@ -522,11 +654,11 @@ const HARD_WAVE = 40, HARD_MUL = 2;
 // 보스 체력 = BOSS_HP_BASE × (웨이브/10)^BOSS_HP_EXP
 const BOSS_HP_BASE = 417, BOSS_HP_EXP = 1.35;
 
-/* 10웨이브마다 한 단계씩 올라가며 인접한 두 단계가 함께 나온다.
-   웨이브 20 → 2·3단계, 30 → 3·4단계 … 90 이상은 9·10단계로 고정. */
 function getActiveTypes(w) {
-  if (w < 10) return [TIERS[0]];
-  const base = Math.min(Math.floor(w / 10), TIERS.length - 1);
+  const z = currentZone(w);
+  const local = w - z.from;
+  if (local < 20) return [TIERS[0]];
+  const base = Math.min(Math.floor(local / 20), TIERS.length - 1);
   return [TIERS[base - 1], TIERS[base]];
 }
 
@@ -534,11 +666,11 @@ function buildWave(w) {
   const list = [];
   const n = waveCount(w);
   const types = getActiveTypes(w);
-  if (types.length === 0) types.push('normal');
+  if (types.length === 0) types.push('t1');
   for (let i = 0; i < n; i++) {
     list.push(types[i % types.length]);
   }
-  if (w % 10 === 0) list.push('boss');
+  if (w % 20 === 0) list.push('boss');
   return list;
 }
 
@@ -864,13 +996,14 @@ function startWave() {
 }
 
 function spawn(type) {
-  let e = ENEMIES[type];
+  const ze = getZoneEnemies(S.wave);
+  let e = type === 'boss' ? ze.boss : ze[type];
+  if (!e) e = ze.t1;
   const a = Math.random() * Math.PI * 2;
   const d = 560;
-  const baseRew = type === 'boss' ? (S.wave / 10) * 50 : e.rew;
+  const baseRew = type === 'boss' ? (S.wave / 20) * 50 : e.rew;
   if (type === 'boss') {
-    const tier = S.wave / 10;
-    // 첫 보스(웨이브 10)를 맛보기 수준으로 두고 거기서부터 완만하게 올린다
+    const tier = S.wave / 20;
     const hp = Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP));
     e = { ...e, hp, dmg: 135 + (tier - 1) * 30 };
   }
