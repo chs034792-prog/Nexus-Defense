@@ -1162,8 +1162,8 @@ function drawNexus() {
   ctx.rotate(n.ang);
   ctx.scale(pulse, pulse);
   ctx.fillStyle = n.hitFlash > 0 ? '#ff6b81' : '#2b7de0';
-  ctx.strokeStyle = picked ? '#ffffff' : '#9fd6ff';
-  ctx.lineWidth = picked ? 3.5 : 2.5;
+  ctx.strokeStyle = '#9fd6ff';
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   for (let i = 0; i < 6; i++) {
     const a = i * 6.2832 / 6;
