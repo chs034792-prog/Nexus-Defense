@@ -192,6 +192,7 @@
     <div class="rec"><div class="v" id="mRuns">0</div><div class="k">출격 횟수</div></div>
   </div>
   <div class="menuBtns">
+    <button id="btnContinue" style="display:none">이어하기</button>
     <button id="btnSortie">출 격</button>
     <button id="btnShop" class="ghost">상 점</button>
   </div>
@@ -413,6 +414,31 @@ function loadSave() {
 const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 const mlv = id => save.meta[id] || 0;
 
+/* ── 진행 중인 판 저장 ──────────────────────────────────
+   모바일 인앱 브라우저(카카오톡 등)는 다른 앱으로 전환하면 페이지를
+   통째로 없애버려서, 돌아왔을 때 판이 사라지고 코어도 못 받는다.
+   그래서 판의 뼈대만 따로 저장해두고 메인에서 이어할 수 있게 한다.
+   진행 중인 적·탄환 같은 일시적인 것들은 저장하지 않고, 그 웨이브의
+   준비 단계부터 다시 시작한다. */
+const RUN_KEY = 'nexusdefense.run';
+
+function saveRun() {
+  if (!S || S.phase === 'over' || S.wave < 1) return;
+  const n = S.nexus;
+  const snap = {
+    wave: S.wave, gold: S.gold, hired: S.hired, heroShop: S.heroShop,
+    dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
+    nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
+    nexusLv: S.nexusLv,
+    heroes: S.heroes.map(h => ({ id: h.def.id, lv: h.lv, invested: h.invested, homeAng: h.homeAng })),
+  };
+  try { localStorage.setItem(RUN_KEY, JSON.stringify(snap)); } catch (e) {}
+}
+const clearRun = () => localStorage.removeItem(RUN_KEY);
+function readRun() {
+  try { return JSON.parse(localStorage.getItem(RUN_KEY) || 'null'); } catch (e) { return null; }
+}
+
 /* ══════════════════════════════════════════════════════════
    상수 / 유틸
    ══════════════════════════════════════════════════════════ */
@@ -466,7 +492,31 @@ function newGame() {
   sel = null;
   speed = DEFAULT_SPEED;
   paused = false;
+  clearRun();
   $('over').classList.remove('on');
+  syncUI();
+}
+
+// 저장해둔 판을 이어서 시작한다. 그 웨이브의 준비 단계부터 다시 시작한다.
+function resumeGame(snap) {
+  newGame();
+  S.wave = snap.wave;
+  S.gold = snap.gold;
+  S.hired = snap.hired || 0;
+  S.heroShop = !!snap.heroShop;
+  S.dmgMul = snap.dmgMul ?? 1;
+  S.goldMul = snap.goldMul ?? 1;
+  S.incomeMul = snap.incomeMul ?? 1;
+  Object.assign(S.nexus, snap.nexus);
+  Object.assign(S.nexusLv, snap.nexusLv);
+  S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
+    const def = defById(h.id);
+    const post = { x: CX + Math.cos(h.homeAng) * CFG.postR, y: CY + Math.sin(h.homeAng) * CFG.postR };
+    return { def, lv: h.lv, invested: h.invested, homeAng: h.homeAng,
+             x: post.x, y: post.y, cd: 0, ang: 0, recoil: 0, spawnT: 0 };
+  });
+  S.autoT = AUTO_WAVE_SEC;
+  saveRun();
   syncUI();
 }
 
@@ -519,6 +569,7 @@ function hire(def) {
   });
   S.hired++;
   addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
+  saveRun();
   syncUI();
 }
 
@@ -572,6 +623,7 @@ function endWave() {
   S.phase = 'build';
   S.autoT = AUTO_WAVE_SEC;
   if (S.wave - 1 > save.best) { save.best = S.wave - 1; writeSave(); }
+  saveRun();                       // 웨이브를 넘길 때마다 진행 상황을 남긴다
   syncUI();
 }
 
@@ -584,6 +636,7 @@ function gameOver() {
   save.runs++;
   if (cleared > save.best) save.best = cleared;
   writeSave();
+  clearRun();
   $('overMsg').textContent = `웨이브 ${S.wave}에서 무너졌습니다 · 최고 기록 ${save.best}`;
   $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
   $('over').classList.add('on');
@@ -1069,6 +1122,10 @@ function renderMenu() {
   $('mBest').textContent = save.best;
   $('mCores').textContent = save.cores;
   $('mRuns').textContent = save.runs;
+  const run = readRun();
+  const btn = $('btnContinue');
+  btn.style.display = run ? '' : 'none';
+  if (run) btn.textContent = `이어하기 (웨이브 ${run.wave})`;
 }
 
 function renderMeta() {
@@ -1166,6 +1223,7 @@ function buyNexusUp(id) {
   S.gold -= c; S.nexusLv[u.id]++; u.apply(S);
   addText(CX, CY - 88, u.once ? u.name + ' 해금' : u.name + ' Lv.' + S.nexusLv[u.id], '#7fe7ff');
   if (u.once && u.id === 'heroshop') setTab('hero');
+  saveRun();
   syncUI();
 }
 
@@ -1307,6 +1365,7 @@ $('btnUp').onclick = () => {
   const c = upCost(h);
   if (S.gold < c) return;
   S.gold -= c; h.invested += c; h.lv++;
+  saveRun();
   syncUI();
 };
 
@@ -1316,6 +1375,7 @@ $('btnSell').onclick = () => {
   S.gold += Math.floor(h.invested * CFG.sellRatio);
   S.heroes = S.heroes.filter(x => x !== h);
   sel = null;
+  saveRun();
   syncUI();
 };
 
@@ -1360,6 +1420,7 @@ function payoutAbandon() {
     if (cleared > save.best) save.best = cleared;
   }
   writeSave();
+  clearRun();
   S.phase = 'over';                 // 판을 닫아 두 번 지급되지 않게 한다
 }
 
@@ -1371,7 +1432,16 @@ function leaveToMenu() {
   goMenu();
 }
 
-$('btnSortie').onclick = () => { newGame(); setTab('nexus'); show('game'); };
+$('btnSortie').onclick = () => {
+  const run = readRun();
+  if (run && !confirm(`이어할 수 있는 판(웨이브 ${run.wave})이 있습니다.\n새로 시작하면 그 판은 사라집니다. 계속할까요?`)) return;
+  newGame(); setTab('nexus'); show('game');
+};
+$('btnContinue').onclick = () => {
+  const run = readRun();
+  if (!run) { renderMenu(); return; }
+  resumeGame(run); setTab('nexus'); show('game');
+};
 $('btnShop').onclick = () => show('shop');
 $('btnShopBack').onclick = goMenu;
 $('btnRestart').onclick = () => { newGame(); setTab('nexus'); show('game'); };
@@ -1467,15 +1537,22 @@ function catchUp(elapsedMs) {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     hiddenAt = Date.now();
+    saveRun();          // 인앱 브라우저는 여기서 페이지를 없애버릴 수 있다
   } else if (hiddenAt) {
     catchUp(Date.now() - hiddenAt);
     hiddenAt = null;
   }
 });
+// 페이지가 실제로 내려갈 때도 한 번 더 남긴다
+addEventListener('pagehide', saveRun);
 
 loadSave();
 buildShops();
+// 시작할 때의 newGame() 은 화면을 채우기 위한 빈 판일 뿐이므로,
+// 저장해둔 판을 지우지 않도록 스냅샷을 살려뒀다가 되돌려 놓는다.
+const bootRun = readRun();
 newGame();
+if (bootRun) { try { localStorage.setItem(RUN_KEY, JSON.stringify(bootRun)); } catch (e) {} }
 show('menu');
 requestAnimationFrame(loop);
 </script>
