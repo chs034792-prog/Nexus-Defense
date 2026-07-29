@@ -6,14 +6,17 @@
 <title>Nexus Defense</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
   body {
     background: #0b0e17;
     color: #dfe6f5;
     font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
     display: flex; justify-content: center; align-items: center;
-    min-height: 100vh; padding: 12px;
+    padding: 12px;
     user-select: none;
     touch-action: manipulation;
+    position: fixed;
+    inset: 0;
   }
   #appWrap { overflow: hidden; }
   #app { display: flex; gap: 12px; align-items: flex-start; transform-origin: top left; }
