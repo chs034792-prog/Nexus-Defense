@@ -352,12 +352,12 @@ function buildWave(w) {
 const UP_COST_GROW = 1.15;
 
 const NEXUS_UPS = [
-  { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +1',
+  { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
-    apply: s => { s.nexus.dmg += 1; } },
-  { id:'rate',  name:'공격속도 강화', desc:'넥서스 초당 발사 +0.1',
+    apply: s => { s.nexus.dmg += 2; } },
+  { id:'rate',  name:'공격속도 강화', desc:'넥서스 초당 발사 +0.2',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
-    apply: s => { s.nexus.rate += 0.1; } },
+    apply: s => { s.nexus.rate += 0.2; } },
   { id:'range', name:'사거리 증가',   desc:'넥서스 사거리 +0.5',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.range += 0.5; } },
