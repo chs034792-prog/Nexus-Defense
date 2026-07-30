@@ -750,9 +750,9 @@ const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.dmg += 2; } },
-  { id:'rate',  name:'공격속도 강화', desc:'넥서스 초당 발사 +0.5',
+  { id:'rate',  name:'공격속도 강화', desc:'넥서스 초당 발사 +0.2',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
-    apply: s => { s.nexus.rate += 0.5; } },
+    apply: s => { s.nexus.rate += 0.2; } },
   { id:'range', name:'사거리 증가',   desc:'넥서스 사거리 +1',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.range += 1; } },
@@ -762,9 +762,9 @@ const NEXUS_UPS = [
   { id:'regen', name:'체력 재생',     desc:'초당 HP +0.5 회복',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.regen += 0.5; } },
-  { id:'inc',   name:'수입 증대',     desc:'웨이브 클리어 보상 +5%',
+  { id:'inc',   name:'수입 증대',     desc:'웨이브 클리어 보상 +4%',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
-    apply: s => { s.incomeMul += 0.05; } },
+    apply: s => { s.incomeMul += 0.04; } },
   { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
     // 최대 10기까지 겹쳐 쌓이는 강한 옵션이라, 일반 강화보다 증가율을 가파르게 둔다
     cost: lv => Math.floor(400 * Math.pow(1.35, lv)),
@@ -790,7 +790,7 @@ const NEXUS_UPS = [
 /* 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다.
    값을 고치면 상점 표시·새 판 스탯·넥서스 정보가 함께 따라온다. */
 const MSTEP = {
-  fund: 10, power: 1, spd: 0.05, rng: 1, armor: 8, mregen: 0.15, minc: 1.0,
+  fund: 10, power: 1, spd: 0.05, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 
