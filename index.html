@@ -734,6 +734,9 @@ function buildWave(w) {
 // 강화 비용 증가율 — 한 번 살 때마다 다음 비용이 이 배율만큼 오른다 (1.0 이면 고정)
 const UP_COST_GROW = 1.15;
 
+/* 드론 기본값과 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다 */
+const DRONE = { dmg: 12, spd: 2.0, orbitR: 250, dmgStep: 2, spdStep: 0.1 };
+
 const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
@@ -759,17 +762,18 @@ const NEXUS_UPS = [
     max: 10,
     cond: () => S && S.hasMechanic,
     apply: s => {
-      if (!s.drone) s.drone = { count:0, dmg:12, orbitR:250, spd:2.0, baseAng:0, cds:[] };
+      if (!s.drone) s.drone = { count:0, dmg:DRONE.dmg, orbitR:DRONE.orbitR,
+                                spd:DRONE.spd, baseAng:0, cds:[] };
       s.drone.count++; s.drone.cds.push(0);
     } },
-  { id:'droneDmg', name:'드론 공격력',   desc:'드론 충돌 피해 +4',
+  { id:'droneDmg', name:'드론 공격력',   desc:`드론 충돌 피해 +${DRONE.dmgStep}`,
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
     cond: () => S && S.drone && S.drone.count > 0,
-    apply: s => { s.drone.dmg += 4; } },
-  { id:'droneSpd', name:'드론 속도',     desc:'드론 선회 속도 +0.3',
+    apply: s => { s.drone.dmg += DRONE.dmgStep; } },
+  { id:'droneSpd', name:'드론 속도',     desc:`드론 선회 속도 +${DRONE.spdStep}`,
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
     cond: () => S && S.drone && S.drone.count > 0,
-    apply: s => { s.drone.spd += 0.3; } },
+    apply: s => { s.drone.spd += DRONE.spdStep; } },
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
