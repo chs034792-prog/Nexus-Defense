@@ -548,11 +548,13 @@ const ZONE_ENEMIES = {
     boss:{ name:'숲의 수호자', color:'#2e7d32', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
   },
   산: {
-    t1:{ name:'산양',     color:'#bcaaa4', hp:22,  spd:58,  r:12, dmg:16,  rew:1, sides:0 },
-    t2:{ name:'독수리',   color:'#ffd600', hp:30,  spd:100, r:10, dmg:20,  rew:2, sides:3 },
-    t3:{ name:'바위골렘', color:'#78909c', hp:130, spd:28,  r:20, dmg:34,  rew:3, sides:6 },
-    t4:{ name:'산뱀',     color:'#66bb6a', hp:70,  spd:55,  r:11, dmg:28,  rew:4, sides:5 },
-    t5:{ name:'설표',     color:'#e0e0e0', hp:90,  spd:90,  r:12, dmg:42,  rew:5, sides:4 },
+    // 체력은 숲(t1~t5) 기준의 약 2.5배 — 201~300웨이브는 등장 수를 1~100웨이브 수준으로
+    // 낮추는 대신, 한 마리 한 마리를 훨씬 단단하게 만든다.
+    t1:{ name:'산양',     color:'#bcaaa4', hp:45,  spd:58,  r:12, dmg:16,  rew:1, sides:0 },
+    t2:{ name:'독수리',   color:'#ffd600', hp:70,  spd:100, r:10, dmg:20,  rew:2, sides:3 },
+    t3:{ name:'바위골렘', color:'#78909c', hp:250, spd:28,  r:20, dmg:34,  rew:3, sides:6 },
+    t4:{ name:'산뱀',     color:'#66bb6a', hp:150, spd:55,  r:11, dmg:28,  rew:4, sides:5 },
+    t5:{ name:'설표',     color:'#e0e0e0', hp:275, spd:90,  r:12, dmg:42,  rew:5, sides:4 },
     boss:{ name:'산의 왕', color:'#8d6e63', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
   },
   사막: {
@@ -732,9 +734,16 @@ function getActiveTypes(w) {
   return [tiers[base - 1], tiers[base]];
 }
 
+// 산(웨이브 201~300)은 등장 수를 초원(1~100)과 같은 범위로 맞춘다.
+// 그 대신 산 몬스터 자체의 기본 체력을 숲(t1~t5)의 약 2.5배로 올려서 어렵게 한다.
+const countWave = w => (w >= 201 && w <= 300) ? (w - 200) : w;
+// 체력 성장 곡선은 숲(101~200)과 같은 상대 웨이브를 쓴다 — 그래야 기본 체력에
+// 맞춰둔 2.5배 비율이 절대 웨이브 차이로 더 벌어지지 않고 실전에서도 유지된다.
+const hpGrowthWave = w => (w >= 201 && w <= 300) ? (w - 100) : w;
+
 function buildWave(w) {
   const list = [];
-  const n = waveCount(w);
+  const n = waveCount(countWave(w));
   const types = getActiveTypes(w);
   if (types.length === 0) types.push('t1');
   for (let i = 0; i < n; i++) {
@@ -1189,7 +1198,7 @@ function spawn(type) {
   // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
   // 하한(0.24초)에 닿는 웨이브 97 이후로 난이도가 완전히 고정되어,
   // 영구 강화가 쌓이는 순간 판이 끝나지 않는다. (보스는 자체 공식으로 이미 커진다)
-  const hp = (type === 'boss' ? e.hp : e.hp * Math.pow(ENEMY_HP_GROW, S.wave)) * hard;
+  const hp = (type === 'boss' ? e.hp : e.hp * Math.pow(ENEMY_HP_GROW, hpGrowthWave(S.wave))) * hard;
   S.enemies.push({
     type, def: e, x: CX + Math.cos(a) * d, y: CY + Math.sin(a) * d,
     hp, maxHp: hp, spd: e.spd,
