@@ -152,6 +152,11 @@
     display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
     pointer-events: none;
   }
+  #credit {
+    flex-basis: 100%; text-align: right;
+    font-size: clamp(8px, 1.6vw, 11px); color: #5a6890; opacity: .75;
+    pointer-events: none;
+  }
   .chip {
     background: rgba(14,18,30,.86);
     border: 1px solid #2b3550;
@@ -396,6 +401,7 @@
       <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiSpeed">1x</div>
       <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiPause">⏸</div>
       <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiBack">✕</div>
+      <div id="credit">제작자 채희선</div>
     </div>
     <div id="over">
       <h1>넥서스 파괴됨</h1>
