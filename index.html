@@ -483,15 +483,15 @@ const HEROES = [
 ];
 
 const GROUND_UNITS = [
-  { id:'swordsman', name:'검사', cost:100, color:'#4ade80', accent:'#a7f3d0',
+  { id:'swordsman', name:'검사', cost:500, color:'#4ade80', accent:'#a7f3d0',
     dmg:14, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
     roam:265,
     desc:'발이 빠르고 범용적인 지상 전투원' },
-  { id:'g_sniper', name:'저격수', cost:280, color:'#f472b6', accent:'#fbcfe8',
+  { id:'g_sniper', name:'저격수', cost:750, color:'#f472b6', accent:'#fbcfe8',
     dmg:95, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
     hold:true,
     desc:'먼 적을 정확히 저격한다' },
-  { id:'buffer', name:'버퍼', cost:220, color:'#38bdf8', accent:'#bae6fd',
+  { id:'buffer', name:'버퍼', cost:750, color:'#38bdf8', accent:'#bae6fd',
     dmg:6, range:80, rate:1.2, bspd:400, spd:120, splash:0, slow:0.4, slowT:2.0,
     roam:265,
     aura:true, auraDmg:8, auraRange:80,
@@ -1104,7 +1104,8 @@ function hire(def) {
   syncUI();
 }
 
-const groundCost = def => Math.floor(def.cost * Math.pow(CFG.heroCostGrow, ownedCount(def.id)));
+// 지상 유닛은 고용할 때마다 기준가만큼씩 선형으로 오른다 (500 -> 1000 -> 1500 ...)
+const groundCost = def => def.cost * (ownedCount(def.id) + 1);
 const groundBlocked = def => !S.groundShop || popFull() ||
                              (def.unique && ownedCount(def.id) > 0);
 
