@@ -329,6 +329,16 @@
     <div id="sortieList" style="margin-top:9px;display:flex;flex-direction:column;gap:4px"></div>
   </div>
 
+  <div id="adminBox" style="display:none">
+    <h3 style="color:#ff8a8a">운영자 모드 (?dev=1)</h3>
+    <p class="hint">코어가 무제한이고, 원하는 웨이브로 바로 출격할 수 있습니다.</p>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <input id="adminWaveInput" type="number" min="1" placeholder="웨이브 번호"
+             style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2a3350;background:#0f1524;color:#e6ecff;font-size:15px">
+      <button id="btnAdminGo" style="flex:0 0 auto;padding:8px 16px">이동</button>
+    </div>
+  </div>
+
   <p class="hint" style="margin-top:22px;color:#4e5872">사방에서 몰려오는 적으로부터 중앙 넥서스를 지켜내십시오.</p>
 </div>
 
@@ -803,6 +813,14 @@ function loadSave() {
 }
 const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 const mlv = id => save.meta[id] || 0;
+
+/* ── 운영자 모드 (테스트용) ───────────────────────────
+   주소 뒤에 ?dev=1 을 붙였을 때만 켜진다. 코어를 큰 값으로 고정하고,
+   원하는 웨이브로 바로 출격할 수 있는 패널이 메인에 나온다.
+   브라우저에서 도는 코드라 완전한 차단은 아니고, 일반 플레이어가
+   우연히 쓰지 않게 감춰두는 정도다. */
+const DEV = new URLSearchParams(location.search).get('dev') === '1';
+const ADMIN_CORES = 999999999;
 
 /* ── 백업 코드 ────────────────────────────────────────
    localStorage 는 브라우저마다 완전히 따로라 카카오톡 인앱 브라우저와
@@ -1692,7 +1710,10 @@ function renderNexusInfo() {
   ].map(([k, v]) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`).join('');
 }
 
+function forceAdminCores() { if (DEV) save.cores = ADMIN_CORES; }
+
 function renderMenu() {
+  forceAdminCores();
   $('mBest').textContent = save.best;
   $('mCores').textContent = save.cores;
   $('mRuns').textContent = save.runs;
@@ -1703,6 +1724,7 @@ function renderMenu() {
 }
 
 function renderMeta() {
+  forceAdminCores();
   renderNexusInfo();
   $('sCores').textContent = save.cores;
   $('metaList').innerHTML = META.map(m => {
@@ -1746,12 +1768,13 @@ function setShopTab(tab) {
 }
 
 function renderZoneMeta() {
+  forceAdminCores();
   $('sCores').textContent = save.cores;
   $('zoneMetaList').innerHTML = ZONE_META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const z = ZONES.find(z => z.name === m.zone);
     const color = z ? z.color : '#7fe7ff';
-    const locked = m.req && !m.req();
+    const locked = !DEV && m.req && !m.req();
     return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
       <div class="info">
         <div class="nm" style="color:${locked ? '#555' : color}">${m.name} <span style="color:#7b88a8;font-weight:400">${maxed ? '해금됨' : ''}</span></div>
@@ -1767,7 +1790,7 @@ function renderZoneMeta() {
   $('zoneMetaList').querySelectorAll('button[data-zm]').forEach(el => {
     el.onclick = () => {
       const m = ZONE_META.find(x => x.id === el.dataset.zm);
-      if (m.req && !m.req()) return;
+      if (!DEV && m.req && !m.req()) return;
       const lv = mlv(m.id), c = metaCost(m, lv);
       if (lv >= m.max || save.cores < c) return;
       save.cores -= c; save.meta[m.id] = lv + 1;
@@ -2203,6 +2226,7 @@ function leaveToMenu() {
 
 const ZONE_UNLOCK = { 숲:'z_forest' };
 function zoneUnlocked(z) {
+  if (DEV) return true;                  // 운영자 모드에서는 모든 지역을 열어 둔다
   if (z.from === 1) return true;
   const metaId = ZONE_UNLOCK[z.name];
   return metaId && mlv(metaId) > 0;
@@ -2272,6 +2296,17 @@ $('btnZones').onclick = () => {
       </div>`;
     }).join('');
   }
+};
+
+// ?dev=1 일 때만 메인에 운영자 패널을 늘 펼쳐 둔다
+if (DEV) $('adminBox').style.display = '';
+
+$('btnAdminGo').onclick = () => {
+  const n = parseInt($('adminWaveInput').value, 10);
+  if (!Number.isFinite(n) || n < 1) { alert('올바른 웨이브 번호를 입력하세요.'); return; }
+  const run = readRun();
+  if (run && !confirm(`이어할 수 있는 판(웨이브 ${run.wave})이 있습니다.\n새로 시작하면 그 판은 사라집니다. 계속할까요?`)) return;
+  newGame(n); setTab('nexus'); show('game');
 };
 
 $('btnBackupCopy').onclick = async () => {
