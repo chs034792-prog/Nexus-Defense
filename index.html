@@ -745,7 +745,8 @@ const NEXUS_UPS = [
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.incomeMul += 0.05; } },
   { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
-    cost: lv => Math.floor(150 * Math.pow(UP_COST_GROW, lv)),
+    // 최대 10기까지 겹쳐 쌓이는 강한 옵션이라, 일반 강화보다 증가율을 가파르게 둔다
+    cost: lv => Math.floor(400 * Math.pow(1.35, lv)),
     max: 10,
     cond: () => S && S.hasMechanic,
     apply: s => {
