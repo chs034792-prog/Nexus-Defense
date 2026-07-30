@@ -297,6 +297,33 @@
   #over h1 { font-size: 34px; color: #ff6b81; }
   #over p { color: #aab6d0; font-size: 15px; }
   #over button { width: 180px; }
+
+  /* ── 랭킹 ─────────────────────────────── */
+  #rankOverlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 16px;
+  }
+  #rankOverlay.on { display: flex; }
+  #rankBox {
+    width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 22px 18px;
+  }
+  #rankBox h2 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+  #rankBox .hint { text-align: center; margin-bottom: 14px; }
+  #rankTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #rankTable th { color: #6d7ba0; font-weight: 600; padding: 6px 4px; text-align: left; border-bottom: 1px solid #263050; }
+  #rankTable td { padding: 7px 4px; border-bottom: 1px solid #1a2133; }
+  #rankTable tr.me td { color: #7fe7ff; font-weight: 700; }
+  #rankTable .rank { width: 32px; text-align: center; }
+  #rankTable .wave { text-align: right; color: #ffd45e; font-weight: 700; }
+  #rankTable .runs { text-align: right; color: #7b88a8; }
+  #nickRow { display: flex; gap: 8px; margin-bottom: 14px; }
+  #nickRow input {
+    flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid #2a3350;
+    background: #0f1524; color: #e6ecff; font-size: 14px;
+  }
+  #nickRow button { flex: 0 0 auto; padding: 8px 14px; font-size: 13px; }
+  .rank-loading { text-align: center; color: #6d7ba0; padding: 20px; }
 </style>
 </head>
 <body>
@@ -317,6 +344,7 @@
     <button id="btnSortie">출 격</button>
     <button id="btnShop" class="ghost">상 점</button>
     <button id="btnBackup" class="ghost">코드 관리</button>
+    <button id="btnRank" class="ghost" style="border-color:#ffd45e55;color:#ffd45e">랭킹</button>
     <div class="row" style="gap:8px">
       <button id="btnZones" class="ghost" style="flex:1;border-color:#7c5cbf;color:#b89aff">지역 정보</button>
       <div id="zoneChip"></div>
@@ -460,6 +488,20 @@
 </div>
 
 </div>
+</div>
+
+<!-- ── 랭킹 오버레이 ──────────────────────────── -->
+<div id="rankOverlay">
+  <div id="rankBox">
+    <h2>랭킹</h2>
+    <p class="hint" style="color:#6d7ba0;font-size:12px">최고 웨이브 기준 상위 20명</p>
+    <div id="nickRow">
+      <input id="nickInput" type="text" maxlength="12" placeholder="닉네임 입력 (최대 12자)">
+      <button id="btnNickSave">저장</button>
+    </div>
+    <div id="rankBody"><p class="rank-loading">불러오는 중...</p></div>
+    <button class="ghost" id="btnRankClose" style="width:100%;margin-top:14px">닫기</button>
+  </div>
 </div>
 
 <script>
@@ -1261,6 +1303,7 @@ function gameOver() {
   $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
   $('over').classList.add('on');
   syncUI();
+  submitRanking();
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2582,6 +2625,105 @@ document.addEventListener('visibilitychange', () => {
 });
 // 페이지가 실제로 내려갈 때도 한 번 더 남긴다
 addEventListener('pagehide', saveRun);
+
+/* ══════════════════════════════════════════════════════════
+   랭킹 시스템 (Supabase)
+   ══════════════════════════════════════════════════════════ */
+
+const SB_URL = 'https://fqfnqpedikxvodcoaiou.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZm5xcGVkaWt4dm9kY29haW91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NDA4OTMsImV4cCI6MjEwMTAxNjg5M30.8uXWeCxm2K85_VaysjHPAwuMMs7B9yGP8vJtf7ri_ME';
+const sbHeaders = {
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY,
+  'Content-Type': 'application/json',
+};
+
+const PLAYER_KEY = 'nexusdefense.pid';
+const NICK_KEY   = 'nexusdefense.nick';
+
+function getPlayerId() {
+  let pid = localStorage.getItem(PLAYER_KEY);
+  if (!pid) {
+    pid = crypto.randomUUID ? crypto.randomUUID()
+        : 'xxxx-xxxx-xxxx'.replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
+    localStorage.setItem(PLAYER_KEY, pid);
+  }
+  return pid;
+}
+function getNick() { return localStorage.getItem(NICK_KEY) || ''; }
+function setNick(n) { localStorage.setItem(NICK_KEY, n); }
+
+async function fetchRankings() {
+  try {
+    const res = await fetch(
+      SB_URL + '/rest/v1/rankings?select=*&order=best_wave.desc&limit=20',
+      { headers: sbHeaders });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) { return []; }
+}
+
+async function submitRanking() {
+  const nick = getNick();
+  if (!nick) return;
+  if (DEV) return;
+  const pid = getPlayerId();
+  try {
+    await fetch(SB_URL + '/rest/v1/rankings', {
+      method: 'POST',
+      headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        player_id: pid,
+        name: nick,
+        best_wave: save.best,
+        total_cores: DEV ? realCores : save.cores,
+        total_runs: save.runs,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {}
+}
+
+async function renderRankings() {
+  $('rankBody').innerHTML = '<p class="rank-loading">불러오는 중...</p>';
+  const rows = await fetchRankings();
+  if (!rows.length) {
+    $('rankBody').innerHTML = '<p class="rank-loading">아직 기록이 없습니다</p>';
+    return;
+  }
+  const pid = getPlayerId();
+  $('rankBody').innerHTML = `<table id="rankTable">
+    <tr><th class="rank">#</th><th>닉네임</th><th class="wave">웨이브</th><th class="runs">출격</th></tr>
+    ${rows.map((r, i) => `<tr class="${r.player_id === pid ? 'me' : ''}">
+      <td class="rank">${i + 1}</td>
+      <td>${escHtml(r.name)}</td>
+      <td class="wave">${r.best_wave}</td>
+      <td class="runs">${r.total_runs}</td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openRank() {
+  $('nickInput').value = getNick();
+  $('rankOverlay').classList.add('on');
+  renderRankings();
+}
+function closeRank() { $('rankOverlay').classList.remove('on'); }
+
+$('btnRank').onclick = openRank;
+$('btnRankClose').onclick = closeRank;
+$('rankOverlay').onclick = e => { if (e.target === $('rankOverlay')) closeRank(); };
+
+$('btnNickSave').onclick = () => {
+  const v = $('nickInput').value.trim();
+  if (!v) return;
+  setNick(v);
+  submitRanking().then(renderRankings);
+};
 
 loadSave();
 buildShops();
