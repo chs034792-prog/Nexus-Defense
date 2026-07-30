@@ -301,29 +301,29 @@
   /* ── 랭킹 ─────────────────────────────── */
   #rankOverlay {
     display: none; position: fixed; inset: 0; z-index: 999;
-    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 16px;
+    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 12px;
   }
   #rankOverlay.on { display: flex; }
   #rankBox {
-    width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
-    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 22px 18px;
+    width: 100%; max-width: 360px; max-height: 92vh; overflow-y: auto;
+    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 16px 14px;
   }
-  #rankBox h2 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 4px; }
-  #rankBox .hint { text-align: center; margin-bottom: 14px; }
-  #rankTable { width: 100%; border-collapse: collapse; font-size: 13px; }
-  #rankTable th { color: #6d7ba0; font-weight: 600; padding: 6px 4px; text-align: left; border-bottom: 1px solid #263050; }
-  #rankTable td { padding: 7px 4px; border-bottom: 1px solid #1a2133; }
+  #rankBox h2 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 2px; }
+  #rankBox .hint { text-align: center; margin-bottom: 10px; font-size: 11px; }
+  #rankTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  #rankTable th { color: #6d7ba0; font-weight: 600; padding: 5px 4px; text-align: left; border-bottom: 1px solid #263050; }
+  #rankTable td { padding: 6px 4px; border-bottom: 1px solid #1a2133; }
   #rankTable tr.me td { color: #7fe7ff; font-weight: 700; }
-  #rankTable .rank { width: 32px; text-align: center; }
+  #rankTable .rank { width: 28px; text-align: center; }
   #rankTable .wave { text-align: right; color: #ffd45e; font-weight: 700; }
   #rankTable .runs { text-align: right; color: #7b88a8; }
-  #nickRow { display: flex; gap: 8px; margin-bottom: 14px; }
+  #nickRow { display: flex; gap: 6px; margin-bottom: 10px; }
   #nickRow input {
-    flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid #2a3350;
-    background: #0f1524; color: #e6ecff; font-size: 14px;
+    flex: 1 1 0; min-width: 0; width: 0; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid #2a3350; background: #0f1524; color: #e6ecff; font-size: 13px;
   }
-  #nickRow button { flex: 0 0 auto; padding: 8px 14px; font-size: 13px; }
-  .rank-loading { text-align: center; color: #6d7ba0; padding: 20px; }
+  #nickRow button { flex: 0 0 56px; padding: 8px 0; font-size: 12px; }
+  .rank-loading { text-align: center; color: #6d7ba0; padding: 14px; font-size: 13px; }
 </style>
 </head>
 <body>
