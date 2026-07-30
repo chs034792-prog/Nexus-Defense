@@ -692,8 +692,13 @@ const waveBonus = w => 25 + w * 6;
 // 웨이브당 적 체력 증가율 — 판이 무한정 이어지지 않게 하는 값이다
 const ENEMY_HP_GROW = 1.005;
 
-// 이 웨이브부터 적 체력과 공격력이 이 배율만큼 뛴다
-const HARD_WAVE = 40, HARD_MUL = 2;
+/* 이 웨이브를 넘기면 적 체력·공격력에 배율이 한 단계씩 더 붙는다 (누적).
+   지역이 바뀔 때 한 단계 올려서 새 지역이 확실히 더 강하게 느껴지게 한다. */
+const HARD_STEPS = [
+  { from: 40,  mul: 2 },   // 초원 후반 급상승
+  { from: 101, mul: 2 },   // 숲 진입 — 누적 4배
+];
+const hardMul = w => HARD_STEPS.reduce((m, s) => (w >= s.from ? m * s.mul : m), 1);
 
 // 보스 체력 = BOSS_HP_BASE × (웨이브/10)^BOSS_HP_EXP
 const BOSS_HP_BASE = 417, BOSS_HP_EXP = 1.35;
@@ -1095,9 +1100,9 @@ function spawn(type) {
     const hp = Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP));
     e = { ...e, hp, dmg: 135 + (tier - 1) * 30 };
   }
-  // 웨이브 HARD_WAVE 부터 체력·공격력이 한 번에 뛴다.
+  // HARD_STEPS 를 넘길 때마다 체력·공격력이 한 단계씩 뛴다.
   // def 는 ENEMIES 의 공용 객체이므로 반드시 복사해서 고쳐야 한다.
-  const hard = S.wave >= HARD_WAVE ? HARD_MUL : 1;
+  const hard = hardMul(S.wave);
   if (hard > 1) e = { ...e, dmg: e.dmg * hard };
   // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
   // 하한(0.24초)에 닿는 웨이브 97 이후로 난이도가 완전히 고정되어,
