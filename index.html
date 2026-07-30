@@ -364,6 +364,7 @@
 
   <div style="display:flex;gap:6px;margin-bottom:14px;width:100%;max-width:560px">
     <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">강화</button>
+    <button id="shopTabBarrack" class="ghost" style="flex:1;padding:8px 0;font-size:14px">병영</button>
     <button id="shopTabZone" class="ghost" style="flex:1;padding:8px 0;font-size:14px">지역 해금</button>
   </div>
 
@@ -373,6 +374,11 @@
       <div id="nexusInfoStats" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px"></div>
     </div>
     <div id="metaList"></div>
+  </div>
+
+  <div id="shopBarrack" style="display:none">
+    <p class="hint" style="margin-bottom:12px">병과를 해금하고 유닛을 영구 배치합니다.</p>
+    <div id="barrackMetaList" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
   <div id="shopZone" style="display:none">
@@ -824,7 +830,10 @@ const META = [
     desc: lv => `초당 HP 재생 +${num(lv * MSTEP.mregen)}` },
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}%` },
-  // 테크트리 해금 — 구입하면 게임 내 해당 탭이 열린다
+];
+
+/* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
+const BARRACK_META = [
   { id:'t_ground', name:'지상 병과 해금', max:1, base:2500,
     desc: lv => lv ? '지상 탭 해금됨' : '게임 내 지상 유닛 탭을 해금한다' },
   { id:'t_mech',   name:'기갑 병과 해금', max:1, base:25000,
@@ -870,7 +879,7 @@ function migrate() {
 
 function loadSave() {
   try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
-  for (const m of [...META, ...ZONE_META])
+  for (const m of [...META, ...BARRACK_META, ...ZONE_META])
     if (typeof save.meta[m.id] !== 'number') save.meta[m.id] = 0;
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
   if (old > save.best) save.best = old;
@@ -922,7 +931,7 @@ function importSave(code) {
   save.cores = Math.max(0, +d.cores || 0);
   save.runs  = Math.max(0, +d.runs  || 0);
   save.meta = {};
-  for (const m of [...META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
+  for (const m of [...META, ...BARRACK_META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
   // 옛 코드(v1)는 보정 전 값이라 여기서 한 번 깎인다
   save.mig = Math.max(0, +d.mig || 0);
   migrate();
@@ -1858,11 +1867,14 @@ let shopTab = 'meta';
 function setShopTab(tab) {
   shopTab = tab;
   $('shopMeta').style.display = tab === 'meta' ? '' : 'none';
+  $('shopBarrack').style.display = tab === 'barrack' ? '' : 'none';
   $('shopZone').style.display = tab === 'zone' ? '' : 'none';
-  $('shopTabMeta').style.cssText = `flex:1;padding:8px 0;font-size:14px` +
-    (tab === 'meta' ? ';background:#2a3a5c;border-color:#5b9dff;color:#fff' : '');
-  $('shopTabZone').style.cssText = `flex:1;padding:8px 0;font-size:14px` +
-    (tab === 'zone' ? ';background:#2a3a5c;border-color:#5b9dff;color:#fff' : '');
+  const active = ';background:#2a3a5c;border-color:#5b9dff;color:#fff';
+  const base = 'flex:1;padding:8px 0;font-size:14px';
+  $('shopTabMeta').style.cssText = base + (tab === 'meta' ? active : '');
+  $('shopTabBarrack').style.cssText = base + (tab === 'barrack' ? active : '');
+  $('shopTabZone').style.cssText = base + (tab === 'zone' ? active : '');
+  if (tab === 'barrack') renderBarrack();
   if (tab === 'zone') renderZoneMeta();
 }
 
@@ -1901,7 +1913,39 @@ function renderZoneMeta() {
   });
 }
 
+function renderBarrack() {
+  forceAdminCores();
+  $('sCores').textContent = save.cores;
+  $('barrackMetaList').innerHTML = BARRACK_META.map(m => {
+    const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
+    const pipMax = Number.isFinite(m.max) ? m.max : 10;
+    const pips = Array.from({ length: pipMax },
+      (_, i) => `<div class="pip ${i < lv ? 'on' : ''}"></div>`).join('');
+    return `<div class="meta ${maxed ? 'max' : ''}">
+      <div class="info">
+        <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">${maxed ? '보유' : ''}</span></div>
+        <div class="ds">${m.desc(lv)}</div>
+        <div class="pips">${pips}</div>
+      </div>
+      <button data-bm="${m.id}" ${maxed || save.cores < c ? 'disabled' : ''}>
+        ${maxed ? '<span class="cost">보유</span>'
+                : `<span class="cost">${c}</span><span class="unit">코어</span>`}
+      </button>
+    </div>`;
+  }).join('');
+  $('barrackMetaList').querySelectorAll('button[data-bm]').forEach(el => {
+    el.onclick = () => {
+      const m = BARRACK_META.find(x => x.id === el.dataset.bm);
+      const lv = mlv(m.id), c = metaCost(m, lv);
+      if (lv >= m.max || save.cores < c) return;
+      save.cores -= c; save.meta[m.id] = lv + 1;
+      writeSave(); renderBarrack();
+    };
+  });
+}
+
 $('shopTabMeta').onclick = () => setShopTab('meta');
+$('shopTabBarrack').onclick = () => setShopTab('barrack');
 $('shopTabZone').onclick = () => setShopTab('zone');
 
 /* 상점 목록은 처음에 한 번만 만든다.
@@ -2399,7 +2443,7 @@ $('btnAdminGo').onclick = () => {
 // 영구 강화·지역 해금 레벨을 모두 0 으로 되돌린다 (코어·기록은 그대로)
 $('btnAdminResetMeta').onclick = () => {
   if (!confirm('영구 강화와 지역 해금을 모두 초기화할까요?\n(코어와 최고 기록은 그대로 남습니다)')) return;
-  for (const m of [...META, ...ZONE_META]) save.meta[m.id] = 0;
+  for (const m of [...META, ...BARRACK_META, ...ZONE_META]) save.meta[m.id] = 0;
   writeSave();
   renderMenu();
   alert('영구 강화를 초기화했습니다.');
