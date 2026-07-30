@@ -2342,7 +2342,10 @@ function renderZoneList() {
     </div>`;
   }).join('');
   $('zoneList').querySelectorAll('.zone-row.selectable').forEach(el => {
-    el.onclick = () => { setSelectedZone(+el.dataset.from); renderZoneList(); };
+    el.onclick = () => {
+      setSelectedZone(+el.dataset.from);
+      $('zoneBox').style.display = 'none';   // 고르면 바로 창을 닫는다
+    };
   });
 }
 
