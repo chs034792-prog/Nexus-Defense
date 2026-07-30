@@ -799,9 +799,6 @@ const ZONE_META = [
 const metaCost = (m, lv) => Math.floor(m.base * Math.pow(1.7, lv));
 const coreReward = cleared => Math.floor(10 * Math.pow(Math.max(0, cleared), 1.3));
 
-// 중도 포기해도 이 웨이브를 넘겼다면 코어를 준다 (그 아래는 보상 없음)
-const ABANDON_MIN_WAVE = 10;
-
 const SAVE_KEY = 'nexusdefense.save';
 let save = { best: 0, cores: 0, runs: 0, meta: {} };
 
@@ -2193,34 +2190,11 @@ function goMenu() {
 
 const runInProgress = () => screen === 'game' && S && S.phase !== 'over';
 
-// 중도 포기 — ABANDON_MIN_WAVE 를 넘겼다면 거기까지의 코어를 주고 기록도 남긴다
-const abandonCores = () => S.wave > ABANDON_MIN_WAVE ? coreReward(S.wave - 1) : 0;
-
-const confirmAbandon = () => {
-  const cores = abandonCores();
-  const gain = cores > 0 ? `여기까지의 코어 +${cores} 를 받고 종료합니다.`
-                         : `웨이브 ${ABANDON_MIN_WAVE + 1} 이전에는 코어를 받을 수 없습니다.`;
-  return confirm(`웨이브 ${S.wave} 진행 중입니다.\n${gain}\n포기하고 메인으로 나갈까요?`);
-};
-
-function payoutAbandon() {
-  const cleared = S.wave - 1;
-  const cores = abandonCores();
-  if (cores > 0) {
-    save.cores += cores;
-    save.runs++;
-    if (cleared > save.best) save.best = cleared;
-  }
-  writeSave();
-  clearRun();
-  S.phase = 'over';                 // 판을 닫아 두 번 지급되지 않게 한다
-}
-
+/* 판을 접어두고 메인으로 — 나가도 판은 끝나지 않는다.
+   현재 웨이브를 저장해두고, 메인의 '이어하기'로 그 웨이브의 준비
+   단계부터 다시 시작할 수 있다. 코어는 게임 오버 때만 지급된다. */
 function leaveToMenu() {
-  if (runInProgress()) {
-    if (!confirmAbandon()) return;
-    payoutAbandon();
-  }
+  if (runInProgress()) saveRun();
   goMenu();
 }
 
@@ -2339,17 +2313,9 @@ $('btnRestart').onclick = () => { newGame(); setTab('nexus'); show('game'); };
 $('btnToMenu').onclick = goMenu;
 $('uiBack').onclick = leaveToMenu;
 
-// 폰 뒤로가기로 메인 화면에 돌아온다
+// 폰 뒤로가기로 메인 화면에 돌아온다 — 판은 저장만 하고 끝내지 않는다
 addEventListener('popstate', () => {
-  // goMenu() 가 되감아서 온 popstate 는 이미 확인을 마친 이동이다
-  if (!leavingToMenu && runInProgress()) {
-    // 방금 소비된 히스토리 항목을 '먼저' 되돌려 놓는다. confirm 은 화면을 멈추는
-    // 대화상자라, 답을 받은 뒤에 되돌리면 브라우저가 이미 이동을 끝낸 뒤여서
-    // 항목이 제대로 쌓이지 않는다. 그래서 복구를 먼저 하고 질문은 나중에 한다.
-    history.pushState({ screen: 'game' }, '');
-    setTimeout(() => { if (confirmAbandon()) { payoutAbandon(); goMenu(); } }, 0);
-    return;
-  }
+  if (!leavingToMenu && runInProgress()) saveRun();
   leavingToMenu = false;
   navDepth = Math.max(0, navDepth - 1);
   if (screen === 'menu') return;
