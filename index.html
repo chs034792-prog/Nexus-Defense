@@ -773,21 +773,29 @@ const NEXUS_UPS = [
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
+
+/* 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다.
+   값을 고치면 상점 표시·새 판 스탯·넥서스 정보가 함께 따라온다. */
+const MSTEP = {
+  fund: 10, power: 2, spd: 0.25, rng: 1, armor: 7.5, mregen: 0.15, minc: 2.5,
+};
+const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
+
 const META = [
   { id:'fund',  name:'초기 자금',       max:Infinity, base:30,
-    desc: lv => `시작 골드 +${lv * 20}` },
+    desc: lv => `시작 골드 +${num(lv * MSTEP.fund)}` },
   { id:'power', name:'공격력 강화',     max:Infinity, base:35,
-    desc: lv => `넥서스 공격력 +${lv * 4}` },
+    desc: lv => `넥서스 공격력 +${num(lv * MSTEP.power)}` },
   { id:'spd',   name:'공격속도 강화',   max:Infinity, base:40,
-    desc: lv => `넥서스 공격속도 +${(lv * 0.5).toFixed(1)}` },
+    desc: lv => `넥서스 공격속도 +${num(lv * MSTEP.spd)}` },
   { id:'rng',   name:'사거리 강화',     max:Infinity, base:45,
-    desc: lv => `넥서스 사거리 +${lv * 2}` },
+    desc: lv => `넥서스 사거리 +${num(lv * MSTEP.rng)}` },
   { id:'armor', name:'최대체력 강화',   max:Infinity, base:40,
-    desc: lv => `넥서스 최대 체력 +${lv * 15}` },
+    desc: lv => `넥서스 최대 체력 +${num(lv * MSTEP.armor)}` },
   { id:'mregen',name:'체력재생 강화',   max:Infinity, base:50,
-    desc: lv => `초당 HP 재생 +${(lv * 0.3).toFixed(1)}` },
+    desc: lv => `초당 HP 재생 +${num(lv * MSTEP.mregen)}` },
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
-    desc: lv => `골드 획득 +${lv * 5}%` },
+    desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}%` },
   // 테크트리 해금 — 구입하면 게임 내 해당 탭이 열린다
   { id:'t_ground', name:'지상 병과 해금', max:1, base:2500,
     desc: lv => lv ? '지상 탭 해금됨' : '게임 내 지상 유닛 탭을 해금한다' },
@@ -811,7 +819,15 @@ const metaCost = (m, lv) => m.base * (lv + 1);
 const coreReward = cleared => Math.floor(10 * Math.pow(Math.max(0, cleared), 1.3));
 
 const SAVE_KEY = 'nexusdefense.save';
-let save = { best: 0, cores: 0, runs: 0, meta: {} };
+let save = { best: 0, cores: 0, runs: 0, meta: {}, mig: 0 };
+
+/* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
+   save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
+const MIGRATION = 1;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
+function migrate() {
+  if ((save.mig || 0) < 1) save.cores = Math.floor(save.cores / 10);
+  save.mig = MIGRATION;
+}
 
 function loadSave() {
   try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
@@ -819,6 +835,9 @@ function loadSave() {
     if (typeof save.meta[m.id] !== 'number') save.meta[m.id] = 0;
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
   if (old > save.best) save.best = old;
+  const stale = (save.mig || 0) < MIGRATION;
+  migrate();
+  if (stale) writeSave();          // 보정 단계를 남겨 두 번 걸리지 않게 한다
 }
 const writeSave = () => localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 const mlv = id => save.meta[id] || 0;
@@ -836,7 +855,9 @@ const ADMIN_CORES = 999999999;
    크롬은 서로의 기록을 볼 수 없다. 서버가 없으니 진행도를 글자로 뽑아
    옮기게 한다. UTF-8 을 거쳐 base64 로 만든다(한글이 없어도 안전하게). */
 function exportSave() {
-  const body = JSON.stringify({ v: 1, best: save.best, cores: save.cores, runs: save.runs, meta: save.meta });
+  // mig 을 같이 실어야, 옮긴 브라우저에서 같은 보정이 또 걸리지 않는다
+  const body = JSON.stringify({ v: 2, best: save.best, cores: save.cores,
+                                runs: save.runs, meta: save.meta, mig: save.mig || 0 });
   return btoa(String.fromCharCode(...new TextEncoder().encode(body)));
 }
 
@@ -849,7 +870,10 @@ function importSave(code) {
   save.cores = Math.max(0, +d.cores || 0);
   save.runs  = Math.max(0, +d.runs  || 0);
   save.meta = {};
-  for (const m of META) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
+  for (const m of [...META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
+  // 옛 코드(v1)는 보정 전 값이라 여기서 한 번 깎인다
+  save.mig = Math.max(0, +d.mig || 0);
+  migrate();
   writeSave();
 }
 
@@ -921,23 +945,23 @@ function newGame(startWave) {
   startWave = startWave || 1;
   const boost = zoneBoost(startWave);
   const extraHp = boost ? boost.hp : 0;
-  const hp = CFG.nexusHp + mlv('armor') * 15 + extraHp;
+  const hp = CFG.nexusHp + mlv('armor') * MSTEP.armor + extraHp;
   S = {
     phase: 'build',                      // build | combat | over
     wave: startWave,
-    gold: CFG.startGold + mlv('fund') * 20 + (boost ? boost.gold : 0),
+    gold: CFG.startGold + mlv('fund') * MSTEP.fund + (boost ? boost.gold : 0),
     nexus: { hp, maxHp: hp,
-             dmg: CFG.nexusDmg + mlv('power') * 4 + (boost ? boost.dmg : 0),
-             range: CFG.nexusRange + mlv('rng') * 2 + (boost ? boost.range : 0),
-             rate: CFG.nexusRate + mlv('spd') * 0.5 + (boost ? boost.rate : 0),
-             regen: mlv('mregen') * 0.3 + (boost ? boost.regen : 0),
+             dmg: CFG.nexusDmg + mlv('power') * MSTEP.power + (boost ? boost.dmg : 0),
+             range: CFG.nexusRange + mlv('rng') * MSTEP.rng + (boost ? boost.range : 0),
+             rate: CFG.nexusRate + mlv('spd') * MSTEP.spd + (boost ? boost.rate : 0),
+             regen: mlv('mregen') * MSTEP.mregen + (boost ? boost.regen : 0),
              cd: 0, hitFlash: 0, ang: 0 },
     nexusLv: Object.fromEntries(NEXUS_UPS.map(u => [u.id, 0])),
     heroes: [], enemies: [], bullets: [], eBullets: [], parts: [], texts: [],
     queue: [], spawnT: 0, shake: 0, hired: 0,
     autoT: 0,
     dmgMul: 1,                           // 영웅 강화로 오르는 영웅 공격력 배율
-    goldMul: 1 + mlv('minc') * 0.05,     // 처치 보상과 클리어 보너스 양쪽에 걸린다
+    goldMul: 1 + mlv('minc') * MSTEP.minc / 100,  // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     heroShop: mlv('t_hero') > 0,          // 영구 상점에서 해금
     groundShop: mlv('t_ground') > 0,
@@ -1695,14 +1719,14 @@ function drawNexus() {
    ══════════════════════════════════════════════════════════ */
 
 function nexusStats() {
-  const hp = CFG.nexusHp + mlv('armor') * 15;
+  const hp = CFG.nexusHp + mlv('armor') * MSTEP.armor;
   return {
-    hp, dmg: CFG.nexusDmg + mlv('power') * 4,
-    rate: CFG.nexusRate + mlv('spd') * 0.5,
-    range: CFG.nexusRange + mlv('rng') * 2,
-    regen: mlv('mregen') * 0.3,
-    gold: CFG.startGold + mlv('fund') * 20,
-    income: mlv('minc') * 5,
+    hp, dmg: CFG.nexusDmg + mlv('power') * MSTEP.power,
+    rate: CFG.nexusRate + mlv('spd') * MSTEP.spd,
+    range: CFG.nexusRange + mlv('rng') * MSTEP.rng,
+    regen: mlv('mregen') * MSTEP.mregen,
+    gold: CFG.startGold + mlv('fund') * MSTEP.fund,
+    income: mlv('minc') * MSTEP.minc,
   };
 }
 
@@ -1823,7 +1847,15 @@ function buildShops() {
         <div class="ds">${u.desc}</div>
       </div>
       <button class="buy"></button>
-    </div>`).join('');
+    </div>`).join('')
+    // 인구 증가는 넥서스 탭에 둔다 — 영웅 탭이 잠겨 있어도 유닛을 늘릴 수 있어야 한다
+    + `<div class="card" id="popCard">
+      <div>
+        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
+      </div>
+      <button class="buy"></button>
+    </div>`;
   els.nexus = NEXUS_UPS.map(u => {
     const card = $('nexusShop').querySelector(`.card[data-u="${u.id}"]`);
     const btn = card.querySelector('button');
@@ -1833,14 +1865,6 @@ function buildShops() {
   });
 
   $('heroShop').innerHTML = `
-    <div class="card" id="popCard">
-      <div class="swatch" style="background:#ffd45e;color:#ffd45e"></div>
-      <div>
-        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">영웅을 ${POP_UP.step}기 더 둘 수 있다</div>
-      </div>
-      <button class="buy"></button>
-    </div>
     <div class="card" id="heroUpCard">
       <div class="swatch" style="background:#ff8a50;color:#ff8a50"></div>
       <div>
@@ -1912,7 +1936,6 @@ function buildShops() {
 }
 
 function buyPop() {
-  if (!S.heroShop) return;
   const c = popCost(S.popLv);
   if (S.gold < c) return;
   S.gold -= c; S.popLv++; S.maxPop += POP_UP.step;
@@ -1943,12 +1966,6 @@ function buyHeroUp() {
 
 function renderHeroShop() {
   const locked = CFG.heroesLocked || !S.heroShop;
-
-  const pc = popCost(S.popLv), popOff = locked || S.gold < pc;
-  els.pop.lv.textContent = `(현재 ${S.maxPop})`;
-  els.pop.btn.textContent = locked ? '잠김' : pc + 'G';
-  els.pop.btn.disabled = popOff;
-  els.pop.card.classList.toggle('poor', popOff);
 
   const hc = heroUpCost(S.heroUpLv), hupOff = locked || S.gold < hc;
   els.heroUp.lv.textContent = `(×${S.dmgMul.toFixed(2)})`;
@@ -2020,6 +2037,12 @@ function renderNexusShop() {
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
   }
+
+  const pc = popCost(S.popLv), popOff = S.gold < pc;
+  els.pop.lv.textContent = `(현재 ${S.maxPop})`;
+  els.pop.btn.textContent = pc + 'G';
+  els.pop.btn.disabled = popOff;
+  els.pop.card.classList.toggle('poor', popOff);
 }
 
 /* 정보 창은 게임을 멈춘 채 뜬다. 창 때문에 멈춘 것인지(pausedBySel)를
