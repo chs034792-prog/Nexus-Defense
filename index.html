@@ -594,8 +594,8 @@ const AIR_UNITS = [
     desc:'빠른 속도와 연사로 넓은 구역을 순찰한다' },
   { id:'scout', name:'정찰기', cost:2500, color:'#ffab00', accent:'#ffe082',
     dmg:55, range:100, rate:0.5, bspd:0, spd:140, splash:70, slow:0, slowT:0,
-    roam:350, air:true, bomb:true,
-    desc:'순찰하며 적에게 폭탄을 투하한다' },
+    roam:350, air:true, bomb:true, patrol:true,
+    desc:'상시 순찰하며 적에게 폭탄을 투하한다' },
 ];
 
 // 공중 강화 — 공중 유닛 공격력 +3.
@@ -1586,9 +1586,18 @@ function update(dt) {
       let dx = 0, dy = 0;
       if (goal) {
         const d = dist(h.x, h.y, goal.x, goal.y);
-        // 사거리의 80%까지만 접근하고 그 자리에서 쏜다
         const keep = st.range * 0.8;
         if (d > keep) { dx = (goal.x - h.x) / d; dy = (goal.y - h.y) / d; }
+      } else if (h.def.patrol) {
+        // 순찰: 적이 없어도 활동 반경 안을 원형으로 돈다
+        if (!h.patrolAng) h.patrolAng = Math.atan2(h.y - home.y, h.x - home.x);
+        h.patrolAng += dt * 1.2;
+        const pr = roam * 0.7;
+        const px = home.x + Math.cos(h.patrolAng) * pr;
+        const py = home.y + Math.sin(h.patrolAng) * pr;
+        const d = dist(h.x, h.y, px, py);
+        if (d > 4) { dx = (px - h.x) / d; dy = (py - h.y) / d; }
+        h.ang = Math.atan2(dy, dx);
       } else {
         const d = dist(h.x, h.y, home.x, home.y);
         if (d > 4) { dx = (home.x - h.x) / d; dy = (home.y - h.y) / d; h.ang = Math.atan2(dy, dx); }
