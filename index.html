@@ -461,8 +461,8 @@
       <div id="nexusShop"></div>
       <div id="heroShop" style="display:none"></div>
       <div id="groundShop" style="display:none"><p class="hint" style="margin:8px 0;color:#6d7ba0">지상 유닛이 곧 추가됩니다.</p></div>
-      <div id="mechShop" style="display:none"><p class="hint" style="margin:8px 0;color:#6d7ba0">기갑 유닛이 곧 추가됩니다.</p></div>
-      <div id="airShop" style="display:none"><p class="hint" style="margin:8px 0;color:#6d7ba0">공중 유닛이 곧 추가됩니다.</p></div>
+      <div id="mechShop" style="display:none"></div>
+      <div id="airShop" style="display:none"></div>
     </div>
 
     <div class="box">
@@ -566,7 +566,39 @@ const GROUND_UNITS = [
     desc:'넥서스에 드론 시스템을 설치한다 (1기 한정)' },
 ];
 
-const ALL_DEFS = [...HEROES, ...GROUND_UNITS];
+// 기갑 병과 — 느리고 묵직, 광역·관통 특화. 지상군 강화(groundDmgAdd) 공유.
+const MECH_UNITS = [
+  { id:'tank', name:'전차', cost:1200, color:'#78909c', accent:'#b0bec5',
+    dmg:40, range:150, rate:0.6, bspd:360, spd:55, splash:60, slow:0, slowT:0,
+    roam:200, mech:true,
+    desc:'광역 포격으로 뭉친 적을 쓸어낸다' },
+  { id:'artillery', name:'자주포', cost:1800, color:'#ef6c00', accent:'#ffcc80',
+    dmg:120, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
+    hold:true, mech:true,
+    desc:'초장거리 포격, 넓은 폭발 반경' },
+  { id:'railgun', name:'레일건', cost:1500, color:'#00bcd4', accent:'#80deea',
+    dmg:70, range:280, rate:0.5, bspd:1200, spd:0, splash:0, slow:0.3, slowT:1.5,
+    hold:true, mech:true, pierce:3,
+    desc:'관통탄이 적을 꿰뚫어 최대 3체 적중' },
+];
+
+// 기갑 강화 — 기갑 유닛 공격력 +2. 지상군 강화와 별도.
+const MECH_UP = { base: 80, step: 2 };
+const mechUpCost = lv => MECH_UP.base * (lv + 1);
+
+// 공중 병과 — 빠르고 넓은 활동 반경.
+const AIR_UNITS = [
+  { id:'fighter', name:'전투기', cost:2000, color:'#e040fb', accent:'#f8bbd0',
+    dmg:22, range:120, rate:2.0, bspd:700, spd:210, splash:0, slow:0, slowT:0,
+    roam:380, air:true,
+    desc:'빠른 속도와 연사로 넓은 구역을 순찰한다' },
+];
+
+// 공중 강화 — 공중 유닛 공격력 +3.
+const AIR_UP = { base: 100, step: 3 };
+const airUpCost = lv => AIR_UP.base * (lv + 1);
+
+const ALL_DEFS = [...HEROES, ...GROUND_UNITS, ...MECH_UNITS, ...AIR_UNITS];
 const defById = id => ALL_DEFS.find(d => d.id === id);
 
 const ZONE_ENEMIES = {
@@ -1008,10 +1040,13 @@ function saveRun() {
   const n = S.nexus;
   const snap = {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired, heroShop: S.heroShop,
-    groundShop: S.groundShop, hasMechanic: S.hasMechanic, drone: S.drone,
+    groundShop: S.groundShop, mechShop: S.mechShop, airShop: S.airShop,
+    hasMechanic: S.hasMechanic, drone: S.drone,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
     groundUpLv: S.groundUpLv, groundDmgAdd: S.groundDmgAdd,
+    mechUpLv: S.mechUpLv, mechDmgAdd: S.mechDmgAdd,
+    airUpLv: S.airUpLv, airDmgAdd: S.airDmgAdd,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
@@ -1089,11 +1124,17 @@ function newGame(startWave) {
     incomeMul: 1,
     heroShop: mlv('t_hero') > 0,          // 영구 상점에서 해금
     groundShop: mlv('t_ground') > 0,
+    mechShop: mlv('t_mech') > 0,
+    airShop: mlv('t_air') > 0,
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
     groundUpLv: 0,                       // 지상군 강화 횟수
     groundDmgAdd: 0,                     // 지상군 공격력 고정 보너스
+    mechUpLv: 0,                         // 기갑 강화 횟수
+    mechDmgAdd: 0,                       // 기갑 공격력 고정 보너스
+    airUpLv: 0,                          // 공중 강화 횟수
+    airDmgAdd: 0,                        // 공중 공격력 고정 보너스
     hasMechanic: false,
     drone: null,
   };
@@ -1125,6 +1166,8 @@ function resumeGame(snap) {
   S.hired = snap.hired || 0;
   S.heroShop = mlv('t_hero') > 0;
   S.groundShop = mlv('t_ground') > 0;
+  S.mechShop = mlv('t_mech') > 0;
+  S.airShop = mlv('t_air') > 0;
   S.hasMechanic = snap.hasMechanic ?? false;
   S.drone = snap.drone ?? null;
   if (S.drone) {
@@ -1139,6 +1182,10 @@ function resumeGame(snap) {
   S.heroUpLv = snap.heroUpLv ?? 0;
   S.groundUpLv = snap.groundUpLv ?? 0;
   S.groundDmgAdd = snap.groundDmgAdd ?? (S.groundUpLv * GROUND_UP.step);
+  S.mechUpLv = snap.mechUpLv ?? 0;
+  S.mechDmgAdd = snap.mechDmgAdd ?? (S.mechUpLv * MECH_UP.step);
+  S.airUpLv = snap.airUpLv ?? 0;
+  S.airDmgAdd = snap.airDmgAdd ?? (S.airUpLv * AIR_UP.step);
   Object.assign(S.nexus, snap.nexus);
   Object.assign(S.nexusLv, snap.nexusLv);
   S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
@@ -1182,8 +1229,13 @@ const heroBlocked = def => CFG.heroesLocked || !S.heroShop || popFull() ||
                            (CFG.heroUnique && ownedCount(def.id) > 0);
 
 const isGround = def => GROUND_UNITS.some(g => g.id === def.id);
+const isMech   = def => MECH_UNITS.some(g => g.id === def.id);
+const isAir    = def => AIR_UNITS.some(g => g.id === def.id);
 const heroStat = h => ({
-  dmg:   isGround(h.def) ? h.def.dmg + S.groundDmgAdd : h.def.dmg * S.dmgMul,
+  dmg:   isGround(h.def) ? h.def.dmg + S.groundDmgAdd
+       : isMech(h.def)   ? h.def.dmg + S.mechDmgAdd
+       : isAir(h.def)    ? h.def.dmg + S.airDmgAdd
+       :                    h.def.dmg * S.dmgMul,
   range: h.def.range,
   rate:  h.def.rate,
 });
@@ -1223,6 +1275,44 @@ function hireGround(def) {
   });
   S.hired++;
   if (def.id === 'mechanic') S.hasMechanic = true;
+  addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
+  saveRun(); syncUI();
+}
+
+const mechCost = def => def.cost * (ownedCount(def.id) + 1);
+const mechBlocked = def => !S.mechShop || popFull();
+
+function hireMech(def) {
+  const cost = mechCost(def);
+  if (S.gold < cost || mechBlocked(def)) return;
+  S.gold -= cost;
+  const ang = S.hired * GOLDEN;
+  const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
+  S.heroes.push({
+    def, invested: cost, homeAng: ang,
+    x: post.x, y: post.y, cd: 0, ang: 0,
+    recoil: 0, spawnT: 0.6,
+  });
+  S.hired++;
+  addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
+  saveRun(); syncUI();
+}
+
+const airCost = def => def.cost * (ownedCount(def.id) + 1);
+const airBlocked = def => !S.airShop || popFull();
+
+function hireAir(def) {
+  const cost = airCost(def);
+  if (S.gold < cost || airBlocked(def)) return;
+  S.gold -= cost;
+  const ang = S.hired * GOLDEN;
+  const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
+  S.heroes.push({
+    def, invested: cost, homeAng: ang,
+    x: post.x, y: post.y, cd: 0, ang: 0,
+    recoil: 0, spawnT: 0.6,
+  });
+  S.hired++;
   addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
   saveRun(); syncUI();
 }
@@ -1377,8 +1467,14 @@ function pickTarget(x, y, range) {
   return best;
 }
 
-function fire(from, target, dmg, bspd, splash, slow, slowT, color) {
-  S.bullets.push({ x: from.x, y: from.y, target, dmg, spd: bspd, splash, slow, slowT, color, life: 3 });
+function fire(from, target, dmg, bspd, splash, slow, slowT, color, opts) {
+  const b = { x: from.x, y: from.y, target, dmg, spd: bspd, splash, slow, slowT, color, life: 3 };
+  if (opts) {
+    if (opts.pierce) { b.pierce = opts.pierce; b.pierced = new Set(); }
+    if (opts.mech) b.mech = true;
+    if (opts.air) b.air = true;
+  }
+  S.bullets.push(b);
 }
 
 function update(dt) {
@@ -1521,7 +1617,12 @@ function update(dt) {
     if (inRange && h.cd <= 0) {
       h.cd = 1 / st.rate;
       h.recoil = 1;
-      fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent);
+      const opts = {};
+      if (h.def.mech) opts.mech = true;
+      if (h.def.air) opts.air = true;
+      if (h.def.pierce) { opts.pierce = h.def.pierce; }
+      fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent,
+           Object.keys(opts).length ? opts : undefined);
     }
 
     // 버퍼 오라 — 주변 적에게 초당 피해
@@ -1562,7 +1663,28 @@ function update(dt) {
   for (const b of S.bullets) {
     b.life -= dt;
     const tg = b.target;
-    if (!tg || tg.dead || b.life <= 0) { b.gone = true; continue; }
+    if (b.life <= 0) { b.gone = true; continue; }
+
+    // 관통탄: 타겟 방향으로 직진하며 경로의 적을 관통
+    if (b.pierce) {
+      const dx = tg.x - b.x, dy = tg.y - b.y;
+      const d = Math.hypot(dx, dy) || 1;
+      const step = b.spd * dt;
+      b.x += dx / d * step; b.y += dy / d * step;
+      for (const e of S.enemies) {
+        if (e.dead || b.pierced.has(e)) continue;
+        if (dist(b.x, b.y, e.x, e.y) <= e.def.r + 6) {
+          damage(e, b.dmg, b.slow, b.slowT);
+          b.pierced.add(e);
+          burst(b.x, b.y, b.color, 6);
+          if (b.pierced.size >= b.pierce) { b.gone = true; break; }
+        }
+      }
+      if (b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) b.gone = true;
+      continue;
+    }
+
+    if (!tg || tg.dead) { b.gone = true; continue; }
     const dx = tg.x - b.x, dy = tg.y - b.y;
     const d = Math.hypot(dx, dy) || 1;
     const step = b.spd * dt;
@@ -1578,6 +1700,7 @@ function update(dt) {
           }
         }
         ring(tg.x, tg.y, b.splash, b.color);
+        if (b.mech) burst(tg.x, tg.y, b.color, 18);
       } else {
         damage(tg, b.dmg, b.slow, b.slowT);
       }
@@ -1672,24 +1795,65 @@ function draw() {
     ctx.translate(h.x, h.y);
     ctx.scale(pop, pop);
 
-    // 이동 중이면 잔상
-    ctx.fillStyle = '#1c2437';
-    ctx.strokeStyle = h.def.color;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const a = i * 6.2832 / 8 + Math.PI / 8;
-      i ? ctx.lineTo(Math.cos(a) * 17, Math.sin(a) * 17)
-        : ctx.moveTo(Math.cos(a) * 17, Math.sin(a) * 17);
-    }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (h.def.air) {
+      // 공중 유닛 — 날개 달린 삼각형
+      ctx.rotate(h.ang);
+      ctx.fillStyle = '#1c2437';
+      ctx.strokeStyle = h.def.color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(18 - back, 0); ctx.lineTo(-12, -14); ctx.lineTo(-6, 0); ctx.lineTo(-12, 14);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = h.def.color;
+      ctx.beginPath(); ctx.arc(2 - back, 0, 5, 0, 6.284); ctx.fill();
+      ctx.fillStyle = h.def.accent;
+      ctx.beginPath(); ctx.arc(2 - back, 0, 2.5, 0, 6.284); ctx.fill();
+      // 엔진 글로우
+      ctx.globalAlpha = 0.4 + Math.sin(Date.now() * 0.01) * 0.2;
+      ctx.fillStyle = h.def.accent;
+      ctx.beginPath(); ctx.arc(-8, 0, 4, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (h.def.mech) {
+      // 기갑 유닛 — 다이아몬드(마름모) + 두꺼운 포신
+      ctx.fillStyle = '#1c2437';
+      ctx.strokeStyle = h.def.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, -19); ctx.lineTo(16, 0); ctx.lineTo(0, 19); ctx.lineTo(-16, 0);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // 내부 장갑판
+      ctx.fillStyle = h.def.color;
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.moveTo(0, -11); ctx.lineTo(9, 0); ctx.lineTo(0, 11); ctx.lineTo(-9, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+      // 포신
+      ctx.rotate(h.ang);
+      ctx.fillStyle = h.def.color;
+      ctx.fillRect(4 - back, -4, 18, 8);
+      ctx.fillStyle = h.def.accent;
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, 6.284); ctx.fill();
+    } else {
+      // 지상·영웅 — 팔각형
+      ctx.fillStyle = '#1c2437';
+      ctx.strokeStyle = h.def.color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = i * 6.2832 / 8 + Math.PI / 8;
+        i ? ctx.lineTo(Math.cos(a) * 17, Math.sin(a) * 17)
+          : ctx.moveTo(Math.cos(a) * 17, Math.sin(a) * 17);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
 
-    ctx.rotate(h.ang);
-    ctx.fillStyle = h.def.color;
-    ctx.fillRect(3 - back, -3.5, 14, 7);
-    ctx.beginPath(); ctx.arc(0, 0, 8, 0, 6.284); ctx.fill();
-    ctx.fillStyle = h.def.accent;
-    ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.284); ctx.fill();
+      ctx.rotate(h.ang);
+      ctx.fillStyle = h.def.color;
+      ctx.fillRect(3 - back, -3.5, 14, 7);
+      ctx.beginPath(); ctx.arc(0, 0, 8, 0, 6.284); ctx.fill();
+      ctx.fillStyle = h.def.accent;
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.284); ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -1760,10 +1924,39 @@ function draw() {
   /* 탄환 */
   for (const b of S.bullets) {
     ctx.fillStyle = b.color;
-    ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 5 : 3.2, 0, 6.284); ctx.fill();
-    ctx.globalAlpha = .3;
-    ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 10 : 6.5, 0, 6.284); ctx.fill();
-    ctx.globalAlpha = 1;
+    if (b.pierce) {
+      // 관통탄 — 긴 선 형태
+      const tg = b.target;
+      const dx = tg ? tg.x - b.x : 1, dy = tg ? tg.y - b.y : 0;
+      const d = Math.hypot(dx, dy) || 1;
+      ctx.save();
+      ctx.translate(b.x, b.y); ctx.rotate(Math.atan2(dy, dx));
+      ctx.fillRect(-12, -1.5, 24, 3);
+      ctx.globalAlpha = .25;
+      ctx.fillRect(-18, -3, 36, 6);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    } else if (b.mech) {
+      // 기갑탄 — 크고 무거운 포탄
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 7 : 5, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = .35;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 14 : 10, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = .15;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (b.air) {
+      // 공중탄 — 작고 빠른 연사 탄
+      ctx.beginPath(); ctx.arc(b.x, b.y, 2.2, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = .5;
+      ctx.beginPath(); ctx.arc(b.x, b.y, 4.5, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 5 : 3.2, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = .3;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 10 : 6.5, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   }
   /* 적 탄환 */
   for (const eb of S.eBullets) {
@@ -2145,6 +2338,70 @@ function buildShops() {
   els.groundUp = { card: gupCard, btn: gupCard.querySelector('button'), lv: gupCard.querySelector('.lv') };
   gupCard.onclick = buyGroundUp;
   els.groundUp.btn.onclick = ev => { ev.stopPropagation(); buyGroundUp(); };
+
+  // 기갑 유닛 상점
+  $('mechShop').innerHTML = MECH_UNITS.map(d => `
+    <div class="card" data-m="${d.id}">
+      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
+      <div>
+        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${d.desc}</div>
+      </div>
+      <button class="buy"></button>
+    </div>`).join('')
+    + `<div class="card" id="mechUpCard">
+      <div class="swatch" style="background:#78909c;color:#78909c"></div>
+      <div>
+        <div class="nm">기갑 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">모든 기갑 유닛 공격력 +${MECH_UP.step}</div>
+      </div>
+      <button class="buy"></button>
+    </div>`;
+
+  els.mech = MECH_UNITS.map(d => {
+    const card = $('mechShop').querySelector(`.card[data-m="${d.id}"]`);
+    const btn = card.querySelector('button');
+    card.onclick = () => hireMech(d);
+    btn.onclick = ev => { ev.stopPropagation(); hireMech(d); };
+    return { d, card, btn, cnt: card.querySelector('.cnt') };
+  });
+
+  const mupCard = $('mechUpCard');
+  els.mechUp = { card: mupCard, btn: mupCard.querySelector('button'), lv: mupCard.querySelector('.lv') };
+  mupCard.onclick = buyMechUp;
+  els.mechUp.btn.onclick = ev => { ev.stopPropagation(); buyMechUp(); };
+
+  // 공중 유닛 상점
+  $('airShop').innerHTML = AIR_UNITS.map(d => `
+    <div class="card" data-a="${d.id}">
+      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
+      <div>
+        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${d.desc}</div>
+      </div>
+      <button class="buy"></button>
+    </div>`).join('')
+    + `<div class="card" id="airUpCard">
+      <div class="swatch" style="background:#e040fb;color:#e040fb"></div>
+      <div>
+        <div class="nm">공중 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">모든 공중 유닛 공격력 +${AIR_UP.step}</div>
+      </div>
+      <button class="buy"></button>
+    </div>`;
+
+  els.air = AIR_UNITS.map(d => {
+    const card = $('airShop').querySelector(`.card[data-a="${d.id}"]`);
+    const btn = card.querySelector('button');
+    card.onclick = () => hireAir(d);
+    btn.onclick = ev => { ev.stopPropagation(); hireAir(d); };
+    return { d, card, btn, cnt: card.querySelector('.cnt') };
+  });
+
+  const aupCard = $('airUpCard');
+  els.airUp = { card: aupCard, btn: aupCard.querySelector('button'), lv: aupCard.querySelector('.lv') };
+  aupCard.onclick = buyAirUp;
+  els.airUp.btn.onclick = ev => { ev.stopPropagation(); buyAirUp(); };
 }
 
 function buyPop() {
@@ -2162,6 +2419,26 @@ function buyGroundUp() {
   if (S.gold < c) return;
   S.gold -= c; S.groundUpLv++; S.groundDmgAdd += GROUND_UP.step;
   addText(CX, CY - 88, `지상군 공격력 +${S.groundDmgAdd}`, '#4ade80');
+  saveRun();
+  syncUI();
+}
+
+function buyMechUp() {
+  if (!S.mechShop) return;
+  const c = mechUpCost(S.mechUpLv);
+  if (S.gold < c) return;
+  S.gold -= c; S.mechUpLv++; S.mechDmgAdd += MECH_UP.step;
+  addText(CX, CY - 88, `기갑 공격력 +${S.mechDmgAdd}`, '#78909c');
+  saveRun();
+  syncUI();
+}
+
+function buyAirUp() {
+  if (!S.airShop) return;
+  const c = airUpCost(S.airUpLv);
+  if (S.gold < c) return;
+  S.gold -= c; S.airUpLv++; S.airDmgAdd += AIR_UP.step;
+  addText(CX, CY - 88, `공중 공격력 +${S.airDmgAdd}`, '#e040fb');
   saveRun();
   syncUI();
 }
@@ -2234,6 +2511,40 @@ function renderGroundShop() {
   els.groundUp.btn.textContent = gc + 'G';
   els.groundUp.btn.disabled = gOff;
   els.groundUp.card.classList.toggle('poor', gOff);
+}
+
+function renderMechShop() {
+  for (const e of els.mech) {
+    const c = mechCost(e.d), owned = ownedCount(e.d.id), blocked = mechBlocked(e.d);
+    const off = blocked || S.gold < c;
+    e.cnt.textContent = owned ? '×' + owned : '';
+    e.btn.textContent = popFull() ? '인구 초과' : c + 'G';
+    e.btn.disabled = off;
+    e.card.classList.toggle('poor', off);
+  }
+
+  const mc = mechUpCost(S.mechUpLv), mOff = !S.mechShop || S.gold < mc;
+  els.mechUp.lv.textContent = `(+${S.mechDmgAdd})`;
+  els.mechUp.btn.textContent = mc + 'G';
+  els.mechUp.btn.disabled = mOff;
+  els.mechUp.card.classList.toggle('poor', mOff);
+}
+
+function renderAirShop() {
+  for (const e of els.air) {
+    const c = airCost(e.d), owned = ownedCount(e.d.id), blocked = airBlocked(e.d);
+    const off = blocked || S.gold < c;
+    e.cnt.textContent = owned ? '×' + owned : '';
+    e.btn.textContent = popFull() ? '인구 초과' : c + 'G';
+    e.btn.disabled = off;
+    e.card.classList.toggle('poor', off);
+  }
+
+  const ac = airUpCost(S.airUpLv), aOff = !S.airShop || S.gold < ac;
+  els.airUp.lv.textContent = `(+${S.airDmgAdd})`;
+  els.airUp.btn.textContent = ac + 'G';
+  els.airUp.btn.disabled = aOff;
+  els.airUp.card.classList.toggle('poor', aOff);
 }
 
 function renderNexusShop() {
@@ -2313,7 +2624,8 @@ function renderSel() {
     <div class="stat"><span>초당 피해량</span><b>${(st.dmg * st.rate).toFixed(1)}</b></div>
     <div class="stat"><span>사거리</span><b>${st.range.toFixed(0)}</b></div>
     <div class="stat"><span>이동속도</span><b>${h.def.spd}</b></div>
-    ${h.def.splash ? `<div class="stat"><span>범위</span><b>${h.def.splash}</b></div>` : ''}`;
+    ${h.def.splash ? `<div class="stat"><span>폭발 범위</span><b>${h.def.splash}</b></div>` : ''}
+    ${h.def.pierce ? `<div class="stat"><span>관통</span><b>${h.def.pierce}체</b></div>` : ''}`;
   $('btnSell').textContent = `해고 ${Math.floor(h.invested * CFG.sellRatio)}G`;
 }
 
@@ -2333,7 +2645,7 @@ function syncUI() {
                 : S.phase === 'over'   ? '게임 오버'
                 : S.autoT > 0          ? `웨이브 ${S.wave} 시작 (${Math.ceil(S.autoT)})`
                 :                        `웨이브 ${S.wave} 시작`;
-  renderHeroShop(); renderGroundShop(); renderNexusShop(); renderSel(); syncTechTabs();
+  renderHeroShop(); renderGroundShop(); renderMechShop(); renderAirShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
