@@ -592,6 +592,10 @@ const AIR_UNITS = [
     dmg:22, range:120, rate:2.0, bspd:700, spd:210, splash:0, slow:0, slowT:0,
     roam:380, air:true,
     desc:'빠른 속도와 연사로 넓은 구역을 순찰한다' },
+  { id:'scout', name:'정찰기', cost:2500, color:'#ffab00', accent:'#ffe082',
+    dmg:55, range:100, rate:0.5, bspd:0, spd:140, splash:70, slow:0, slowT:0,
+    roam:350, air:true, bomb:true,
+    desc:'순찰하며 적에게 폭탄을 투하한다' },
 ];
 
 // 공중 강화 — 공중 유닛 공격력 +3.
@@ -1116,7 +1120,7 @@ function newGame(startWave) {
              regen: mlv('mregen') * MSTEP.mregen + (boost ? boost.regen : 0),
              cd: 0, hitFlash: 0, ang: 0 },
     nexusLv: Object.fromEntries(NEXUS_UPS.map(u => [u.id, 0])),
-    heroes: [], enemies: [], bullets: [], eBullets: [], parts: [], texts: [],
+    heroes: [], enemies: [], bullets: [], eBullets: [], bombs: [], parts: [], texts: [],
     queue: [], spawnT: 0, shake: 0, hired: 0,
     autoT: 0,
     dmgMul: 1,                           // 영웅 강화로 오르는 영웅 공격력 배율
@@ -1617,12 +1621,17 @@ function update(dt) {
     if (inRange && h.cd <= 0) {
       h.cd = 1 / st.rate;
       h.recoil = 1;
-      const opts = {};
-      if (h.def.mech) opts.mech = true;
-      if (h.def.air) opts.air = true;
-      if (h.def.pierce) { opts.pierce = h.def.pierce; }
-      fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent,
-           Object.keys(opts).length ? opts : undefined);
+      if (h.def.bomb) {
+        S.bombs.push({ x: h.x, y: h.y, tx: inRange.x, ty: inRange.y,
+                        dmg: st.dmg, splash: h.def.splash, color: h.def.accent, t: 0, dur: 0.35 });
+      } else {
+        const opts = {};
+        if (h.def.mech) opts.mech = true;
+        if (h.def.air) opts.air = true;
+        if (h.def.pierce) { opts.pierce = h.def.pierce; }
+        fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent,
+             Object.keys(opts).length ? opts : undefined);
+      }
     }
 
     // 버퍼 오라 — 주변 적에게 초당 피해
@@ -1711,6 +1720,26 @@ function update(dt) {
   }
 
   S.bullets = S.bullets.filter(b => !b.gone);
+
+  /* 폭탄 — 낙하 후 착탄 지점에서 폭발 */
+  for (const bm of S.bombs) {
+    bm.t += dt;
+    if (bm.t >= bm.dur) {
+      for (const e of S.enemies) {
+        if (e.dead) continue;
+        const dd = dist(e.x, e.y, bm.tx, bm.ty);
+        if (dd <= bm.splash + e.def.r) {
+          const falloff = 1 - 0.5 * (dd / (bm.splash + e.def.r));
+          damage(e, bm.dmg * falloff, 0, 0);
+        }
+      }
+      ring(bm.tx, bm.ty, bm.splash, bm.color);
+      burst(bm.tx, bm.ty, '#ff6600', 14);
+      bm.done = true;
+    }
+  }
+  S.bombs = S.bombs.filter(b => !b.done);
+
   S.enemies = S.enemies.filter(e => !e.dead);
 
   for (const p of S.parts) {
@@ -1958,6 +1987,26 @@ function draw() {
       ctx.globalAlpha = 1;
     }
   }
+  /* 폭탄 — 낙하 중인 폭탄 + 착탄 지점 그림자 */
+  for (const bm of S.bombs) {
+    const p = bm.t / bm.dur;
+    // 착탄 지점 그림자
+    ctx.globalAlpha = 0.2 + p * 0.3;
+    ctx.fillStyle = '#ff6600';
+    ctx.beginPath(); ctx.arc(bm.tx, bm.ty, 6 + p * 4, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = 1;
+    // 낙하 중인 폭탄 (위에서 아래로)
+    const bx = bm.x + (bm.tx - bm.x) * p;
+    const by = bm.y + (bm.ty - bm.y) * p - (1 - p) * 40;
+    const sz = 3 + p * 3;
+    ctx.fillStyle = bm.color;
+    ctx.beginPath(); ctx.arc(bx, by, sz, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(bx, by, sz * 0.5, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
   /* 적 탄환 */
   for (const eb of S.eBullets) {
     ctx.fillStyle = eb.color;
