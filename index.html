@@ -861,21 +861,27 @@ const DRONE = { dmg: 12, spd: 2.0, orbitR: 250, dmgStep: 2, spdStep: 0.1 };
 
 const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
+    stat: () => `현재 ${S.nexus.dmg}`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.dmg += 2; } },
   { id:'rate',  name:'공격속도 강화', desc:'넥서스 초당 발사 +0.2',
+    stat: () => `현재 ${num(S.nexus.rate)}발/초`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.rate += 0.2; } },
   { id:'range', name:'사거리 증가',   desc:'넥서스 사거리 +1',
+    stat: () => `현재 ${S.nexus.range}`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.range += 1; } },
   { id:'wall',  name:'최대체력 증가', desc:'최대 체력 +5 · 즉시 회복',
+    stat: () => `현재 ${S.nexus.maxHp}`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.maxHp += 5; s.nexus.hp = Math.min(s.nexus.maxHp, s.nexus.hp + 5); } },
   { id:'regen', name:'체력 재생',     desc:'초당 HP +0.5 회복',
+    stat: () => `현재 ${num(S.nexus.regen)}/초`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.nexus.regen += 0.5; } },
   { id:'inc',   name:'수입 증대',     desc:'웨이브 클리어 보상 +4%',
+    stat: () => `현재 +${Math.round((S.incomeMul - 1) * 100)}%`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.incomeMul += 0.04; } },
   { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
@@ -2324,7 +2330,7 @@ function buildShops() {
     const btn = card.querySelector('button');
     card.onclick = () => buyNexusUp(u.id);
     btn.onclick = ev => { ev.stopPropagation(); buyNexusUp(u.id); };
-    return { u, card, btn, lv: card.querySelector('.lv') };
+    return { u, card, btn, lv: card.querySelector('.lv'), ds: card.querySelector('.ds') };
   });
 
   $('heroShop').innerHTML = `
@@ -2617,6 +2623,7 @@ function renderNexusShop() {
     e.btn.textContent = maxed ? '최대' : c + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
+    if (e.u.stat) e.ds.textContent = e.u.desc + ' (' + e.u.stat() + ')';
   }
 
   const pc = popCost(S.popLv), popOff = S.gold < pc;
