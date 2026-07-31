@@ -903,25 +903,25 @@ const NEXUS_UPS = [
 /* 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다.
    값을 고치면 상점 표시·새 판 스탯·넥서스 정보가 함께 따라온다. */
 const MSTEP = {
-  fund: 10, power: 1, spd: 0.05, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
+  fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 
 const META = [
   { id:'fund',  name:'초기 자금',       max:Infinity, base:30,
-    desc: lv => `시작 골드 +${num(lv * MSTEP.fund)}` },
+    desc: lv => `시작 골드 +${num(lv * MSTEP.fund)} (현재 ${CFG.startGold + lv * MSTEP.fund}G)` },
   { id:'power', name:'공격력 강화',     max:Infinity, base:35,
-    desc: lv => `넥서스 공격력 +${num(lv * MSTEP.power)}` },
+    desc: lv => `공격력 +${num(lv * MSTEP.power)} (현재 ${CFG.nexusDmg + lv * MSTEP.power})` },
   { id:'spd',   name:'공격속도 강화',   max:Infinity, base:40,
-    desc: lv => `넥서스 공격속도 +${num(lv * MSTEP.spd)}` },
+    desc: lv => `공속 +${num(lv * MSTEP.spd)} (현재 ${num(CFG.nexusRate + lv * MSTEP.spd)}발/초)` },
   { id:'rng',   name:'사거리 강화',     max:Infinity, base:45,
-    desc: lv => `넥서스 사거리 +${num(lv * MSTEP.rng)}` },
+    desc: lv => `사거리 +${num(lv * MSTEP.rng)} (현재 ${CFG.nexusRange + lv * MSTEP.rng})` },
   { id:'armor', name:'최대체력 강화',   max:Infinity, base:40,
-    desc: lv => `넥서스 최대 체력 +${num(lv * MSTEP.armor)}` },
+    desc: lv => `최대 체력 +${num(lv * MSTEP.armor)} (현재 ${CFG.nexusHp + lv * MSTEP.armor})` },
   { id:'mregen',name:'체력재생 강화',   max:Infinity, base:50,
-    desc: lv => `초당 HP 재생 +${num(lv * MSTEP.mregen)}` },
+    desc: lv => `재생 +${num(lv * MSTEP.mregen)} (현재 ${num(lv * MSTEP.mregen)}/초)` },
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
-    desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}%` },
+    desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
 ];
 
 /* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
