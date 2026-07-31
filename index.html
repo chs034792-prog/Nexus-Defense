@@ -294,7 +294,7 @@
     background: rgba(8,10,18,.88); border-radius: 8px;
   }
   #over.on { display: flex; }
-  #over h1 { font-size: 34px; color: #ff6b81; }
+  #over h1 { font-size: 34px; }
   #over p { color: #aab6d0; font-size: 15px; }
   #over button { width: 180px; }
 
@@ -438,9 +438,10 @@
       <div id="credit">제작자 채희선</div>
     </div>
     <div id="over">
-      <h1>넥서스 파괴됨</h1>
+      <h1 id="overTitle">넥서스 파괴됨</h1>
       <p id="overMsg"></p>
       <p id="overCore" style="color:#7fe7ff;font-weight:700"></p>
+      <p id="overBonus" style="color:#ffe066;font-weight:700;display:none"></p>
       <button id="btnRestart">다시 출격</button>
       <button id="btnToMenu" class="ghost" style="width:180px">메인으로</button>
     </div>
@@ -1280,11 +1281,47 @@ function endWave() {
   S.gold += bonus;
   addText(CX, CY - 70, '+' + bonus + ' 클리어 보너스', '#ffd45e');
   S.wave++;
+  if (S.wave - 1 > save.best) { save.best = S.wave - 1; writeSave(); }
+
+  const cleared = S.wave - 1;
+  const zone = currentZone(cleared);
+  if (cleared === zone.to) {
+    zoneClear(zone);
+    return;
+  }
+
   S.phase = 'build';
   S.autoT = AUTO_WAVE_SEC;
-  if (S.wave - 1 > save.best) { save.best = S.wave - 1; writeSave(); }
-  saveRun();                       // 웨이브를 넘길 때마다 진행 상황을 남긴다
+  saveRun();
   syncUI();
+}
+
+function zoneClear(zone) {
+  S.phase = 'over';
+  S.autoT = 0;
+  const clearedInRun = Math.max(0, S.wave - S.startWave);
+  const cores = coreReward(clearedInRun);
+  const bonusCores = Math.floor(cores * 0.5);
+  save.cores += cores + bonusCores;
+  save.runs++;
+  writeSave();
+  clearRun();
+
+  const nextZone = ZONES.find(z => z.from === zone.to + 1);
+
+  $('overTitle').textContent = '지역 클리어!';
+  $('overTitle').style.color = '#7fe7ff';
+  $('overMsg').textContent = `${zone.name} 완료 · 웨이브 ${zone.from}~${zone.to}`;
+  $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
+  $('overBonus').textContent = `클리어 보너스 +${bonusCores} 코어`;
+  $('overBonus').style.display = '';
+  $('over').classList.add('on');
+  syncUI();
+  submitRanking();
+
+  if (nextZone && zoneUnlocked(nextZone)) {
+    setSelectedZone(nextZone.from);
+  }
 }
 
 function gameOver() {
@@ -1301,8 +1338,11 @@ function gameOver() {
   if (cleared > save.best) save.best = cleared;
   writeSave();
   clearRun();
+  $('overTitle').textContent = '넥서스 파괴됨';
+  $('overTitle').style.color = '#ff6b81';
   $('overMsg').textContent = `웨이브 ${S.wave}에서 무너졌습니다 · 최고 기록 ${save.best}`;
   $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
+  $('overBonus').style.display = 'none';
   $('over').classList.add('on');
   syncUI();
   submitRanking();
