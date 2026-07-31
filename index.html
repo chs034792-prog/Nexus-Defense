@@ -910,6 +910,7 @@ const NEXUS_UPS = [
    값을 고치면 상점 표시·새 판 스탯·넥서스 정보가 함께 따라온다. */
 const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
+  gndDmg: 3, mechDmg: 5, airDmg: 7,
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 
@@ -928,6 +929,12 @@ const META = [
     desc: lv => `재생 +${num(lv * MSTEP.mregen)} (현재 ${num(lv * MSTEP.mregen)}/초)` },
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
+  { id:'gndDmg', name:'지상군 영구 강화', max:Infinity, base:60,
+    desc: lv => `지상 유닛 공격력 +${num(lv * MSTEP.gndDmg)} (현재 +${num(lv * MSTEP.gndDmg)})` },
+  { id:'mechDmg', name:'기갑 영구 강화',  max:Infinity, base:80,
+    desc: lv => `기갑 유닛 공격력 +${num(lv * MSTEP.mechDmg)} (현재 +${num(lv * MSTEP.mechDmg)})` },
+  { id:'airDmg', name:'공중 영구 강화',   max:Infinity, base:100,
+    desc: lv => `공중 유닛 공격력 +${num(lv * MSTEP.airDmg)} (현재 +${num(lv * MSTEP.airDmg)})` },
 ];
 
 /* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
@@ -1140,11 +1147,11 @@ function newGame(startWave) {
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
     groundUpLv: 0,                       // 지상군 강화 횟수
-    groundDmgAdd: 0,                     // 지상군 공격력 고정 보너스
+    groundDmgAdd: mlv('gndDmg') * MSTEP.gndDmg,
     mechUpLv: 0,                         // 기갑 강화 횟수
-    mechDmgAdd: 0,                       // 기갑 공격력 고정 보너스
+    mechDmgAdd: mlv('mechDmg') * MSTEP.mechDmg,
     airUpLv: 0,                          // 공중 강화 횟수
-    airDmgAdd: 0,                        // 공중 공격력 고정 보너스
+    airDmgAdd: mlv('airDmg') * MSTEP.airDmg,
     hasMechanic: false,
     drone: null,
   };
@@ -1359,8 +1366,14 @@ function spawn(type) {
   } else if (zm > 1) {
     e = { ...e, hp: e.hp * zm, dmg: e.dmg * zm };
   }
-  // HARD_STEPS 를 넘길 때마다 체력·공격력이 한 단계씩 뛴다.
-  // def 는 ENEMIES 의 공용 객체이므로 반드시 복사해서 고쳐야 한다.
+  // 50~100 웨이브 적 약화 (35%)
+  if (S.wave >= 50 && S.wave <= 100) {
+    e = { ...e, hp: e.hp * 0.65, dmg: e.dmg * 0.65 };
+  }
+  // 숲(101~200) 보스 HP 절반
+  if (type === 'boss' && S.wave >= 101 && S.wave <= 200) {
+    e = { ...e, hp: e.hp * 0.5 };
+  }
   const hard = hardMul(S.wave);
   if (hard > 1) e = { ...e, dmg: e.dmg * hard };
   // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
