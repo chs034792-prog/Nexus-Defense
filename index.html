@@ -583,16 +583,16 @@ const ZONE_ENEMIES = {
     boss:{ name:'초원의 군주', color:'#ff4d4d', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
   },
   숲: {
-    t1:{ name:'다람쥐',   color:'#a0522d', hp:18,  spd:65,  r:11, dmg:14,  rew:1, sides:0 },
-    t2:{ name:'여우',     color:'#ff6f00', hp:28,  spd:105, r:10, dmg:18,  rew:2, sides:3 },
-    t3:{ name:'거미',     color:'#4e342e', hp:100, spd:38,  r:14, dmg:30,  rew:3, sides:8 },
-    t4:{ name:'독버섯',   color:'#76ff03', hp:60,  spd:30,  r:16, dmg:24,  rew:4, sides:0 },
-    t5:{ name:'숲곰',     color:'#5d4037', hp:110, spd:70,  r:15, dmg:38,  rew:5, sides:0 },
-    t6:{ name:'트렌트',   color:'#2e7d32', hp:210, spd:22,  r:22, dmg:48,  rew:6, sides:6 },
-    t7:{ name:'늑대거미', color:'#6d4c41', hp:45,  spd:130, r:9,  dmg:52,  rew:7, sides:8 },
-    t8:{ name:'멧돼지왕', color:'#795548', hp:170, spd:55,  r:18, dmg:60,  rew:8, sides:0 },
-    t9:{ name:'요정궁수', color:'#81c784', hp:65,  spd:40,  r:11, dmg:32,  rew:9, sides:3, ranged:190, atkRate:0.85, projSpd:310 },
-    t10:{ name:'숲의 마녀', color:'#4caf50', hp:120, spd:28,  r:13, dmg:75, rew:10, sides:5, ranged:240, atkRate:0.5, projSpd:250 },
+    t1:{ name:'다람쥐',   color:'#a0522d', hp:28,  spd:65,  r:11, dmg:20,  rew:1, sides:0 },
+    t2:{ name:'여우',     color:'#ff6f00', hp:42,  spd:105, r:10, dmg:26,  rew:2, sides:3 },
+    t3:{ name:'거미',     color:'#4e342e', hp:150, spd:38,  r:14, dmg:44,  rew:3, sides:8 },
+    t4:{ name:'독버섯',   color:'#76ff03', hp:90,  spd:30,  r:16, dmg:36,  rew:4, sides:0 },
+    t5:{ name:'숲곰',     color:'#5d4037', hp:165, spd:70,  r:15, dmg:56,  rew:5, sides:0 },
+    t6:{ name:'트렌트',   color:'#2e7d32', hp:315, spd:22,  r:22, dmg:70,  rew:6, sides:6 },
+    t7:{ name:'늑대거미', color:'#6d4c41', hp:68,  spd:130, r:9,  dmg:76,  rew:7, sides:8 },
+    t8:{ name:'멧돼지왕', color:'#795548', hp:255, spd:55,  r:18, dmg:88,  rew:8, sides:0 },
+    t9:{ name:'요정궁수', color:'#81c784', hp:98,  spd:40,  r:11, dmg:48,  rew:9, sides:3, ranged:190, atkRate:0.85, projSpd:310 },
+    t10:{ name:'숲의 마녀', color:'#4caf50', hp:180, spd:28,  r:13, dmg:110, rew:10, sides:5, ranged:240, atkRate:0.5, projSpd:250 },
     boss:{ name:'숲의 수호자', color:'#2e7d32', hp:1250, spd:12, r:30, dmg:135, rew:15, sides:8 },
   },
   산: {
@@ -782,16 +782,18 @@ function getActiveTypes(w) {
   return [tiers[base - 1], tiers[base]];
 }
 
-// 산 이후 모든 지역은 등장 수를 초원(1~100)과 같은 범위로 맞춘다.
+// 숲 이후 모든 지역은 등장 수를 초원(1~100)과 같은 범위로 맞춘다.
 const countWave = w => {
-  if (w < 201) return w;
+  if (w < 101) return w;
   const z = currentZone(w);
   return w - z.from + 1;
 };
-// 체력 성장 곡선도 지역마다 101~200 범위로 리셋 — 기본 체력에 맞춰둔
+// 체력 성장 곡선도 지역마다 리셋 — 기본 체력에 맞춰둔
 // 지역별 배율이 절대 웨이브 차이로 더 벌어지지 않고 실전에서도 유지된다.
+// 숲은 1~100 범위, 산 이후는 101~200 범위를 사용한다.
 const hpGrowthWave = w => {
-  if (w < 201) return w;
+  if (w < 101) return w;
+  if (w <= 200) return w - 100;
   const z = currentZone(w);
   return w - z.from + 101;
 };
