@@ -1414,13 +1414,6 @@ function endWave() {
   S.wave++;
   if (S.wave - 1 > save.best) { save.best = S.wave - 1; writeSave(); }
 
-  const cleared = S.wave - 1;
-  const zone = currentZone(cleared);
-  if (cleared === zone.to) {
-    zoneClear(zone);
-    return;
-  }
-
   S.phase = 'build';
   S.autoT = AUTO_WAVE_SEC;
   saveRun();
