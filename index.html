@@ -544,17 +544,17 @@ const HEROES = [];
 const HERO_CLASSES = [
   { id:'warrior', name:'전사', color:'#ef4444', accent:'#fca5a5',
     dmg:45, range:90, rate:1.8, bspd:0, spd:160, splash:0, slow:0, slowT:0,
-    roam:200, heroClass:true,
+    roam:9999, heroClass:true,
     desc:'짧은 사거리의 높은 공격력, 근접 전투의 달인',
     summonCost: 0, switchCost: 500 },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
     dmg:18, range:280, rate:3.0, bspd:700, spd:120, splash:0, slow:0, slowT:0,
-    roam:300, heroClass:true,
+    roam:9999, heroClass:true,
     desc:'넓은 사거리와 빠른 공격속도의 원거리 전문가',
     summonCost: 0, switchCost: 500 },
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
     dmg:60, range:200, rate:0.8, bspd:400, spd:100, splash:50, slow:0.3, slowT:1.5,
-    roam:250, heroClass:true,
+    roam:9999, heroClass:true,
     mana: true, maxMana: 100, manaCost: 12, manaRegen: 5,
     desc:'마나를 소모해 강력한 광역 마법으로 적을 제압하고 감속시킨다',
     summonCost: 0, switchCost: 500 },
@@ -2128,13 +2128,6 @@ function draw() {
     }
     ctx.restore();
 
-    // 영웅 활동 반경
-    ctx.strokeStyle = `rgba(${cls.id === 'warrior' ? '239,68,68' : cls.id === 'archer' ? '34,197,94' : '168,85,247'},.09)`;
-    ctx.setLineDash([5, 10]);
-    const hHome = { x: CX + Math.cos(hr.homeAng) * CFG.postR * 0.6,
-                    y: CY + Math.sin(hr.homeAng) * CFG.postR * 0.6 };
-    ctx.beginPath(); ctx.arc(hHome.x, hHome.y, cls.roam ?? cls.range, 0, 6.284); ctx.stroke();
-    ctx.setLineDash([]);
 
     // 마법사 마나바
     if (cls.mana) {
