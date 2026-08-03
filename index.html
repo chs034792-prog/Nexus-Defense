@@ -1201,13 +1201,6 @@ function newGame(startWave) {
     };
   }
   if (mlv('p_mech') > 0) {
-    const mechDef = defById('mechanic');
-    const ang = 0;
-    S.heroes.push({
-      def: mechDef, invested: 0, homeAng: ang,
-      x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR,
-      cd: 0, ang: 0, recoil: 0, spawnT: 0.6, permaMech: true,
-    });
     S.hasMechanic = true;
   }
   sel = null;
@@ -2138,6 +2131,19 @@ function draw() {
     ctx.fillStyle = t.color;
     ctx.fillText(t.msg, t.x, t.y);
     ctx.globalAlpha = 1;
+  }
+
+  /* 영구 수리공 표시 */
+  if (S.hasMechanic && !S.heroes.some(h => h.def.id === 'mechanic')) {
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(8, H - 20, 8, 8);
+    ctx.globalAlpha = 0.7;
+    ctx.font = '11px "Malgun Gothic", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('수리공', 20, H - 12);
+    ctx.restore();
   }
 
   /* 하단 안내 */
