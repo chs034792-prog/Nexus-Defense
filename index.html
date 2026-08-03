@@ -2408,15 +2408,7 @@ function buildShops() {
         <div class="ds">${u.desc}</div>
       </div>
       <button class="buy"></button>
-    </div>`).join('')
-    // 인구 증가는 넥서스 탭에 둔다 — 영웅 탭이 잠겨 있어도 유닛을 늘릴 수 있어야 한다
-    + `<div class="card" id="popCard">
-      <div>
-        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
-      </div>
-      <button class="buy"></button>
-    </div>`;
+    </div>`).join('');
   els.nexus = NEXUS_UPS.map(u => {
     const card = $('nexusShop').querySelector(`.card[data-u="${u.id}"]`);
     const btn = card.querySelector('button');
@@ -2443,12 +2435,11 @@ function buildShops() {
       </div>
       <button class="buy"></button>
     </div>`).join('')
-    + '<p class="hint lockmsg" style="margin-top:9px;display:none">영웅 고용은 현재 잠겨 있습니다.</p>';
-
-  const popCard = $('popCard');
-  els.pop = { card: popCard, btn: popCard.querySelector('button'), lv: popCard.querySelector('.lv') };
-  popCard.onclick = buyPop;
-  els.pop.btn.onclick = ev => { ev.stopPropagation(); buyPop(); };
+    + '<p class="hint lockmsg" style="margin-top:9px;display:none">영웅 고용은 현재 잠겨 있습니다.</p>'
+    + `<div class="card popCard"><div>
+        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
+      </div><button class="buy"></button></div>`;
 
   const hupCard = $('heroUpCard');
   els.heroUp = { card: hupCard, btn: hupCard.querySelector('button'), lv: hupCard.querySelector('.lv') };
@@ -2480,7 +2471,11 @@ function buildShops() {
         <div class="ds">모든 지상 유닛 공격력 +${GROUND_UP.step}</div>
       </div>
       <button class="buy"></button>
-    </div>`;
+    </div>`
+    + `<div class="card popCard"><div>
+        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
+      </div><button class="buy"></button></div>`;
 
   els.ground = GROUND_UNITS.map(d => {
     const card = $('groundShop').querySelector(`.card[data-g="${d.id}"]`);
@@ -2512,7 +2507,11 @@ function buildShops() {
         <div class="ds">모든 기갑 유닛 공격력 +${MECH_UP.step}</div>
       </div>
       <button class="buy"></button>
-    </div>`;
+    </div>`
+    + `<div class="card popCard"><div>
+        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
+      </div><button class="buy"></button></div>`;
 
   els.mech = MECH_UNITS.map(d => {
     const card = $('mechShop').querySelector(`.card[data-m="${d.id}"]`);
@@ -2544,7 +2543,11 @@ function buildShops() {
         <div class="ds">모든 공중 유닛 공격력 +${AIR_UP.step}</div>
       </div>
       <button class="buy"></button>
-    </div>`;
+    </div>`
+    + `<div class="card popCard"><div>
+        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
+      </div><button class="buy"></button></div>`;
 
   els.air = AIR_UNITS.map(d => {
     const card = $('airShop').querySelector(`.card[data-a="${d.id}"]`);
@@ -2558,6 +2561,13 @@ function buildShops() {
   els.airUp = { card: aupCard, btn: aupCard.querySelector('button'), lv: aupCard.querySelector('.lv') };
   aupCard.onclick = buyAirUp;
   els.airUp.btn.onclick = ev => { ev.stopPropagation(); buyAirUp(); };
+
+  els.pop = [...document.querySelectorAll('.popCard')].map(card => {
+    const btn = card.querySelector('button');
+    card.onclick = buyPop;
+    btn.onclick = ev => { ev.stopPropagation(); buyPop(); };
+    return { card, btn, lv: card.querySelector('.lv') };
+  });
 }
 
 function buyPop() {
@@ -2719,10 +2729,12 @@ function renderNexusShop() {
   }
 
   const pc = popCost(S.popLv), popOff = S.gold < pc;
-  els.pop.lv.textContent = `(현재 ${S.maxPop})`;
-  els.pop.btn.textContent = pc + 'G';
-  els.pop.btn.disabled = popOff;
-  els.pop.card.classList.toggle('poor', popOff);
+  for (const p of els.pop) {
+    p.lv.textContent = `(현재 ${S.maxPop})`;
+    p.btn.textContent = pc + 'G';
+    p.btn.disabled = popOff;
+    p.card.classList.toggle('poor', popOff);
+  }
 }
 
 /* 정보 창은 게임을 멈춘 채 뜬다. 창 때문에 멈춘 것인지(pausedBySel)를
