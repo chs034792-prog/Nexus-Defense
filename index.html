@@ -93,6 +93,7 @@
     font-size: 12px;
   }
   .zone-row.reached { border-color: #3f6ac0; }
+  .meta.locked { opacity: .4; }
   .zone-row.locked { opacity: .4; }
   .zone-row.selectable { cursor: pointer; }
   .zone-row.selectable:hover { background: #212a42; }
@@ -557,7 +558,7 @@ const GROUND_UNITS = [
     roam:265,
     aura:true, auraDmg:8, auraRange:80,
     desc:'적을 느리게 하고 주변에 지속 피해를 준다' },
-  { id:'mechanic', name:'수리공', cost:400, color:'#fbbf24', accent:'#fde68a',
+  { id:'mechanic', name:'작업공', cost:400, color:'#fbbf24', accent:'#fde68a',
     dmg:0, range:0, rate:0, bspd:0, spd:100, splash:0, slow:0, slowT:0,
     hold:true, unique:true, noCombat:true,
     desc:'넥서스에 드론 시스템을 설치한다 (1기 한정)' },
@@ -943,16 +944,22 @@ const META = [
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
   { id:'m_grav',  name:'중력파 해금',     max:1, base:3000,
+    req: () => mlv('p_mech') > 0,
     desc: lv => lv ? '매 판 시작 시 중력파 자동 활성화' : '게임 시작 시 중력파가 자동으로 가동된다' },
   { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50,
+    req: () => mlv('p_mech') > 0,
     desc: lv => `중력파 피해 +${num(lv * MSTEP.gravDmg)} (현재 +${num(lv * MSTEP.gravDmg)})` },
   { id:'m_gravRng', name:'중력파 범위',   max:Infinity, base:60,
+    req: () => mlv('p_mech') > 0,
     desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 +${num(lv * MSTEP.gravRng)})` },
   { id:'m_drone', name:'드론 해금',       max:1, base:4000,
-    desc: lv => lv ? '매 판 시작 시 드론 1기 자동 배치' : '수리공 없이 드론 1기로 시작한다' },
+    req: () => mlv('p_mech') > 0,
+    desc: lv => lv ? '매 판 시작 시 드론 1기 자동 배치' : '작업공 없이 드론 1기로 시작한다' },
   { id:'m_droneCnt', name:'드론 추가',    max:9, base:80,
+    req: () => mlv('p_mech') > 0,
     desc: lv => `시작 드론 +${lv} (현재 ${1 + lv}기)` },
   { id:'m_droneDmg', name:'드론 공격력',  max:Infinity, base:60,
+    req: () => mlv('p_mech') > 0,
     desc: lv => `드론 피해 +${num(lv * MSTEP.droneDmg)} (현재 +${num(lv * MSTEP.droneDmg)})` },
 ];
 
@@ -964,8 +971,8 @@ const BARRACK_META = [
     desc: lv => lv ? '기갑 탭 해금됨' : '게임 내 기갑 유닛 탭을 해금한다' },
   { id:'t_air',    name:'공중 병과 해금', max:1, base:100000,
     desc: lv => lv ? '공중 탭 해금됨' : '게임 내 공중 유닛 탭을 해금한다' },
-  { id:'p_mech',   name:'수리공 영구 배치', max:1, base:5000,
-    desc: lv => lv ? '매 판 시작 시 수리공 자동 배치 (인구 미차감)' : '게임 시작 시 수리공이 자동으로 배치된다 (인구 차지 안 함)' },
+  { id:'p_mech',   name:'작업공 영구 배치', max:1, base:5000,
+    desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
   { id:'gndDmg', name:'지상군 영구 강화', max:Infinity, base:60,
     desc: lv => `지상 유닛 공격력 +${num(lv * MSTEP.gndDmg)} (현재 +${num(lv * MSTEP.gndDmg)})` },
   { id:'mechDmg', name:'기갑 영구 강화',  max:Infinity, base:80,
@@ -2130,7 +2137,7 @@ function draw() {
     ctx.globalAlpha = 1;
   }
 
-  /* 영구 수리공 표시 */
+  /* 영구 작업공 표시 */
   if (S.hasMechanic && !S.heroes.some(h => h.def.id === 'mechanic')) {
     ctx.save();
     ctx.globalAlpha = 0.5;
@@ -2139,7 +2146,7 @@ function draw() {
     ctx.globalAlpha = 0.7;
     ctx.font = '11px "Malgun Gothic", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('수리공', 20, H - 12);
+    ctx.fillText('작업공', 20, H - 12);
     ctx.restore();
   }
 
@@ -2281,13 +2288,15 @@ function renderMeta() {
   $('sCores').textContent = save.cores;
   $('metaList').innerHTML = META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
-    return `<div class="meta ${maxed ? 'max' : ''}">
+    const locked = m.req && !m.req();
+    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
       <div class="info">
-        <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">Lv.${lv}</span></div>
-        <div class="ds">${m.desc(lv)}${maxed ? '' : ` → ${m.desc(lv + 1)}`}</div>
+        <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">${locked ? '' : `Lv.${lv}`}</span></div>
+        <div class="ds">${locked ? '작업공 영구 배치 필요' : `${m.desc(lv)}${maxed ? '' : ` → ${m.desc(lv + 1)}`}`}</div>
       </div>
-      <button data-m="${m.id}" ${maxed || save.cores < c ? 'disabled' : ''}>
+      <button data-m="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
         ${maxed ? '<span class="cost">최대</span>'
+                : locked ? '<span class="cost">잠김</span>'
                 : `<span class="cost">${c}</span><span class="unit">코어</span>`}
       </button>
     </div>`;
@@ -2295,6 +2304,7 @@ function renderMeta() {
   $('metaList').querySelectorAll('button[data-m]').forEach(el => {
     el.onclick = () => {
       const m = META.find(x => x.id === el.dataset.m);
+      if (m.req && !m.req()) return;
       const lv = mlv(m.id), c = metaCost(m, lv);
       if (lv >= m.max || save.cores < c) return;
       save.cores -= c; save.meta[m.id] = lv + 1;
@@ -2865,7 +2875,7 @@ $('selModal').onclick = ev => { if (ev.target === $('selModal')) closeSel(); };
 $('btnSell').onclick = () => {
   if (!sel || sel.kind !== 'hero') return;
   const h = sel.h;
-  if (h.permaMech) { alert('영구 배치된 수리공은 해고할 수 없습니다.'); return; }
+  if (h.permaMech) { alert('영구 배치된 작업공은 해고할 수 없습니다.'); return; }
   S.gold += Math.floor(h.invested * CFG.sellRatio);
   if (h.def.id === 'mechanic') {
     S.hasMechanic = false;
