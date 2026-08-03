@@ -546,20 +546,38 @@ const HERO_CLASSES = [
     dmg:45, range:90, rate:1.8, bspd:0, spd:160, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true,
     desc:'짧은 사거리의 높은 공격력, 근접 전투의 달인',
-    summonCost: 0, switchCost: 500 },
+    summonCost: 0, switchCost: 500,
+    dmgPerLv:4, ratePerLv:0.03, spdPerLv:3,
+    skill: { name:'회전 베기', desc:'주변 모든 적에게 큰 피해', cd:12, radius:130, dmgMul:3, unlockLv:10 } },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
     dmg:18, range:280, rate:3.0, bspd:700, spd:120, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true,
     desc:'넓은 사거리와 빠른 공격속도의 원거리 전문가',
-    summonCost: 0, switchCost: 500 },
+    summonCost: 0, switchCost: 500,
+    dmgPerLv:2, ratePerLv:0.06, spdPerLv:2,
+    skill: { name:'화살 비', desc:'범위 내 모든 적에게 화살 발사', cd:15, radius:350, dmgMul:2, unlockLv:10 } },
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
     dmg:60, range:200, rate:0.8, bspd:400, spd:100, splash:50, slow:0.3, slowT:1.5,
     roam:9999, heroClass:true,
     mana: true, maxMana: 100, manaCost: 12, manaRegen: 5,
     desc:'마나를 소모해 강력한 광역 마법으로 적을 제압하고 감속시킨다',
-    summonCost: 0, switchCost: 500 },
+    summonCost: 0, switchCost: 500,
+    dmgPerLv:5, ratePerLv:0.02, manaPerLv:5, regenPerLv:0.3,
+    skill: { name:'메테오', desc:'전체 맵의 적에게 마법 폭발', cd:20, dmgMul:4, unlockLv:10 } },
 ];
 const heroClassById = id => HERO_CLASSES.find(c => c.id === id);
+const HERO_XP_BASE = 5;
+function heroXpToNext(lv) { return HERO_XP_BASE + lv * 5; }
+function heroStatScaled(cls, lv) {
+  const l = lv - 1;
+  return {
+    dmg: cls.dmg + (cls.dmgPerLv || 0) * l,
+    rate: cls.rate + (cls.ratePerLv || 0) * l,
+    spd: cls.spd + (cls.spdPerLv || 0) * l,
+    maxMana: cls.mana ? (cls.maxMana + (cls.manaPerLv || 0) * l) : 0,
+    manaRegen: cls.mana ? (cls.manaRegen + (cls.regenPerLv || 0) * l) : 0,
+  };
+}
 
 const GROUND_UNITS = [
   { id:'swordsman', name:'검사', cost:500, color:'#4ade80', accent:'#a7f3d0',
@@ -1119,7 +1137,7 @@ function saveRun() {
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
-    hero: S.hero ? { classId: S.hero.classId, mana: S.hero.mana, homeAng: S.hero.homeAng } : null,
+    hero: S.hero ? { classId: S.hero.classId, mana: S.hero.mana, homeAng: S.hero.homeAng, xp: S.hero.xp, level: S.hero.level } : null,
     dev: DEV,                       // 운영자 모드에서 만든 판임을 표시
   };
   try { localStorage.setItem(RUN_KEY, JSON.stringify(snap)); } catch (e) {}
@@ -1283,7 +1301,8 @@ function resumeGame(snap) {
       const px = CX + Math.cos(ang) * CFG.postR * 0.6;
       const py = CY + Math.sin(ang) * CFG.postR * 0.6;
       S.hero = { classId: cls.id, def: cls, mana: snap.hero.mana ?? cls.maxMana ?? 0,
-                 homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0 };
+                 homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0,
+                 xp: snap.hero.xp ?? 0, level: snap.hero.level ?? 1, skillCd: 0, skillEffect: 0 };
     }
   }
   S.autoT = AUTO_WAVE_SEC;
@@ -1339,7 +1358,8 @@ function summonHero(cls) {
   const px = CX + Math.cos(ang) * CFG.postR * 0.6;
   const py = CY + Math.sin(ang) * CFG.postR * 0.6;
   S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
-             homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6 };
+             homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
+             xp: 0, level: 1, skillCd: 0, skillEffect: 0 };
   addText(px, py - 24, cls.name + ' 소환!', cls.accent);
   saveRun(); syncUI();
 }
@@ -1354,6 +1374,7 @@ function switchHero(cls) {
   S.hero.def = cls;
   S.hero.mana = cls.maxMana || 0;
   S.hero.cd = 0;
+  S.hero.skillCd = 0; S.hero.skillEffect = 0;
   addText(S.hero.x, S.hero.y - 24, cls.name + '(으)로 전직!', cls.accent);
   saveRun(); syncUI();
 }
@@ -1576,6 +1597,16 @@ function damage(e, amount, slow, slowT) {
     addText(e.x, e.y, '+' + e.rew, '#ffd45e');
     burst(e.x, e.y, e.def.color, e.type === 'boss' ? 34 : 12);
     if (e.type === 'boss') S.shake = 10;
+    if (S.hero) {
+      S.hero.xp++;
+      const need = heroXpToNext(S.hero.level);
+      if (S.hero.xp >= need) {
+        S.hero.xp -= need;
+        S.hero.level++;
+        addText(S.hero.x, S.hero.y - 30, 'Lv.' + S.hero.level + '!', '#ffe066');
+        burst(S.hero.x, S.hero.y, '#ffe066', 16);
+      }
+    }
   }
 }
 
@@ -1777,10 +1808,13 @@ function update(dt) {
   /* 영웅 (단일 영웅 시스템) */
   if (S.hero) {
     const hr = S.hero, cls = hr.def;
+    const hs = heroStatScaled(cls, hr.level);
     if (hr.spawnT > 0) hr.spawnT -= dt;
     if (hr.recoil > 0) hr.recoil -= dt * 6;
     hr.cd -= dt;
-    if (cls.mana && hr.mana < cls.maxMana) hr.mana = Math.min(cls.maxMana, hr.mana + cls.manaRegen * dt);
+    if (hr.skillCd > 0) hr.skillCd -= dt;
+    if (hr.skillEffect > 0) hr.skillEffect -= dt;
+    if (cls.mana && hr.mana < hs.maxMana) hr.mana = Math.min(hs.maxMana, hr.mana + hs.manaRegen * dt);
 
     const home = { x: CX + Math.cos(hr.homeAng) * CFG.postR * 0.6,
                    y: CY + Math.sin(hr.homeAng) * CFG.postR * 0.6 };
@@ -1800,7 +1834,7 @@ function update(dt) {
     }
     const m = Math.hypot(dx, dy);
     if (m > 0.01) {
-      const step = cls.spd * dt;
+      const step = hs.spd * dt;
       hr.x = clamp(hr.x + dx / m * step, 14, W - 14);
       hr.y = clamp(hr.y + dy / m * step, 14, H - 14);
     }
@@ -1810,17 +1844,52 @@ function update(dt) {
       hr.y = home.y + (hr.y - home.y) / off * roam;
     }
 
+    // 스킬 자동 발동 (레벨 10 이상, 쿨다운 완료, 적 존재)
+    if (cls.skill && hr.level >= cls.skill.unlockLv && hr.skillCd <= 0 && S.enemies.some(e => !e.dead)) {
+      const sk = cls.skill;
+      hr.skillCd = sk.cd;
+      hr.skillEffect = 0.5;
+      const skDmg = hs.dmg * sk.dmgMul;
+      if (cls.id === 'warrior') {
+        for (const e of S.enemies) {
+          if (e.dead) continue;
+          if (dist(hr.x, hr.y, e.x, e.y) <= sk.radius) {
+            damage(e, skDmg, 0, 0);
+            burst(e.x, e.y, '#ff4444', 6);
+          }
+        }
+        addText(hr.x, hr.y - 36, sk.name + '!', '#ff6666');
+      } else if (cls.id === 'archer') {
+        let count = 0;
+        for (const e of S.enemies) {
+          if (e.dead) continue;
+          if (dist(hr.x, hr.y, e.x, e.y) <= sk.radius && count < 20) {
+            fire(hr, e, skDmg, cls.bspd * 1.5, 0, 0, 0, '#66ff66');
+            count++;
+          }
+        }
+        addText(hr.x, hr.y - 36, sk.name + '!', '#66ff66');
+      } else if (cls.id === 'mage') {
+        for (const e of S.enemies) {
+          if (e.dead) continue;
+          damage(e, skDmg, 0.5, 2.5);
+          burst(e.x, e.y, '#d88aff', 8);
+        }
+        addText(hr.x, hr.y - 36, sk.name + '!', '#d88aff');
+      }
+    }
+
     if (inRange && hr.cd <= 0) {
       const canFire = !cls.mana || hr.mana >= cls.manaCost;
       if (canFire) {
-        hr.cd = 1 / cls.rate;
+        hr.cd = 1 / hs.rate;
         hr.recoil = 1;
         if (cls.mana) hr.mana -= cls.manaCost;
         if (cls.id === 'warrior') {
-          damage(inRange, cls.dmg, cls.slow, cls.slowT);
+          damage(inRange, hs.dmg, cls.slow, cls.slowT);
           burst(inRange.x, inRange.y, cls.accent, 8);
         } else {
-          fire(hr, inRange, cls.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, cls.accent);
+          fire(hr, inRange, hs.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, cls.accent);
         }
       }
     }
@@ -2128,13 +2197,49 @@ function draw() {
     }
     ctx.restore();
 
+    // 스킬 이펙트
+    if (hr.skillEffect > 0) {
+      const alpha = hr.skillEffect / 0.5;
+      const r = (1 - alpha) * (cls.skill.radius || 150);
+      ctx.globalAlpha = alpha * 0.4;
+      ctx.fillStyle = cls.color;
+      ctx.beginPath(); ctx.arc(hr.x, hr.y, r, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = alpha * 0.8;
+      ctx.strokeStyle = cls.accent; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(hr.x, hr.y, r, 0, 6.284); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // 레벨 표시
+    ctx.fillStyle = '#ffe066'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Lv.' + hr.level, hr.x, hr.y - 24);
+
+    // 경험치 바
+    const xbw = 30, xbh = 3, xbx = hr.x - xbw / 2, xby = hr.y + 24;
+    ctx.fillStyle = '#1a1e2e'; ctx.fillRect(xbx, xby, xbw, xbh);
+    ctx.fillStyle = '#ffe066';
+    ctx.fillRect(xbx, xby, xbw * (hr.xp / heroXpToNext(hr.level)), xbh);
 
     // 마법사 마나바
     if (cls.mana) {
-      const bw = 30, bh = 4, bx = hr.x - bw / 2, by = hr.y + 24;
+      const hs = heroStatScaled(cls, hr.level);
+      const bw = 30, bh = 3, bx = hr.x - bw / 2, by = hr.y + 28;
       ctx.fillStyle = '#1a1e2e'; ctx.fillRect(bx, by, bw, bh);
       ctx.fillStyle = '#a855f7';
-      ctx.fillRect(bx, by, bw * (hr.mana / cls.maxMana), bh);
+      ctx.fillRect(bx, by, bw * (hr.mana / hs.maxMana), bh);
+    }
+
+    // 스킬 쿨다운 표시 (레벨 10 이상)
+    if (cls.skill && hr.level >= cls.skill.unlockLv) {
+      const sk = cls.skill;
+      ctx.textAlign = 'center'; ctx.font = '9px sans-serif';
+      if (hr.skillCd > 0) {
+        ctx.fillStyle = '#ff6b81';
+        ctx.fillText(sk.name + ' ' + Math.ceil(hr.skillCd) + 's', hr.x, hr.y + 38);
+      } else {
+        ctx.fillStyle = '#66ffaa';
+        ctx.fillText(sk.name + ' 준비', hr.x, hr.y + 38);
+      }
     }
   }
 
@@ -2807,8 +2912,11 @@ function renderHeroShop() {
     statusEl.textContent = '영구 상점에서 「영웅」을 먼저 해금하십시오.';
   } else if (has) {
     const cls = S.hero.def;
-    const manaText = cls.mana ? ` · 마나 ${Math.floor(S.hero.mana)}/${cls.maxMana}` : '';
-    statusEl.innerHTML = `현재 영웅: <strong style="color:${cls.color}">${cls.name}</strong> (공격력 ${cls.dmg} · 사거리 ${cls.range} · 공속 ${cls.rate}${manaText})`;
+    const hs = heroStatScaled(cls, S.hero.level);
+    const manaText = cls.mana ? ` · 마나 ${Math.floor(S.hero.mana)}/${hs.maxMana}` : '';
+    const xpNeed = heroXpToNext(S.hero.level);
+    const skillText = cls.skill ? (S.hero.level >= cls.skill.unlockLv ? ` · <span style="color:#66ffaa">${cls.skill.name}</span>` : ` · <span style="color:#7b88a8">${cls.skill.name} (Lv.${cls.skill.unlockLv} 해금)</span>`) : '';
+    statusEl.innerHTML = `현재 영웅: <strong style="color:${cls.color}">${cls.name}</strong> Lv.${S.hero.level} (경험치 ${S.hero.xp}/${xpNeed})<br>공격력 ${Math.floor(hs.dmg)} · 사거리 ${cls.range} · 공속 ${hs.rate.toFixed(2)}${manaText}${skillText}`;
   } else {
     statusEl.textContent = '영웅을 선택해 소환하세요. 영웅은 인구를 차지하지 않습니다.';
   }
