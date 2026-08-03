@@ -886,10 +886,9 @@ const NEXUS_UPS = [
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.incomeMul += 0.04; } },
   { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
-    // 최대 10기까지 겹쳐 쌓이는 강한 옵션이라, 일반 강화보다 증가율을 가파르게 둔다
     cost: lv => Math.floor(400 * Math.pow(1.35, lv)),
     max: 10,
-    cond: () => S && S.hasMechanic,
+    cond: () => S && (S.hasMechanic || S.drone),
     apply: s => {
       if (!s.drone) s.drone = { count:0, dmg:DRONE.dmg, orbitR:DRONE.orbitR,
                                 spd:DRONE.spd, baseAng:0, cds:[] };
@@ -909,12 +908,12 @@ const NEXUS_UPS = [
     max: 1,
     apply: s => { s.gravWave = { dmg: GRAV.dmg, range: GRAV.range, ang: 0 }; } },
   { id:'gravDmg',  name:'중력파 공격력', desc:`중력파 초당 피해 +${GRAV.dmgStep}`,
-    stat: () => `현재 ${S.gravWave.dmg}/초`,
+    stat: () => S.gravWave ? `현재 ${S.gravWave.dmg}/초` : '',
     cost: lv => Math.floor(80 * Math.pow(UP_COST_GROW, lv)),
     cond: () => S && S.gravWave,
     apply: s => { s.gravWave.dmg += GRAV.dmgStep; } },
   { id:'gravRng',  name:'중력파 범위',   desc:`중력파 범위 +${GRAV.rangeStep}`,
-    stat: () => `현재 ${S.gravWave.range}`,
+    stat: () => S.gravWave ? `현재 ${S.gravWave.range}` : '',
     cost: lv => Math.floor(80 * Math.pow(UP_COST_GROW, lv)),
     cond: () => S && S.gravWave,
     apply: s => { s.gravWave.range += GRAV.rangeStep; } },
@@ -927,6 +926,7 @@ const NEXUS_UPS = [
 const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
   gndDmg: 3, mechDmg: 5, airDmg: 7,
+  gravDmg: 4, gravRng: 10, droneCnt: 1, droneDmg: 3,
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 
@@ -945,6 +945,18 @@ const META = [
     desc: lv => `재생 +${num(lv * MSTEP.mregen)} (현재 ${num(lv * MSTEP.mregen)}/초)` },
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
+  { id:'m_grav',  name:'중력파 해금',     max:1, base:3000,
+    desc: lv => lv ? '매 판 시작 시 중력파 자동 활성화' : '게임 시작 시 중력파가 자동으로 가동된다' },
+  { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50,
+    desc: lv => `중력파 피해 +${num(lv * MSTEP.gravDmg)} (현재 +${num(lv * MSTEP.gravDmg)})` },
+  { id:'m_gravRng', name:'중력파 범위',   max:Infinity, base:60,
+    desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 +${num(lv * MSTEP.gravRng)})` },
+  { id:'m_drone', name:'드론 해금',       max:1, base:4000,
+    desc: lv => lv ? '매 판 시작 시 드론 1기 자동 배치' : '수리공 없이 드론 1기로 시작한다' },
+  { id:'m_droneCnt', name:'드론 추가',    max:9, base:80,
+    desc: lv => `시작 드론 +${lv} (현재 ${1 + lv}기)` },
+  { id:'m_droneDmg', name:'드론 공격력',  max:Infinity, base:60,
+    desc: lv => `드론 피해 +${num(lv * MSTEP.droneDmg)} (현재 +${num(lv * MSTEP.droneDmg)})` },
 ];
 
 /* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
@@ -1172,6 +1184,22 @@ function newGame(startWave) {
     drone: null,
     gravWave: null,
   };
+  if (mlv('m_grav') > 0) {
+    S.gravWave = {
+      dmg: GRAV.dmg + mlv('m_gravDmg') * MSTEP.gravDmg,
+      range: GRAV.range + mlv('m_gravRng') * MSTEP.gravRng,
+      ang: 0,
+    };
+  }
+  if (mlv('m_drone') > 0) {
+    const cnt = 1 + mlv('m_droneCnt');
+    S.drone = {
+      count: cnt,
+      dmg: DRONE.dmg + mlv('m_droneDmg') * MSTEP.droneDmg,
+      orbitR: DRONE.orbitR, spd: DRONE.spd,
+      baseAng: 0, cds: Array(cnt).fill(0),
+    };
+  }
   if (mlv('p_mech') > 0) {
     const mechDef = defById('mechanic');
     const ang = 0;
