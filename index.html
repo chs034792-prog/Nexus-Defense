@@ -2137,16 +2137,16 @@ function draw() {
     ctx.globalAlpha = 1;
   }
 
-  /* 영구 작업공 표시 */
+  /* 영구 작업공 표시 — 우측 하단, 넥서스 정보 버튼 위 */
   if (S.hasMechanic && !S.heroes.some(h => h.def.id === 'mechanic')) {
     ctx.save();
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(8, H - 20, 8, 8);
+    ctx.fillRect(W - 62, H - 42, 8, 8);
     ctx.globalAlpha = 0.7;
     ctx.font = '11px "Malgun Gothic", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('작업공', 20, H - 12);
+    ctx.fillText('작업공', W - 50, H - 34);
     ctx.restore();
   }
 
