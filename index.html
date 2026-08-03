@@ -539,10 +539,27 @@ const heroUpCost = lv => Math.floor(HERO_UP.base * Math.pow(HERO_UP.grow, lv));
 const GROUND_UP = { base: 50, step: 1 };
 const groundUpCost = lv => GROUND_UP.base * (lv + 1);
 
-// 영웅 — 고용하면 넥서스 주변에 나타나고, 적이 오면 직접 요격하러 간다
-const HEROES = [
-  // 영웅 유닛 일시 비활성화
+// 영웅 — 단 1기만 소환, 직업 전환 가능. 인구를 차지하지 않는다.
+const HEROES = [];
+const HERO_CLASSES = [
+  { id:'warrior', name:'전사', color:'#ef4444', accent:'#fca5a5',
+    dmg:45, range:90, rate:1.8, bspd:0, spd:160, splash:0, slow:0, slowT:0,
+    roam:200, heroClass:true,
+    desc:'짧은 사거리의 높은 공격력, 근접 전투의 달인',
+    summonCost: 0, switchCost: 500 },
+  { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
+    dmg:18, range:280, rate:3.0, bspd:700, spd:120, splash:0, slow:0, slowT:0,
+    roam:300, heroClass:true,
+    desc:'넓은 사거리와 빠른 공격속도의 원거리 전문가',
+    summonCost: 0, switchCost: 500 },
+  { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
+    dmg:60, range:200, rate:0.8, bspd:400, spd:100, splash:50, slow:0.3, slowT:1.5,
+    roam:250, heroClass:true,
+    mana: true, maxMana: 100, manaCost: 12, manaRegen: 5,
+    desc:'마나를 소모해 강력한 광역 마법으로 적을 제압하고 감속시킨다',
+    summonCost: 0, switchCost: 500 },
 ];
+const heroClassById = id => HERO_CLASSES.find(c => c.id === id);
 
 const GROUND_UNITS = [
   { id:'swordsman', name:'검사', cost:500, color:'#4ade80', accent:'#a7f3d0',
@@ -971,6 +988,9 @@ const BARRACK_META = [
     desc: lv => lv ? '기갑 탭 해금됨' : '게임 내 기갑 유닛 탭을 해금한다' },
   { id:'t_air',    name:'공중 병과 해금', max:1, base:100000,
     desc: lv => lv ? '공중 탭 해금됨' : '게임 내 공중 유닛 탭을 해금한다' },
+  { id:'t_hero',   name:'영웅 해금', max:1, base:8000,
+    req: () => save.best >= 200,
+    desc: lv => lv ? '영웅 탭 해금됨' : '영웅을 소환할 수 있다 (200웨이브 클리어 필요)' },
   { id:'p_mech',   name:'작업공 영구 배치', max:1, base:5000,
     desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
   { id:'gndDmg', name:'지상군 영구 강화', max:Infinity, base:60,
@@ -1099,6 +1119,7 @@ function saveRun() {
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
+    hero: S.hero ? { classId: S.hero.classId, mana: S.hero.mana, homeAng: S.hero.homeAng } : null,
     dev: DEV,                       // 운영자 모드에서 만든 판임을 표시
   };
   try { localStorage.setItem(RUN_KEY, JSON.stringify(snap)); } catch (e) {}
@@ -1187,6 +1208,7 @@ function newGame(startWave) {
     hasMechanic: false,
     drone: null,
     gravWave: null,
+    hero: null,
   };
   if (mlv('m_grav') > 0) {
     S.gravWave = {
@@ -1254,6 +1276,16 @@ function resumeGame(snap) {
     return { def, invested: h.invested, homeAng: h.homeAng,
              x: post.x, y: post.y, cd: 0, ang: 0, recoil: 0, spawnT: 0 };
   });
+  if (snap.hero) {
+    const cls = heroClassById(snap.hero.classId);
+    if (cls) {
+      const ang = snap.hero.homeAng ?? 0;
+      const px = CX + Math.cos(ang) * CFG.postR * 0.6;
+      const py = CY + Math.sin(ang) * CFG.postR * 0.6;
+      S.hero = { classId: cls.id, def: cls, mana: snap.hero.mana ?? cls.maxMana ?? 0,
+                 homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0 };
+    }
+  }
   S.autoT = AUTO_WAVE_SEC;
   saveRun();
   syncUI();
@@ -1291,6 +1323,7 @@ const heroBlocked = def => CFG.heroesLocked || !S.heroShop || popFull() ||
 const isGround = def => GROUND_UNITS.some(g => g.id === def.id);
 const isMech   = def => MECH_UNITS.some(g => g.id === def.id);
 const isAir    = def => AIR_UNITS.some(g => g.id === def.id);
+const isHeroClass = def => !!def.heroClass;
 const heroStat = h => ({
   dmg:   isGround(h.def) ? h.def.dmg + S.groundDmgAdd
        : isMech(h.def)   ? h.def.dmg + S.mechDmgAdd
@@ -1299,6 +1332,38 @@ const heroStat = h => ({
   range: h.def.range,
   rate:  h.def.rate,
 });
+
+function summonHero(cls) {
+  if (!S.heroShop || S.hero) return;
+  const ang = Math.random() * 6.2832;
+  const px = CX + Math.cos(ang) * CFG.postR * 0.6;
+  const py = CY + Math.sin(ang) * CFG.postR * 0.6;
+  S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
+             homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6 };
+  addText(px, py - 24, cls.name + ' 소환!', cls.accent);
+  saveRun(); syncUI();
+}
+
+function switchHero(cls) {
+  if (!S.heroShop || !S.hero) return;
+  if (S.hero.classId === cls.id) return;
+  const cost = cls.switchCost;
+  if (S.gold < cost) return;
+  S.gold -= cost;
+  S.hero.classId = cls.id;
+  S.hero.def = cls;
+  S.hero.mana = cls.maxMana || 0;
+  S.hero.cd = 0;
+  addText(S.hero.x, S.hero.y - 24, cls.name + '(으)로 전직!', cls.accent);
+  saveRun(); syncUI();
+}
+
+function dismissHero() {
+  if (!S.hero) return;
+  addText(S.hero.x, S.hero.y - 24, '영웅 해산', '#ff6b81');
+  S.hero = null;
+  saveRun(); syncUI();
+}
 
 function hire(def) {
   const cost = heroCost(def);
@@ -1709,6 +1774,58 @@ function update(dt) {
     }
   }
 
+  /* 영웅 (단일 영웅 시스템) */
+  if (S.hero) {
+    const hr = S.hero, cls = hr.def;
+    if (hr.spawnT > 0) hr.spawnT -= dt;
+    if (hr.recoil > 0) hr.recoil -= dt * 6;
+    hr.cd -= dt;
+    if (cls.mana && hr.mana < cls.maxMana) hr.mana = Math.min(cls.maxMana, hr.mana + cls.manaRegen * dt);
+
+    const home = { x: CX + Math.cos(hr.homeAng) * CFG.postR * 0.6,
+                   y: CY + Math.sin(hr.homeAng) * CFG.postR * 0.6 };
+    const roam = cls.roam ?? cls.range;
+    const inRange = pickTarget(hr.x, hr.y, cls.range);
+    const goal = inRange || pickTarget(home.x, home.y, roam);
+    if (goal) hr.ang = Math.atan2(goal.y - hr.y, goal.x - hr.x);
+
+    let dx = 0, dy = 0;
+    if (goal) {
+      const d = dist(hr.x, hr.y, goal.x, goal.y);
+      const keep = cls.range * 0.8;
+      if (d > keep) { dx = (goal.x - hr.x) / d; dy = (goal.y - hr.y) / d; }
+    } else {
+      const d = dist(hr.x, hr.y, home.x, home.y);
+      if (d > 4) { dx = (home.x - hr.x) / d; dy = (home.y - hr.y) / d; hr.ang = Math.atan2(dy, dx); }
+    }
+    const m = Math.hypot(dx, dy);
+    if (m > 0.01) {
+      const step = cls.spd * dt;
+      hr.x = clamp(hr.x + dx / m * step, 14, W - 14);
+      hr.y = clamp(hr.y + dy / m * step, 14, H - 14);
+    }
+    const off = dist(hr.x, hr.y, home.x, home.y);
+    if (off > roam) {
+      hr.x = home.x + (hr.x - home.x) / off * roam;
+      hr.y = home.y + (hr.y - home.y) / off * roam;
+    }
+
+    if (inRange && hr.cd <= 0) {
+      const canFire = !cls.mana || hr.mana >= cls.manaCost;
+      if (canFire) {
+        hr.cd = 1 / cls.rate;
+        hr.recoil = 1;
+        if (cls.mana) hr.mana -= cls.manaCost;
+        if (cls.id === 'warrior') {
+          damage(inRange, cls.dmg, cls.slow, cls.slowT);
+          burst(inRange.x, inRange.y, cls.accent, 8);
+        } else {
+          fire(hr, inRange, cls.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, cls.accent);
+        }
+      }
+    }
+  }
+
   /* 드론 — 넥서스 주변을 선회하며 부딪히는 적에게 피해 */
   if (S.drone && S.drone.count > 0) {
     const dr = S.drone;
@@ -1960,6 +2077,72 @@ function draw() {
       ctx.beginPath(); ctx.arc(0, 0, 4, 0, 6.284); ctx.fill();
     }
     ctx.restore();
+  }
+
+  /* 단일 영웅 렌더링 */
+  if (S.hero) {
+    const hr = S.hero, cls = hr.def;
+    const pop = hr.spawnT > 0 ? 1 + hr.spawnT * 0.8 : 1;
+    ctx.save();
+    ctx.translate(hr.x, hr.y);
+    ctx.scale(pop, pop);
+
+    // 외곽 원 (영웅 표시)
+    ctx.fillStyle = '#1c2437';
+    ctx.strokeStyle = cls.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 20, 0, 6.284);
+    ctx.fill(); ctx.stroke();
+
+    // 내부 아이콘
+    ctx.rotate(hr.ang);
+    if (cls.id === 'warrior') {
+      // 검 모양
+      ctx.strokeStyle = cls.accent; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(16, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(14, -4); ctx.lineTo(18, 0); ctx.lineTo(14, 4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-2, -6); ctx.lineTo(-2, 6); ctx.stroke();
+      ctx.fillStyle = cls.color;
+      ctx.fillRect(-10, -3, 5, 6);
+    } else if (cls.id === 'archer') {
+      // 활 모양
+      ctx.strokeStyle = cls.accent; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(-4, 0, 12, -1.2, 1.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-4 + 12 * Math.cos(-1.2), 12 * Math.sin(-1.2));
+      ctx.lineTo(-4 + 12 * Math.cos(1.2), 12 * Math.sin(1.2)); ctx.stroke();
+      // 화살
+      ctx.strokeStyle = cls.color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(14, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(12, -3); ctx.lineTo(16, 0); ctx.lineTo(12, 3); ctx.stroke();
+    } else if (cls.id === 'mage') {
+      // 지팡이 모양
+      ctx.strokeStyle = cls.accent; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.stroke();
+      // 지팡이 끝 보석
+      ctx.fillStyle = cls.color;
+      ctx.beginPath(); ctx.arc(12, 0, 5, 0, 6.284); ctx.fill();
+      ctx.fillStyle = cls.accent;
+      ctx.globalAlpha = 0.6 + Math.sin(Date.now() * 0.005) * 0.3;
+      ctx.beginPath(); ctx.arc(12, 0, 3, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    // 영웅 활동 반경
+    ctx.strokeStyle = `rgba(${cls.id === 'warrior' ? '239,68,68' : cls.id === 'archer' ? '34,197,94' : '168,85,247'},.09)`;
+    ctx.setLineDash([5, 10]);
+    const hHome = { x: CX + Math.cos(hr.homeAng) * CFG.postR * 0.6,
+                    y: CY + Math.sin(hr.homeAng) * CFG.postR * 0.6 };
+    ctx.beginPath(); ctx.arc(hHome.x, hHome.y, cls.roam ?? cls.range, 0, 6.284); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 마법사 마나바
+    if (cls.mana) {
+      const bw = 30, bh = 4, bx = hr.x - bw / 2, by = hr.y + 24;
+      ctx.fillStyle = '#1a1e2e'; ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = '#a855f7';
+      ctx.fillRect(bx, by, bw * (hr.mana / cls.maxMana), bh);
+    }
   }
 
   /* 버퍼 오라 표시 */
@@ -2369,14 +2552,16 @@ function renderBarrack() {
   $('barrackMetaList').innerHTML = BARRACK_META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const inf = !Number.isFinite(m.max);
-    const lvText = inf ? `Lv.${lv}` : (maxed ? '보유' : '');
-    return `<div class="meta ${maxed ? 'max' : ''}">
+    const locked = m.req && !m.req();
+    const lvText = locked ? '' : inf ? `Lv.${lv}` : (maxed ? '보유' : '');
+    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
       <div class="info">
         <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">${lvText}</span></div>
-        <div class="ds">${m.desc(lv)}${inf && !maxed ? ` → ${m.desc(lv + 1)}` : ''}</div>
+        <div class="ds">${locked ? '200웨이브 클리어 필요' : `${m.desc(lv)}${inf && !maxed ? ` → ${m.desc(lv + 1)}` : ''}`}</div>
       </div>
-      <button data-bm="${m.id}" ${maxed || save.cores < c ? 'disabled' : ''}>
+      <button data-bm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
         ${maxed ? '<span class="cost">보유</span>'
+                : locked ? '<span class="cost">잠김</span>'
                 : `<span class="cost">${c}</span><span class="unit">코어</span>`}
       </button>
     </div>`;
@@ -2384,6 +2569,7 @@ function renderBarrack() {
   $('barrackMetaList').querySelectorAll('button[data-bm]').forEach(el => {
     el.onclick = () => {
       const m = BARRACK_META.find(x => x.id === el.dataset.bm);
+      if (m.req && !m.req()) return;
       const lv = mlv(m.id), c = metaCost(m, lv);
       if (lv >= m.max || save.cores < c) return;
       save.cores -= c; save.meta[m.id] = lv + 1;
@@ -2417,42 +2603,43 @@ function buildShops() {
     return { u, card, btn, lv: card.querySelector('.lv'), ds: card.querySelector('.ds') };
   });
 
-  $('heroShop').innerHTML = `
-    <div class="card" id="heroUpCard">
-      <div class="swatch" style="background:#ff8a50;color:#ff8a50"></div>
+  $('heroShop').innerHTML = `<div id="heroStatus" style="padding:8px 12px;color:#7b88a8;font-size:13px"></div>`
+    + HERO_CLASSES.map(cls => `
+    <div class="card" data-hc="${cls.id}">
+      <div class="swatch" style="background:${cls.color};color:${cls.color}"></div>
       <div>
-        <div class="nm">영웅 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">모든 영웅 공격력 +${(HERO_UP.step * 100).toFixed(0)}%</div>
-      </div>
-      <button class="buy"></button>
-    </div>`
-    + HEROES.map(d => `
-    <div class="card" data-h="${d.id}">
-      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
-      <div>
-        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${d.desc}</div>
+        <div class="nm">${cls.name} <span class="heroTag" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${cls.desc}</div>
       </div>
       <button class="buy"></button>
     </div>`).join('')
-    + '<p class="hint lockmsg" style="margin-top:9px;display:none">영웅 고용은 현재 잠겨 있습니다.</p>'
+    + `<div class="card" id="heroDismissCard" style="display:none">
+      <div><div class="nm" style="color:#ff6b81">영웅 해산</div>
+        <div class="ds">현재 영웅을 해산합니다</div></div>
+      <button class="buy danger">해산</button>
+    </div>`
     + `<div class="card popCard"><div>
         <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
         <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
       </div><button class="buy"></button></div>`;
 
-  const hupCard = $('heroUpCard');
-  els.heroUp = { card: hupCard, btn: hupCard.querySelector('button'), lv: hupCard.querySelector('.lv') };
-  hupCard.onclick = buyHeroUp;
-  els.heroUp.btn.onclick = ev => { ev.stopPropagation(); buyHeroUp(); };
-
-  els.hero = HEROES.map(d => {
-    const card = $('heroShop').querySelector(`.card[data-h="${d.id}"]`);
+  els.heroClasses = HERO_CLASSES.map(cls => {
+    const card = $('heroShop').querySelector(`.card[data-hc="${cls.id}"]`);
     const btn = card.querySelector('button');
-    card.onclick = () => hire(d);
-    btn.onclick = ev => { ev.stopPropagation(); hire(d); };
-    return { d, card, btn, cnt: card.querySelector('.cnt') };
+    btn.onclick = ev => {
+      ev.stopPropagation();
+      if (!S.hero) summonHero(cls);
+      else switchHero(cls);
+    };
+    card.onclick = () => {
+      if (!S.hero) summonHero(cls);
+      else switchHero(cls);
+    };
+    return { cls, card, btn, tag: card.querySelector('.heroTag') };
   });
+  const dismissCard = $('heroDismissCard');
+  dismissCard.querySelector('button').onclick = ev => { ev.stopPropagation(); dismissHero(); };
+  dismissCard.onclick = dismissHero;
 
   // 지상 유닛 상점
   $('groundShop').innerHTML = GROUND_UNITS.map(d => `
@@ -2620,29 +2807,42 @@ function buyHeroUp() {
 }
 
 function renderHeroShop() {
-  const locked = CFG.heroesLocked || !S.heroShop;
-
-  const hc = heroUpCost(S.heroUpLv), hupOff = locked || S.gold < hc;
-  els.heroUp.lv.textContent = `(×${S.dmgMul.toFixed(2)})`;
-  els.heroUp.btn.textContent = locked ? '잠김' : hc + 'G';
-  els.heroUp.btn.disabled = hupOff;
-  els.heroUp.card.classList.toggle('poor', hupOff);
-
-  for (const e of els.hero) {
-    const c = heroCost(e.d), owned = ownedCount(e.d.id), blocked = heroBlocked(e.d);
-    const off = blocked || S.gold < c;
-    e.cnt.textContent = owned ? '×' + owned : '';
-    e.btn.textContent = locked ? '잠김'
-                      : popFull() ? '인구 초과'
-                      : blocked ? '보유중'
-                      : c + 'G';
-    e.btn.disabled = off;
-    e.card.classList.toggle('poor', off);
+  const locked = !S.heroShop;
+  const has = !!S.hero;
+  const statusEl = $('heroStatus');
+  if (locked) {
+    statusEl.textContent = '영구 상점에서 「영웅」을 먼저 해금하십시오.';
+  } else if (has) {
+    const cls = S.hero.def;
+    const manaText = cls.mana ? ` · 마나 ${Math.floor(S.hero.mana)}/${cls.maxMana}` : '';
+    statusEl.innerHTML = `현재 영웅: <strong style="color:${cls.color}">${cls.name}</strong> (공격력 ${cls.dmg} · 사거리 ${cls.range} · 공속 ${cls.rate}${manaText})`;
+  } else {
+    statusEl.textContent = '영웅을 선택해 소환하세요. 영웅은 인구를 차지하지 않습니다.';
   }
-  const msg = $('heroShop').querySelector('.lockmsg');
-  msg.style.display = locked ? '' : 'none';
-  msg.textContent = CFG.heroesLocked ? '영웅 고용은 현재 잠겨 있습니다.'
-                                     : '영구 상점에서 「영웅 병과」를 먼저 해금하십시오.';
+
+  for (const e of els.heroClasses) {
+    const isCurrent = has && S.hero.classId === e.cls.id;
+    if (locked) {
+      e.btn.textContent = '잠김';
+      e.btn.disabled = true;
+      e.tag.textContent = '';
+    } else if (!has) {
+      e.btn.textContent = '소환';
+      e.btn.disabled = false;
+      e.tag.textContent = '';
+    } else if (isCurrent) {
+      e.btn.textContent = '선택됨';
+      e.btn.disabled = true;
+      e.tag.textContent = '현재';
+    } else {
+      const cost = e.cls.switchCost;
+      e.btn.textContent = cost + 'G';
+      e.btn.disabled = S.gold < cost;
+      e.tag.textContent = '전직';
+    }
+    e.card.classList.toggle('poor', e.btn.disabled);
+  }
+  $('heroDismissCard').style.display = has && !locked ? '' : 'none';
 }
 
 // 카드 어디를 누르든(비용 버튼 포함) 한 번에 강화된다
