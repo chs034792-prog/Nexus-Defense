@@ -887,7 +887,7 @@ const NEXUS_UPS = [
     apply: s => { s.incomeMul += 0.04; } },
   { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
     cost: lv => Math.floor(400 * Math.pow(1.35, lv)),
-    max: 10,
+    get max() { return 10 - (mlv('m_drone') > 0 ? 1 + mlv('m_droneCnt') : 0); },
     cond: () => S && (S.hasMechanic || S.drone),
     apply: s => {
       if (!s.drone) s.drone = { count:0, dmg:DRONE.dmg, orbitR:DRONE.orbitR,
