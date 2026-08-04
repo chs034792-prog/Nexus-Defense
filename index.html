@@ -2876,6 +2876,30 @@ function buildShops() {
   });
 
   $('heroShop').innerHTML = `<div id="heroStatus" style="padding:8px 12px;color:#7b88a8;font-size:13px"></div>`
+    + `<div id="heroInfoPanel" style="display:none;padding:4px 12px 2px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+        <span id="heroInfoName" style="font-weight:700;font-size:14px"></span>
+        <span id="heroInfoLv" style="color:#ffe066;font-size:13px;font-weight:600"></span>
+      </div>
+      <div style="background:#1a1f2e;border-radius:4px;height:7px;overflow:hidden;margin-bottom:3px">
+        <div id="heroXpBar" style="height:100%;background:linear-gradient(90deg,#ffe066,#ffd700);border-radius:4px;transition:width .3s"></div>
+      </div>
+      <div id="heroXpText" style="font-size:11px;color:#7b88a8;margin-bottom:5px"></div>
+      <div id="heroStatsRow" style="font-size:12px;color:#a0aec0;line-height:1.6"></div>
+    </div>`
+    + `<div id="heroSkillSection" style="display:none;padding:4px 12px 2px">
+      <div style="font-size:12px;color:#7b88a8;margin-bottom:3px;font-weight:600">스킬</div>
+      <div class="card" id="heroSkillCard" style="margin:0;pointer-events:none">
+        <div class="swatch" id="heroSkillSwatch"></div>
+        <div>
+          <div class="nm" id="heroSkillName"></div>
+          <div class="ds" id="heroSkillDesc"></div>
+          <div class="ds" id="heroSkillInfo" style="font-size:11px;color:#7b88a8"></div>
+        </div>
+        <div id="heroSkillBadge" style="font-size:12px;font-weight:600;white-space:nowrap;padding:0 6px"></div>
+      </div>
+    </div>`
+    + `<div style="padding:4px 12px 2px;font-size:12px;color:#7b88a8;font-weight:600">영웅 선택</div>`
     + HERO_CLASSES.map(cls => `
     <div class="card" data-hc="${cls.id}">
       <div class="swatch" style="background:${cls.color};color:${cls.color}"></div>
@@ -3081,20 +3105,49 @@ function buyHeroUp() {
 }
 
 function renderHeroShop() {
-  const locked = !(mlv('t_hero') > 0 && save.meta.heroClass);
+  const locked = !(mlv('t_hero') > 0);
   const has = !!S.hero;
   const statusEl = $('heroStatus');
+  const infoPanel = $('heroInfoPanel');
+  const skillSec = $('heroSkillSection');
   if (locked) {
     statusEl.textContent = '영구 상점에서 「영웅」을 먼저 해금하십시오.';
+    infoPanel.style.display = 'none';
+    skillSec.style.display = 'none';
   } else if (has) {
     const cls = S.hero.def;
     const hs = heroStatScaled(cls, S.hero.level);
-    const manaText = cls.mana ? ` · 마나 ${Math.floor(S.hero.mana)}/${hs.maxMana}` : '';
     const xpNeed = heroXpToNext(S.hero.level);
-    const skillText = cls.skill ? (S.hero.level >= cls.skill.unlockLv ? ` · <span style="color:#66ffaa">${cls.skill.name}</span>` : ` · <span style="color:#7b88a8">${cls.skill.name} (Lv.${cls.skill.unlockLv} 해금)</span>`) : '';
-    statusEl.innerHTML = `현재 영웅: <strong style="color:${cls.color}">${cls.name}</strong> Lv.${S.hero.level} (경험치 ${S.hero.xp}/${xpNeed})<br>공격력 ${Math.floor(hs.dmg)} · 사거리 ${cls.range} · 공속 ${hs.rate.toFixed(2)}${manaText}${skillText}`;
+    const xpPct = Math.min(S.hero.xp / xpNeed * 100, 100);
+    statusEl.textContent = '';
+    infoPanel.style.display = '';
+    $('heroInfoName').textContent = cls.name;
+    $('heroInfoName').style.color = cls.color;
+    $('heroInfoLv').textContent = 'Lv.' + S.hero.level;
+    $('heroXpBar').style.width = xpPct + '%';
+    $('heroXpText').textContent = `경험치 ${S.hero.xp} / ${xpNeed}`;
+    let stats = `공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range} · 이동속도 ${Math.floor(hs.spd)}`;
+    if (cls.mana) stats += ` · 마나 ${Math.floor(S.hero.mana)}/${hs.maxMana} · 회복 ${hs.manaRegen.toFixed(1)}/s`;
+    $('heroStatsRow').textContent = stats;
+    if (cls.skill) {
+      skillSec.style.display = '';
+      const sk = cls.skill;
+      const ok = S.hero.level >= sk.unlockLv;
+      $('heroSkillSwatch').style.background = ok ? cls.color : '#3a3f4e';
+      $('heroSkillSwatch').style.color = ok ? cls.color : '#3a3f4e';
+      $('heroSkillName').textContent = sk.name;
+      $('heroSkillName').style.color = ok ? cls.color : '#7b88a8';
+      $('heroSkillDesc').textContent = sk.desc;
+      $('heroSkillInfo').textContent = `쿨다운 ${sk.cd}초 · 피해배율 ×${sk.dmgMul}`;
+      $('heroSkillBadge').textContent = ok ? '습득됨' : `Lv.${sk.unlockLv} 해금`;
+      $('heroSkillBadge').style.color = ok ? '#66ffaa' : '#ff6b81';
+    } else {
+      skillSec.style.display = 'none';
+    }
   } else {
     statusEl.textContent = '영웅을 선택해 소환하세요. 영웅은 인구를 차지하지 않습니다.';
+    infoPanel.style.display = 'none';
+    skillSec.style.display = 'none';
   }
 
   for (const e of els.heroClasses) {
@@ -3321,9 +3374,9 @@ function syncUI() {
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
-const heroTabLocked = () => true;
-const SHOP_PANELS = ['nexus', 'ground', 'mech', 'air'];
-const TECH_TABS = { ground: 't_ground', mech: 't_mech', air: 't_air' };
+const heroTabLocked = () => !(mlv('t_hero') > 0);
+const SHOP_PANELS = ['nexus', 'hero', 'ground', 'mech', 'air'];
+const TECH_TABS = { hero: 't_hero', ground: 't_ground', mech: 't_mech', air: 't_air' };
 
 document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
