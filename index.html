@@ -2662,7 +2662,7 @@ function renderNexusInfo() {
   ].map(([k, v]) => `<div class="stat"><span>${k}</span><b>${v}</b></div>`).join('');
 }
 
-function forceAdminCores() { if (DEV) save.cores = ADMIN_CORES; }
+function forceAdminCores() { if (DEV) { save.cores = ADMIN_CORES; save.specialCores = 50000; } }
 
 function renderMenu() {
   forceAdminCores();
