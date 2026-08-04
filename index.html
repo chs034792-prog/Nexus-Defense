@@ -2887,6 +2887,7 @@ function buildShops() {
       <div>
         <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
         <div class="ds">${d.desc}</div>
+        ${d.noCombat ? '' : `<div class="ds stat" style="color:#7b88a8;font-size:11px"></div>`}
       </div>
       <button class="buy"></button>
     </div>`).join('')
@@ -2908,7 +2909,7 @@ function buildShops() {
     const btn = card.querySelector('button');
     card.onclick = () => hireGround(d);
     btn.onclick = ev => { ev.stopPropagation(); hireGround(d); };
-    return { d, card, btn, cnt: card.querySelector('.cnt') };
+    return { d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
   });
 
   const gupCard = $('groundUpCard');
@@ -2923,6 +2924,7 @@ function buildShops() {
       <div>
         <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
         <div class="ds">${d.desc}</div>
+        <div class="ds stat" style="color:#7b88a8;font-size:11px"></div>
       </div>
       <button class="buy"></button>
     </div>`).join('')
@@ -2944,7 +2946,7 @@ function buildShops() {
     const btn = card.querySelector('button');
     card.onclick = () => hireMech(d);
     btn.onclick = ev => { ev.stopPropagation(); hireMech(d); };
-    return { d, card, btn, cnt: card.querySelector('.cnt') };
+    return { d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
   });
 
   const mupCard = $('mechUpCard');
@@ -2959,6 +2961,7 @@ function buildShops() {
       <div>
         <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
         <div class="ds">${d.desc}</div>
+        <div class="ds stat" style="color:#7b88a8;font-size:11px"></div>
       </div>
       <button class="buy"></button>
     </div>`).join('')
@@ -2980,7 +2983,7 @@ function buildShops() {
     const btn = card.querySelector('button');
     card.onclick = () => hireAir(d);
     btn.onclick = ev => { ev.stopPropagation(); hireAir(d); };
-    return { d, card, btn, cnt: card.querySelector('.cnt') };
+    return { d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
   });
 
   const aupCard = $('airUpCard');
@@ -3111,6 +3114,10 @@ function renderGroundShop() {
                       : c + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
+    if (e.stat) {
+      const dmg = e.d.dmg + S.groundDmgAdd;
+      e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}`;
+    }
   }
 
   const gc = groundUpCost(S.groundUpLv), gOff = !S.groundShop || S.gold < gc;
@@ -3128,6 +3135,8 @@ function renderMechShop() {
     e.btn.textContent = popFull() ? '인구 초과' : c + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
+    const dmg = e.d.dmg + S.mechDmgAdd;
+    e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}${e.d.splash ? ' · 폭발 ' + e.d.splash : ''}`;
   }
 
   const mc = mechUpCost(S.mechUpLv), mOff = !S.mechShop || S.gold < mc;
@@ -3145,6 +3154,8 @@ function renderAirShop() {
     e.btn.textContent = popFull() ? '인구 초과' : c + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
+    const dmg = e.d.dmg + S.airDmgAdd;
+    e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}${e.d.splash ? ' · 폭발 ' + e.d.splash : ''}`;
   }
 
   const ac = airUpCost(S.airUpLv), aOff = !S.airShop || S.gold < ac;
