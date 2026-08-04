@@ -1007,22 +1007,20 @@ const META = [
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
   { id:'m_grav',  name:'중력파 해금',     max:1, base:3000,
-    req: () => mlv('p_mech') > 0,
     desc: lv => lv ? '매 판 시작 시 중력파 자동 활성화' : '게임 시작 시 중력파가 자동으로 가동된다' },
   { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50,
-    req: () => mlv('p_mech') > 0,
+    req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 피해 +${num(lv * MSTEP.gravDmg)} (현재 +${num(lv * MSTEP.gravDmg)})` },
   { id:'m_gravRng', name:'중력파 범위',   max:Infinity, base:60,
-    req: () => mlv('p_mech') > 0,
+    req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 +${num(lv * MSTEP.gravRng)})` },
   { id:'m_drone', name:'드론 해금',       max:1, base:4000,
-    req: () => mlv('p_mech') > 0,
     desc: lv => lv ? '매 판 시작 시 드론 1기 자동 배치' : '작업공 없이 드론 1기로 시작한다' },
   { id:'m_droneCnt', name:'드론 추가',    max:9, base:80,
-    req: () => mlv('p_mech') > 0,
+    req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
     desc: lv => `시작 드론 +${lv} (현재 ${1 + lv}기)` },
   { id:'m_droneDmg', name:'드론 공격력',  max:Infinity, base:60,
-    req: () => mlv('p_mech') > 0,
+    req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
     desc: lv => `드론 피해 +${num(lv * MSTEP.droneDmg)} (현재 +${num(lv * MSTEP.droneDmg)})` },
 ];
 
@@ -2684,7 +2682,7 @@ function renderMeta() {
     return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
       <div class="info">
         <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">${locked ? '' : `Lv.${lv}`}</span></div>
-        <div class="ds">${locked ? '작업공 영구 배치 필요' : `${m.desc(lv)}${maxed ? '' : ` → ${m.desc(lv + 1)}`}`}</div>
+        <div class="ds">${locked ? (m.lockMsg || '조건 미충족') : `${m.desc(lv)}${maxed ? '' : ` → ${m.desc(lv + 1)}`}`}</div>
       </div>
       <button data-m="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
         ${maxed ? '<span class="cost">최대</span>'
