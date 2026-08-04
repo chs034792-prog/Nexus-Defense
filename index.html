@@ -578,11 +578,11 @@ const HERO_CLASSES = [
     dmgPerLv:4, ratePerLv:0.03, spdPerLv:5,
     skill: { name:'회전 베기', desc:'주변 모든 적에게 큰 피해', cd:12, radius:130, dmgMul:3, unlockLv:10 } },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
-    dmg:18, range:280, rate:3.0, bspd:700, spd:120, splash:0, slow:0, slowT:0,
-    roam:9999, heroClass:true,
-    desc:'넓은 사거리와 빠른 공격속도의 원거리 전문가',
+    dmg:10, range:400, rate:4.5, bspd:900, spd:120, splash:0, slow:0, slowT:0,
+    roam:9999, heroClass:true, arrow: true,
+    desc:'초장거리에서 빠른 화살을 퍼붓는 원거리 전문가',
     summonCost: 0, switchCost: 500,
-    dmgPerLv:2, ratePerLv:0.06, spdPerLv:2,
+    dmgPerLv:1, ratePerLv:0.08, spdPerLv:2,
     skill: { name:'화살 비', desc:'범위 내 모든 적에게 화살 발사', cd:15, radius:350, dmgMul:2, unlockLv:10 } },
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
     dmg:60, range:200, rate:0.5, bspd:350, spd:100, splash:50, slow:0.3, slowT:1.5,
@@ -1695,6 +1695,7 @@ function fire(from, target, dmg, bspd, splash, slow, slowT, color, opts) {
     if (opts.mech) b.mech = true;
     if (opts.air) b.air = true;
     if (opts.energyBolt) b.energyBolt = true;
+    if (opts.arrow) b.arrow = true;
   }
   S.bullets.push(b);
 }
@@ -1878,6 +1879,7 @@ function update(dt) {
     const hs = heroStatScaled(cls, hr.level);
     if (hr.spawnT > 0) hr.spawnT -= dt;
     if (hr.recoil > 0) hr.recoil -= dt * 6;
+    if (hr.swordSwing > 0) hr.swordSwing -= dt * 4;
     hr.cd -= dt;
     if (hr.skillCd > 0) hr.skillCd -= dt;
     if (hr.skillEffect > 0) hr.skillEffect -= dt;
@@ -1957,9 +1959,10 @@ function update(dt) {
         if (cls.id === 'warrior') {
           damage(inRange, hs.dmg, cls.slow, cls.slowT);
           burst(inRange.x, inRange.y, cls.accent, 8);
+          hr.swordSwing = 1;
         } else {
           fire(hr, inRange, hs.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, cls.accent,
-               cls.energyBolt ? { energyBolt: true } : undefined);
+               cls.energyBolt ? { energyBolt: true } : cls.arrow ? { arrow: true } : undefined);
         }
       }
     }
@@ -2267,6 +2270,25 @@ function draw() {
     }
     ctx.restore();
 
+    // 전사 검 휘두르기 이펙트
+    if (cls.id === 'warrior' && hr.swordSwing > 0) {
+      const sw = hr.swordSwing;
+      const swAng = (1 - sw) * Math.PI * 1.2 - Math.PI * 0.6;
+      ctx.save();
+      ctx.translate(hr.x, hr.y);
+      ctx.rotate(hr.ang + swAng);
+      ctx.globalAlpha = sw * 0.8;
+      ctx.strokeStyle = '#fca5a5'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(36, 0); ctx.stroke();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.moveTo(36, 0); ctx.lineTo(30, -4); ctx.lineTo(30, 4); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = sw * 0.3;
+      ctx.strokeStyle = '#fca5a5'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 34, -0.5, 0.5); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
     // 스킬 이펙트
     if (hr.skillEffect > 0) {
       const alpha = hr.skillEffect / 0.5;
@@ -2416,6 +2438,19 @@ function draw() {
       ctx.globalAlpha = .5;
       ctx.beginPath(); ctx.arc(b.x, b.y, 4.5, 0, 6.284); ctx.fill();
       ctx.globalAlpha = 1;
+    } else if (b.arrow) {
+      const tg = b.target;
+      const dx = tg ? tg.x - b.x : 1, dy = tg ? tg.y - b.y : 0;
+      const ang = Math.atan2(dy, dx);
+      ctx.save();
+      ctx.translate(b.x, b.y); ctx.rotate(ang);
+      ctx.strokeStyle = '#86efac'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(8, 0); ctx.stroke();
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(5, -3); ctx.lineTo(5, 3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-10, 0); ctx.lineTo(-8, 2); ctx.stroke();
+      ctx.restore();
     } else if (b.energyBolt) {
       const tg = b.target;
       const dx = tg ? tg.x - b.x : 1, dy = tg ? tg.y - b.y : 0;
