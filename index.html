@@ -410,6 +410,7 @@
   <div style="display:flex;gap:6px;margin-bottom:14px;width:100%;max-width:560px">
     <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">강화</button>
     <button id="shopTabBarrack" class="ghost" style="flex:1;padding:8px 0;font-size:14px">병영</button>
+    <button id="shopTabHero" class="ghost" style="flex:1;padding:8px 0;font-size:14px">영웅</button>
     <button id="shopTabZone" class="ghost" style="flex:1;padding:8px 0;font-size:14px">지역 해금</button>
   </div>
 
@@ -424,6 +425,10 @@
   <div id="shopBarrack" style="display:none">
     <p class="hint" style="margin-bottom:12px">병과를 해금하고 유닛을 영구 배치합니다.</p>
     <div id="barrackMetaList" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
+  <div id="shopHero" style="display:none">
+    <div id="heroMetaContent" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
   <div id="shopZone" style="display:none">
@@ -1023,23 +1028,26 @@ const META = [
 
 /* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
 const BARRACK_META = [
+  { id:'p_mech',   name:'작업공 영구 배치', max:1, base:5000,
+    desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
   { id:'t_ground', name:'지상 병과 해금', max:1, base:2500,
     desc: lv => lv ? '지상 탭 해금됨' : '게임 내 지상 유닛 탭을 해금한다' },
   { id:'t_mech',   name:'기갑 병과 해금', max:1, base:25000,
     desc: lv => lv ? '기갑 탭 해금됨' : '게임 내 기갑 유닛 탭을 해금한다' },
   { id:'t_air',    name:'공중 병과 해금', max:1, base:100000,
     desc: lv => lv ? '공중 탭 해금됨' : '게임 내 공중 유닛 탭을 해금한다' },
-  { id:'t_hero',   name:'영웅 해금', max:1, base:8000,
-    req: () => save.best >= 200,
-    desc: lv => lv ? '영웅 탭 해금됨' : '영웅을 소환할 수 있다 (200웨이브 클리어 필요)' },
-  { id:'p_mech',   name:'작업공 영구 배치', max:1, base:5000,
-    desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
   { id:'gndDmg', name:'지상군 영구 강화', max:Infinity, base:60,
     desc: lv => `지상 유닛 공격력 +${num(lv * MSTEP.gndDmg)} (현재 +${num(lv * MSTEP.gndDmg)})` },
   { id:'mechDmg', name:'기갑 영구 강화',  max:Infinity, base:80,
     desc: lv => `기갑 유닛 공격력 +${num(lv * MSTEP.mechDmg)} (현재 +${num(lv * MSTEP.mechDmg)})` },
   { id:'airDmg', name:'공중 영구 강화',   max:Infinity, base:100,
     desc: lv => `공중 유닛 공격력 +${num(lv * MSTEP.airDmg)} (현재 +${num(lv * MSTEP.airDmg)})` },
+];
+
+const HERO_META = [
+  { id:'t_hero', name:'영웅 해금', max:1, base:8000,
+    req: () => save.best >= 200,
+    desc: lv => lv ? '영웅 해금됨 — 아래에서 직업을 선택하세요' : '영웅을 해금합니다 (200웨이브 클리어 필요)' },
 ];
 
 // 레벨당 기본가의 배수로 선형 증가한다 — 기본가 100 이면 100 → 200 → 300 …
@@ -1077,8 +1085,12 @@ function migrate() {
 
 function loadSave() {
   try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
-  for (const m of [...META, ...BARRACK_META, ...ZONE_META])
+  for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META])
     if (typeof save.meta[m.id] !== 'number') save.meta[m.id] = 0;
+  if (!save.meta.heroLevels || typeof save.meta.heroLevels !== 'object') save.meta.heroLevels = {};
+  for (const c of HERO_CLASSES) {
+    if (!save.meta.heroLevels[c.id]) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
+  }
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
   if (old > save.best) save.best = old;
   const stale = (save.mig || 0) < MIGRATION;
@@ -1129,7 +1141,13 @@ function importSave(code) {
   save.cores = Math.max(0, +d.cores || 0);
   save.runs  = Math.max(0, +d.runs  || 0);
   save.meta = {};
-  for (const m of [...META, ...BARRACK_META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
+  for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
+  save.meta.heroClass = d.meta.heroClass || null;
+  save.meta.heroLevels = {};
+  for (const c of HERO_CLASSES) {
+    const src = d.meta.heroLevels && d.meta.heroLevels[c.id];
+    save.meta.heroLevels[c.id] = src ? { xp: +src.xp || 0, level: Math.max(1, +src.level || 1) } : { xp: 0, level: 1 };
+  }
   // 옛 코드(v1)는 보정 전 값이라 여기서 한 번 깎인다
   save.mig = Math.max(0, +d.mig || 0);
   migrate();
@@ -1149,7 +1167,7 @@ function saveRun() {
   if (!S || S.phase === 'over' || S.wave < 1) return;
   const n = S.nexus;
   const snap = {
-    wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired, heroShop: S.heroShop,
+    wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired,
     groundShop: S.groundShop, mechShop: S.mechShop, airShop: S.airShop,
     hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
@@ -1233,7 +1251,6 @@ function newGame(startWave) {
     dmgMul: 1,                           // 영웅 강화로 오르는 영웅 공격력 배율
     goldMul: 1 + mlv('minc') * MSTEP.minc / 100,  // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
-    heroShop: mlv('t_hero') > 0,          // 영구 상점에서 해금
     autoSkill: true,                       // 스킬 자동 발동
     groundShop: mlv('t_ground') > 0,
     mechShop: mlv('t_mech') > 0,
@@ -1271,6 +1288,18 @@ function newGame(startWave) {
   if (mlv('p_mech') > 0) {
     S.hasMechanic = true;
   }
+  if (mlv('t_hero') > 0 && save.meta.heroClass) {
+    const cls = heroClassById(save.meta.heroClass);
+    if (cls) {
+      const ang = Math.random() * 6.2832;
+      const px = CX + Math.cos(ang) * CFG.postR * 0.6;
+      const py = CY + Math.sin(ang) * CFG.postR * 0.6;
+      const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
+      S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
+                 homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
+                 xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0 };
+    }
+  }
   sel = null;
   speed = DEFAULT_SPEED;
   paused = false;
@@ -1287,7 +1316,6 @@ function resumeGame(snap) {
   S.startWave = snap.startWave ?? 1;
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
-  S.heroShop = mlv('t_hero') > 0;
   S.groundShop = mlv('t_ground') > 0;
   S.mechShop = mlv('t_mech') > 0;
   S.airShop = mlv('t_air') > 0;
@@ -1361,7 +1389,7 @@ function show(name, fromPop) {
 const ownedCount = id => S.heroes.filter(h => h.def.id === id).length;
 const heroCost = def => Math.floor(def.cost * Math.pow(CFG.heroCostGrow, ownedCount(def.id)));
 const popFull = () => S.heroes.filter(h => !h.permaMech).length >= S.maxPop;
-const heroBlocked = def => CFG.heroesLocked || !S.heroShop || popFull() ||
+const heroBlocked = def => CFG.heroesLocked || popFull() ||
                            (CFG.heroUnique && ownedCount(def.id) > 0);
 
 const isGround = def => GROUND_UNITS.some(g => g.id === def.id);
@@ -1378,19 +1406,20 @@ const heroStat = h => ({
 });
 
 function summonHero(cls) {
-  if (!S.heroShop || S.hero) return;
+  if (S.hero) return;
   const ang = Math.random() * 6.2832;
   const px = CX + Math.cos(ang) * CFG.postR * 0.6;
   const py = CY + Math.sin(ang) * CFG.postR * 0.6;
+  const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
   S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
              homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
-             xp: 0, level: 1, skillCd: 0, skillEffect: 0 };
+             xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0 };
   addText(px, py - 24, cls.name + ' 소환!', cls.accent);
   saveRun(); syncUI();
 }
 
 function switchHero(cls) {
-  if (!S.heroShop || !S.hero) return;
+  if (!S.hero) return;
   if (S.hero.classId === cls.id) return;
   const cost = cls.switchCost;
   if (S.gold < cost) return;
@@ -1639,6 +1668,7 @@ function damage(e, amount, slow, slowT) {
         addText(S.hero.x, S.hero.y - 30, 'Lv.' + S.hero.level + '!', '#ffe066');
         burst(S.hero.x, S.hero.y, '#ffe066', 16);
       }
+      save.meta.heroLevels[S.hero.classId] = { xp: S.hero.xp, level: S.hero.level };
     }
   }
 }
@@ -2622,13 +2652,16 @@ function setShopTab(tab) {
   shopTab = tab;
   $('shopMeta').style.display = tab === 'meta' ? '' : 'none';
   $('shopBarrack').style.display = tab === 'barrack' ? '' : 'none';
+  $('shopHero').style.display = tab === 'hero' ? '' : 'none';
   $('shopZone').style.display = tab === 'zone' ? '' : 'none';
   const active = ';background:#2a3a5c;border-color:#5b9dff;color:#fff';
   const base = 'flex:1;padding:8px 0;font-size:14px';
   $('shopTabMeta').style.cssText = base + (tab === 'meta' ? active : '');
   $('shopTabBarrack').style.cssText = base + (tab === 'barrack' ? active : '');
+  $('shopTabHero').style.cssText = base + (tab === 'hero' ? active : '');
   $('shopTabZone').style.cssText = base + (tab === 'zone' ? active : '');
   if (tab === 'barrack') renderBarrack();
+  if (tab === 'hero') renderHeroMeta();
   if (tab === 'zone') renderZoneMeta();
 }
 
@@ -2699,8 +2732,70 @@ function renderBarrack() {
   });
 }
 
+function renderHeroMeta() {
+  forceAdminCores();
+  $('sCores').textContent = save.cores;
+  const unlocked = mlv('t_hero') > 0;
+  const m = HERO_META[0];
+  const locked = m.req && !m.req();
+  const c = metaCost(m, 0);
+
+  let html = '';
+  if (!unlocked) {
+    html += `<div class="meta ${locked ? 'locked' : ''}">
+      <div class="info">
+        <div class="nm">${m.name}</div>
+        <div class="ds">${locked ? '200웨이브 클리어 필요' : m.desc(0)}</div>
+      </div>
+      <button id="btnHeroUnlock" ${locked || save.cores < c ? 'disabled' : ''}>
+        ${locked ? '<span class="cost">잠김</span>'
+                 : `<span class="cost">${c}</span><span class="unit">코어</span>`}
+      </button>
+    </div>`;
+  } else {
+    html += `<p class="hint" style="margin-bottom:12px">출격 시 선택한 영웅이 자동 소환됩니다. 인구를 차지하지 않습니다.</p>`;
+    const cur = save.meta.heroClass || null;
+    html += HERO_CLASSES.map(cls => {
+      const sel = cur === cls.id;
+      const sk = cls.skill;
+      const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
+      const hs = heroStatScaled(cls, hl.level);
+      const lvText = hl.level > 1 ? ` <span style="color:#ffe066">Lv.${hl.level}</span>` : '';
+      return `<div class="meta" style="border-color:${sel ? cls.color : '#2a3048'};opacity:${sel ? 1 : 0.8}">
+        <div style="display:flex;align-items:center;gap:10px;flex:1">
+          <div style="width:32px;height:32px;border-radius:50%;background:${cls.color};flex-shrink:0"></div>
+          <div class="info" style="margin:0">
+            <div class="nm" style="color:${cls.color}">${cls.name}${lvText} ${sel ? '<span style="color:#ffe066">✦ 선택됨</span>' : ''}</div>
+            <div class="ds">${cls.desc}</div>
+            <div class="ds" style="color:#7b88a8;margin-top:2px">공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range}${cls.mana ? ' · 마나 ' + hs.maxMana : ''}</div>
+            <div class="ds" style="color:#7b88a8">스킬: ${sk.name} (Lv.${sk.unlockLv} 해금, ${sk.cd}초 쿨다운)${hl.level > 1 ? ' · 경험치 ' + hl.xp + '/' + heroXpToNext(hl.level) : ''}</div>
+          </div>
+        </div>
+        <button data-hcsel="${cls.id}" ${sel ? 'disabled' : ''}>${sel ? '선택됨' : '선택'}</button>
+      </div>`;
+    }).join('');
+  }
+  $('heroMetaContent').innerHTML = html;
+
+  if (!unlocked) {
+    const btn = $('btnHeroUnlock');
+    if (btn) btn.onclick = () => {
+      if (locked || save.cores < c) return;
+      save.cores -= c; save.meta[m.id] = 1;
+      writeSave(); renderHeroMeta();
+    };
+  }
+  $('heroMetaContent').querySelectorAll('button[data-hcsel]').forEach(el => {
+    el.onclick = () => {
+      save.meta.heroClass = el.dataset.hcsel;
+      writeSave(); renderHeroMeta();
+    };
+  });
+}
+
 $('shopTabMeta').onclick = () => setShopTab('meta');
 $('shopTabBarrack').onclick = () => setShopTab('barrack');
+$('shopTabHero').onclick = () => setShopTab('hero');
 $('shopTabZone').onclick = () => setShopTab('zone');
 
 /* 상점 목록은 처음에 한 번만 만든다.
@@ -2918,7 +3013,6 @@ function buyAirUp() {
 }
 
 function buyHeroUp() {
-  if (!S.heroShop) return;
   const c = heroUpCost(S.heroUpLv);
   if (S.gold < c) return;
   S.gold -= c; S.heroUpLv++; S.dmgMul += HERO_UP.step;
@@ -2928,7 +3022,7 @@ function buyHeroUp() {
 }
 
 function renderHeroShop() {
-  const locked = !S.heroShop;
+  const locked = !(mlv('t_hero') > 0 && save.meta.heroClass);
   const has = !!S.hero;
   const statusEl = $('heroStatus');
   if (locked) {
@@ -3160,9 +3254,9 @@ function syncUI() {
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
-const heroTabLocked = () => !S || !S.heroShop;
-const SHOP_PANELS = ['nexus', 'hero', 'ground', 'mech', 'air'];
-const TECH_TABS = { hero: 't_hero', ground: 't_ground', mech: 't_mech', air: 't_air' };
+const heroTabLocked = () => true;
+const SHOP_PANELS = ['nexus', 'ground', 'mech', 'air'];
+const TECH_TABS = { ground: 't_ground', mech: 't_mech', air: 't_air' };
 
 document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
@@ -3370,7 +3464,10 @@ $('btnAdminGo').onclick = () => {
 // 영구 강화·지역 해금 레벨을 모두 0 으로 되돌린다 (코어·기록은 그대로)
 $('btnAdminResetMeta').onclick = () => {
   if (!confirm('영구 강화와 지역 해금을 모두 초기화할까요?\n(코어와 최고 기록은 그대로 남습니다)')) return;
-  for (const m of [...META, ...BARRACK_META, ...ZONE_META]) save.meta[m.id] = 0;
+  for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META]) save.meta[m.id] = 0;
+  save.meta.heroClass = null;
+  save.meta.heroLevels = {};
+  for (const c of HERO_CLASSES) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   writeSave();
   renderMenu();
   alert('영구 강화를 초기화했습니다.');
