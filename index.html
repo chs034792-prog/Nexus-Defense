@@ -1037,10 +1037,13 @@ const BARRACK_META = [
   { id:'t_air',    name:'공중 병과 해금', max:1, base:100000,
     desc: lv => lv ? '공중 탭 해금됨' : '게임 내 공중 유닛 탭을 해금한다' },
   { id:'gndDmg', name:'지상군 영구 강화', max:Infinity, base:60,
+    req: () => mlv('t_ground') > 0, lockMsg: '지상 병과 해금 필요',
     desc: lv => `지상 유닛 공격력 +${num(lv * MSTEP.gndDmg)} (현재 +${num(lv * MSTEP.gndDmg)})` },
   { id:'mechDmg', name:'기갑 영구 강화',  max:Infinity, base:80,
+    req: () => mlv('t_mech') > 0, lockMsg: '기갑 병과 해금 필요',
     desc: lv => `기갑 유닛 공격력 +${num(lv * MSTEP.mechDmg)} (현재 +${num(lv * MSTEP.mechDmg)})` },
   { id:'airDmg', name:'공중 영구 강화',   max:Infinity, base:100,
+    req: () => mlv('t_air') > 0, lockMsg: '공중 병과 해금 필요',
     desc: lv => `공중 유닛 공격력 +${num(lv * MSTEP.airDmg)} (현재 +${num(lv * MSTEP.airDmg)})` },
 ];
 
@@ -2711,7 +2714,7 @@ function renderBarrack() {
     return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
       <div class="info">
         <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">${lvText}</span></div>
-        <div class="ds">${locked ? '200웨이브 클리어 필요' : `${m.desc(lv)}${inf && !maxed ? ` → ${m.desc(lv + 1)}` : ''}`}</div>
+        <div class="ds">${locked ? (m.lockMsg || '조건 미충족') : `${m.desc(lv)}${inf && !maxed ? ` → ${m.desc(lv + 1)}` : ''}`}</div>
       </div>
       <button data-bm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
         ${maxed ? '<span class="cost">보유</span>'
