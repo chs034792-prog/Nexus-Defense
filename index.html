@@ -571,11 +571,11 @@ const groundUpCost = lv => GROUND_UP.base * (lv + 1);
 const HEROES = [];
 const HERO_CLASSES = [
   { id:'warrior', name:'전사', color:'#ef4444', accent:'#fca5a5',
-    dmg:45, range:90, rate:1.8, bspd:0, spd:160, splash:0, slow:0, slowT:0,
+    dmg:45, range:40, rate:1.8, bspd:0, spd:220, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true,
-    desc:'짧은 사거리의 높은 공격력, 근접 전투의 달인',
+    desc:'적에게 달려들어 근접 공격하는 전투의 달인',
     summonCost: 0, switchCost: 500,
-    dmgPerLv:4, ratePerLv:0.03, spdPerLv:3,
+    dmgPerLv:4, ratePerLv:0.03, spdPerLv:5,
     skill: { name:'회전 베기', desc:'주변 모든 적에게 큰 피해', cd:12, radius:130, dmgMul:3, unlockLv:10 } },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
     dmg:18, range:280, rate:3.0, bspd:700, spd:120, splash:0, slow:0, slowT:0,
@@ -585,10 +585,10 @@ const HERO_CLASSES = [
     dmgPerLv:2, ratePerLv:0.06, spdPerLv:2,
     skill: { name:'화살 비', desc:'범위 내 모든 적에게 화살 발사', cd:15, radius:350, dmgMul:2, unlockLv:10 } },
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
-    dmg:60, range:200, rate:0.8, bspd:400, spd:100, splash:50, slow:0.3, slowT:1.5,
-    roam:9999, heroClass:true,
+    dmg:60, range:200, rate:0.5, bspd:350, spd:100, splash:50, slow:0.3, slowT:1.5,
+    roam:9999, heroClass:true, energyBolt: true,
     mana: true, maxMana: 100, manaCost: 12, manaRegen: 5,
-    desc:'마나를 소모해 강력한 광역 마법으로 적을 제압하고 감속시킨다',
+    desc:'마나를 소모해 에너지 볼트로 적을 제압하고 감속시킨다',
     summonCost: 0, switchCost: 500,
     dmgPerLv:5, ratePerLv:0.02, manaPerLv:5, regenPerLv:0.3,
     skill: { name:'메테오', desc:'전체 맵의 적에게 마법 폭발', cd:20, dmgMul:4, unlockLv:10 } },
@@ -1694,6 +1694,7 @@ function fire(from, target, dmg, bspd, splash, slow, slowT, color, opts) {
     if (opts.pierce) { b.pierce = opts.pierce; b.pierced = new Set(); }
     if (opts.mech) b.mech = true;
     if (opts.air) b.air = true;
+    if (opts.energyBolt) b.energyBolt = true;
   }
   S.bullets.push(b);
 }
@@ -1957,7 +1958,8 @@ function update(dt) {
           damage(inRange, hs.dmg, cls.slow, cls.slowT);
           burst(inRange.x, inRange.y, cls.accent, 8);
         } else {
-          fire(hr, inRange, hs.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, cls.accent);
+          fire(hr, inRange, hs.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, cls.accent,
+               cls.energyBolt ? { energyBolt: true } : undefined);
         }
       }
     }
@@ -2414,6 +2416,24 @@ function draw() {
       ctx.globalAlpha = .5;
       ctx.beginPath(); ctx.arc(b.x, b.y, 4.5, 0, 6.284); ctx.fill();
       ctx.globalAlpha = 1;
+    } else if (b.energyBolt) {
+      const tg = b.target;
+      const dx = tg ? tg.x - b.x : 1, dy = tg ? tg.y - b.y : 0;
+      const ang = Math.atan2(dy, dx);
+      ctx.save();
+      ctx.translate(b.x, b.y); ctx.rotate(ang);
+      ctx.fillStyle = '#d8b4fe';
+      ctx.beginPath(); ctx.ellipse(0, 0, 10, 5, 0, 0, 6.284); ctx.fill();
+      ctx.fillStyle = '#a855f7';
+      ctx.beginPath(); ctx.ellipse(0, 0, 6, 3, 0, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = .4;
+      ctx.fillStyle = '#e9d5ff';
+      ctx.beginPath(); ctx.ellipse(0, 0, 14, 7, 0, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = .6;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(0, 0, 2, 0, 6.284); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
     } else {
       ctx.beginPath(); ctx.arc(b.x, b.y, b.splash > 0 ? 5 : 3.2, 0, 6.284); ctx.fill();
       ctx.globalAlpha = .3;
