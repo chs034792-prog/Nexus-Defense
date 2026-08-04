@@ -175,12 +175,31 @@
     font-size: clamp(11px, 2.6vw, 13px);
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
-  #nexusBtn { position: absolute; right: 2%; bottom: 3%; z-index: 2; }
+  #nexusBtn { position: absolute; left: 2%; top: 42px; z-index: 2; }
   #nexusBtn button {
     width: auto; padding: 8px 12px;
     font-size: clamp(10px, 2.4vw, 12px);
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
+  #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 6px; align-items: flex-end; }
+  #btnSkill {
+    width: 60px; height: 60px; border-radius: 50%; border: 2px solid #555;
+    background: #1c2437; color: #aaa; font-size: 10px; font-weight: 700;
+    display: none; cursor: pointer; position: relative; overflow: hidden;
+    align-items: center; justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,.5);
+  }
+  #btnSkill.ready { border-color: #66ffaa; color: #66ffaa; }
+  #btnSkill .cd-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,.55); pointer-events: none;
+  }
+  #btnAutoSkill {
+    width: auto; padding: 6px 10px; border-radius: 6px; border: 1px solid #555;
+    background: #1c2437; color: #7b88a8; font-size: 10px; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.4); display: none;
+  }
+  #btnAutoSkill.on { border-color: #66ffaa; color: #66ffaa; }
 
   /* 캔버스가 쓰고 남은 세로 공간을 전부 차지한다.
      min-height:0 이 없으면 flex 항목이 내용 높이 밑으로 줄지 못해 스크롤이 죽는다. */
@@ -445,6 +464,10 @@
     </div>
     <div id="waveBtnWrap"><button id="btnWave">웨이브 1 시작</button></div>
     <div id="nexusBtn"><button id="btnNexusInfo" class="ghost">넥서스 정보</button></div>
+    <div id="skillArea">
+      <button id="btnAutoSkill">Auto</button>
+      <button id="btnSkill"><span id="skillName"></span><div class="cd-overlay" id="skillCdOverlay"></div></button>
+    </div>
   </div>
 
   <div id="panel">
@@ -1128,7 +1151,7 @@ function saveRun() {
   const snap = {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired, heroShop: S.heroShop,
     groundShop: S.groundShop, mechShop: S.mechShop, airShop: S.airShop,
-    hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave,
+    hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
     groundUpLv: S.groundUpLv, groundDmgAdd: S.groundDmgAdd,
@@ -1211,6 +1234,7 @@ function newGame(startWave) {
     goldMul: 1 + mlv('minc') * MSTEP.minc / 100,  // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     heroShop: mlv('t_hero') > 0,          // 영구 상점에서 해금
+    autoSkill: true,                       // 스킬 자동 발동
     groundShop: mlv('t_ground') > 0,
     mechShop: mlv('t_mech') > 0,
     airShop: mlv('t_air') > 0,
@@ -1268,6 +1292,7 @@ function resumeGame(snap) {
   S.mechShop = mlv('t_mech') > 0;
   S.airShop = mlv('t_air') > 0;
   S.hasMechanic = snap.hasMechanic ?? false;
+  S.autoSkill = snap.autoSkill ?? true;
   S.drone = snap.drone ?? null;
   if (S.drone) {
     S.drone.cds = Array(S.drone.count).fill(0);
@@ -1384,6 +1409,14 @@ function dismissHero() {
   addText(S.hero.x, S.hero.y - 24, '영웅 해산', '#ff6b81');
   S.hero = null;
   saveRun(); syncUI();
+}
+
+function useHeroSkill() {
+  if (!S || !S.hero) return;
+  const hr = S.hero, cls = hr.def;
+  if (!cls.skill || hr.level < cls.skill.unlockLv || hr.skillCd > 0) return;
+  if (!S.enemies.some(e => !e.dead)) return;
+  hr.pendingSkill = true;
 }
 
 function hire(def) {
@@ -1844,8 +1877,10 @@ function update(dt) {
       hr.y = home.y + (hr.y - home.y) / off * roam;
     }
 
-    // 스킬 자동 발동 (레벨 10 이상, 쿨다운 완료, 적 존재)
-    if (cls.skill && hr.level >= cls.skill.unlockLv && hr.skillCd <= 0 && S.enemies.some(e => !e.dead)) {
+    // 스킬 발동 (자동 또는 수동)
+    const canSkill = cls.skill && hr.level >= cls.skill.unlockLv && hr.skillCd <= 0 && S.enemies.some(e => !e.dead);
+    if (canSkill && (S.autoSkill || hr.pendingSkill)) {
+      hr.pendingSkill = false;
       const sk = cls.skill;
       hr.skillCd = sk.cd;
       hr.skillEffect = 0.5;
@@ -2229,18 +2264,6 @@ function draw() {
       ctx.fillRect(bx, by, bw * (hr.mana / hs.maxMana), bh);
     }
 
-    // 스킬 쿨다운 표시 (레벨 10 이상)
-    if (cls.skill && hr.level >= cls.skill.unlockLv) {
-      const sk = cls.skill;
-      ctx.textAlign = 'center'; ctx.font = '9px sans-serif';
-      if (hr.skillCd > 0) {
-        ctx.fillStyle = '#ff6b81';
-        ctx.fillText(sk.name + ' ' + Math.ceil(hr.skillCd) + 's', hr.x, hr.y + 38);
-      } else {
-        ctx.fillStyle = '#66ffaa';
-        ctx.fillText(sk.name + ' 준비', hr.x, hr.y + 38);
-      }
-    }
   }
 
   /* 버퍼 오라 표시 */
@@ -2418,16 +2441,16 @@ function draw() {
     ctx.globalAlpha = 1;
   }
 
-  /* 영구 작업공 표시 — 우측 하단, 넥서스 정보 버튼 위 */
+  /* 영구 작업공 표시 — 좌측 상단 */
   if (S.hasMechanic && !S.heroes.some(h => h.def.id === 'mechanic')) {
     ctx.save();
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(W - 62, H - 42, 8, 8);
+    ctx.fillRect(10, 46, 8, 8);
     ctx.globalAlpha = 0.7;
     ctx.font = '11px "Malgun Gothic", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('작업공', W - 50, H - 34);
+    ctx.fillText('작업공', 22, 54);
     ctx.restore();
   }
 
@@ -3117,6 +3140,21 @@ function syncUI() {
                 : S.phase === 'over'   ? '게임 오버'
                 : S.autoT > 0          ? `웨이브 ${S.wave} 시작 (${Math.ceil(S.autoT)})`
                 :                        `웨이브 ${S.wave} 시작`;
+  // 스킬 버튼 상태
+  const hasSkill = S.hero && S.hero.def.skill && S.hero.level >= S.hero.def.skill.unlockLv;
+  $('btnSkill').style.display = hasSkill ? 'flex' : 'none';
+  $('btnAutoSkill').style.display = hasSkill ? 'block' : 'none';
+  if (hasSkill) {
+    const sk = S.hero.def.skill;
+    const ready = S.hero.skillCd <= 0;
+    $('skillName').textContent = sk.name;
+    $('btnSkill').classList.toggle('ready', ready);
+    const pct = ready ? 0 : (S.hero.skillCd / sk.cd) * 100;
+    $('skillCdOverlay').style.height = pct + '%';
+    $('btnAutoSkill').textContent = S.autoSkill ? 'Auto ON' : 'Auto OFF';
+    $('btnAutoSkill').classList.toggle('on', S.autoSkill);
+  }
+
   renderHeroShop(); renderGroundShop(); renderMechShop(); renderAirShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
 
@@ -3201,6 +3239,12 @@ $('btnSell').onclick = () => {
 };
 
 $('btnNexusInfo').onclick = () => { if (!S || S.phase === 'over') return; openSel({ kind: 'nexus' }); };
+$('btnSkill').onclick = () => useHeroSkill();
+$('btnAutoSkill').onclick = () => {
+  if (!S) return;
+  S.autoSkill = !S.autoSkill;
+  syncUI();
+};
 $('btnWave').onclick = startWave;
 const SPEEDS = [1, 2, 3, 4, 5, 10];      // x5 다음은 바로 x10
 $('uiSpeed').onclick = () => {
