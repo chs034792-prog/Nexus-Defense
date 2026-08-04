@@ -354,6 +354,7 @@
   <div class="records">
     <div class="rec"><div class="v" id="mBest">0</div><div class="k">최고 웨이브</div></div>
     <div class="rec"><div class="v" id="mCores" style="color:#7fe7ff">0</div><div class="k">보유 코어</div></div>
+    <div class="rec"><div class="v" id="mSpecial" style="color:#f0abfc">0</div><div class="k">특수 코어</div></div>
     <div class="rec"><div class="v" id="mRuns">0</div><div class="k">출격 횟수</div></div>
   </div>
   <div class="menuBtns">
@@ -405,7 +406,7 @@
 <!-- ── 상점 화면 ────────────────────────────── -->
 <div id="shopScreen" class="screen">
   <h2>영구 강화 상점</h2>
-  <div class="cores">보유 코어 <span id="sCores">0</span></div>
+  <div class="cores">보유 코어 <span id="sCores">0</span> · <span style="color:#f0abfc">특수 코어 <span id="sSpecial">0</span></span></div>
 
   <div style="display:flex;gap:6px;margin-bottom:14px;width:100%;max-width:560px">
     <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">강화</button>
@@ -1074,7 +1075,7 @@ const ZONE_META = ZONES.slice(1).map(z => {
 });
 
 const SAVE_KEY = 'nexusdefense.save';
-let save = { best: 0, cores: 0, runs: 0, meta: {}, mig: 0 };
+let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0 };
 
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
    save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
@@ -1096,6 +1097,7 @@ function loadSave() {
   if (old > save.best) save.best = old;
   const stale = (save.mig || 0) < MIGRATION;
   migrate();
+  if (typeof save.specialCores !== 'number') save.specialCores = 0;
   realCores = save.cores;          // 운영자 모드로 부풀리기 전의 실제 코어
   if (stale) writeSave();          // 보정 단계를 남겨 두 번 걸리지 않게 한다
 }
@@ -1129,6 +1131,7 @@ function exportSave() {
   // mig 을 같이 실어야, 옮긴 브라우저에서 같은 보정이 또 걸리지 않는다
   const body = JSON.stringify({ v: 2, best: save.best,
                                 cores: DEV ? realCores : save.cores,
+                                specialCores: save.specialCores || 0,
                                 runs: save.runs, meta: save.meta, mig: save.mig || 0 });
   return btoa(String.fromCharCode(...new TextEncoder().encode(body)));
 }
@@ -1140,6 +1143,7 @@ function importSave(code) {
   if (!d || typeof d !== 'object' || !d.meta) throw new Error('형식이 올바르지 않습니다');
   save.best  = Math.max(0, +d.best  || 0);
   save.cores = Math.max(0, +d.cores || 0);
+  save.specialCores = Math.max(0, +d.specialCores || 0);
   save.runs  = Math.max(0, +d.runs  || 0);
   save.meta = {};
   for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
@@ -2664,6 +2668,7 @@ function renderMenu() {
   forceAdminCores();
   $('mBest').textContent = save.best;
   $('mCores').textContent = save.cores;
+  $('mSpecial').textContent = save.specialCores;
   $('mRuns').textContent = save.runs;
   const run = readRun();
   const btn = $('btnContinue');
@@ -2675,7 +2680,7 @@ function renderMenu() {
 function renderMeta() {
   forceAdminCores();
   renderNexusInfo();
-  $('sCores').textContent = save.cores;
+  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
   $('metaList').innerHTML = META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const locked = m.req && !m.req();
@@ -2723,7 +2728,7 @@ function setShopTab(tab) {
 
 function renderZoneMeta() {
   forceAdminCores();
-  $('sCores').textContent = save.cores;
+  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
   $('zoneMetaList').innerHTML = ZONE_META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const z = ZONES.find(z => z.name === m.zone);
@@ -2758,7 +2763,7 @@ function renderZoneMeta() {
 
 function renderBarrack() {
   forceAdminCores();
-  $('sCores').textContent = save.cores;
+  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
   $('barrackMetaList').innerHTML = BARRACK_META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const inf = !Number.isFinite(m.max);
@@ -2790,7 +2795,7 @@ function renderBarrack() {
 
 function renderHeroMeta() {
   forceAdminCores();
-  $('sCores').textContent = save.cores;
+  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
   const unlocked = mlv('t_hero') > 0;
   const m = HERO_META[0];
   const locked = m.req && !m.req();
@@ -2809,14 +2814,17 @@ function renderHeroMeta() {
       </button>
     </div>`;
   } else {
-    html += `<p class="hint" style="margin-bottom:12px">출격 시 선택한 영웅이 자동 소환됩니다. 인구를 차지하지 않습니다.</p>`;
     const cur = save.meta.heroClass || null;
+    const needSpecial = !!cur;
+    html += `<p class="hint" style="margin-bottom:12px">${needSpecial ? '영웅을 변경하려면 <span style="color:#f0abfc">특수 코어 1개</span>가 필요합니다.' : '첫 영웅을 선택하세요. 출격 시 자동 소환됩니다.'}</p>`;
     html += HERO_CLASSES.map(cls => {
       const sel = cur === cls.id;
       const sk = cls.skill;
       const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
       const hs = heroStatScaled(cls, hl.level);
       const lvText = hl.level > 1 ? ` <span style="color:#ffe066">Lv.${hl.level}</span>` : '';
+      const canSwitch = !needSpecial || save.specialCores >= 1;
+      const btnText = sel ? '선택됨' : needSpecial ? '<span style="color:#f0abfc">1</span> 특수 코어' : '선택';
       return `<div class="meta" style="border-color:${sel ? cls.color : '#2a3048'};opacity:${sel ? 1 : 0.8}">
         <div style="display:flex;align-items:center;gap:10px;flex:1">
           <div style="width:32px;height:32px;border-radius:50%;background:${cls.color};flex-shrink:0"></div>
@@ -2827,7 +2835,7 @@ function renderHeroMeta() {
             <div class="ds" style="color:#7b88a8">스킬: ${sk.name} (Lv.${sk.unlockLv} 해금, ${sk.cd}초 쿨다운)${hl.level > 1 ? ' · 경험치 ' + hl.xp + '/' + heroXpToNext(hl.level) : ''}</div>
           </div>
         </div>
-        <button data-hcsel="${cls.id}" ${sel ? 'disabled' : ''}>${sel ? '선택됨' : '선택'}</button>
+        <button data-hcsel="${cls.id}" ${sel || (!sel && needSpecial && !canSwitch) ? 'disabled' : ''}>${btnText}</button>
       </div>`;
     }).join('');
   }
@@ -2843,7 +2851,12 @@ function renderHeroMeta() {
   }
   $('heroMetaContent').querySelectorAll('button[data-hcsel]').forEach(el => {
     el.onclick = () => {
-      save.meta.heroClass = el.dataset.hcsel;
+      const prev = save.meta.heroClass || null;
+      const next = el.dataset.hcsel;
+      if (prev === next) return;
+      if (prev && save.specialCores < 1) return;
+      if (prev) save.specialCores--;
+      save.meta.heroClass = next;
       writeSave(); renderHeroMeta();
     };
   });
@@ -2899,43 +2912,7 @@ function buildShops() {
         <div id="heroSkillBadge" style="font-size:12px;font-weight:600;white-space:nowrap;padding:0 6px"></div>
       </div>
     </div>`
-    + `<div style="padding:4px 12px 2px;font-size:12px;color:#7b88a8;font-weight:600">영웅 선택</div>`
-    + HERO_CLASSES.map(cls => `
-    <div class="card" data-hc="${cls.id}">
-      <div class="swatch" style="background:${cls.color};color:${cls.color}"></div>
-      <div>
-        <div class="nm">${cls.name} <span class="heroTag" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${cls.desc}</div>
-      </div>
-      <button class="buy"></button>
-    </div>`).join('')
-    + `<div class="card" id="heroDismissCard" style="display:none">
-      <div><div class="nm" style="color:#ff6b81">영웅 해산</div>
-        <div class="ds">현재 영웅을 해산합니다</div></div>
-      <button class="buy danger">해산</button>
-    </div>`
-    + `<div class="card popCard"><div>
-        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
-      </div><button class="buy"></button></div>`;
-
-  els.heroClasses = HERO_CLASSES.map(cls => {
-    const card = $('heroShop').querySelector(`.card[data-hc="${cls.id}"]`);
-    const btn = card.querySelector('button');
-    btn.onclick = ev => {
-      ev.stopPropagation();
-      if (!S.hero) summonHero(cls);
-      else switchHero(cls);
-    };
-    card.onclick = () => {
-      if (!S.hero) summonHero(cls);
-      else switchHero(cls);
-    };
-    return { cls, card, btn, tag: card.querySelector('.heroTag') };
-  });
-  const dismissCard = $('heroDismissCard');
-  dismissCard.querySelector('button').onclick = ev => { ev.stopPropagation(); dismissHero(); };
-  dismissCard.onclick = dismissHero;
+    ;
 
   // 지상 유닛 상점
   $('groundShop').innerHTML = GROUND_UNITS.map(d => `
@@ -3145,34 +3122,11 @@ function renderHeroShop() {
       skillSec.style.display = 'none';
     }
   } else {
-    statusEl.textContent = '영웅을 선택해 소환하세요. 영웅은 인구를 차지하지 않습니다.';
+    statusEl.textContent = '영구 상점에서 영웅을 선택하면 출격 시 자동 소환됩니다.';
     infoPanel.style.display = 'none';
     skillSec.style.display = 'none';
   }
 
-  for (const e of els.heroClasses) {
-    const isCurrent = has && S.hero.classId === e.cls.id;
-    if (locked) {
-      e.btn.textContent = '잠김';
-      e.btn.disabled = true;
-      e.tag.textContent = '';
-    } else if (!has) {
-      e.btn.textContent = '소환';
-      e.btn.disabled = false;
-      e.tag.textContent = '';
-    } else if (isCurrent) {
-      e.btn.textContent = '선택됨';
-      e.btn.disabled = true;
-      e.tag.textContent = '현재';
-    } else {
-      const cost = e.cls.switchCost;
-      e.btn.textContent = cost + 'G';
-      e.btn.disabled = S.gold < cost;
-      e.tag.textContent = '전직';
-    }
-    e.card.classList.toggle('poor', e.btn.disabled);
-  }
-  $('heroDismissCard').style.display = has && !locked ? '' : 'none';
 }
 
 // 카드 어디를 누르든(비용 버튼 포함) 한 번에 강화된다
