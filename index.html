@@ -358,15 +358,14 @@
     <div class="rec"><div class="v" id="mRuns">0</div><div class="k">출격 횟수</div></div>
   </div>
   <div class="menuBtns">
-    <button id="btnContinue" style="display:none">이어하기</button>
-    <button id="btnSortie">출격(처음부터시작)</button>
-    <button id="btnShop" class="ghost">상 점</button>
-    <button id="btnBackup" class="ghost">코드 관리</button>
-    <button id="btnRank" class="ghost" style="border-color:#ffd45e55;color:#ffd45e">랭킹</button>
     <div class="row" style="gap:8px">
       <button id="btnZones" class="ghost" style="flex:1;border-color:#7c5cbf;color:#b89aff">지역 정보</button>
       <div id="zoneChip"></div>
     </div>
+    <button id="btnContinue" style="display:none">이어하기</button>
+    <button id="btnSortie">출격(처음부터시작)</button>
+    <button id="btnShop" class="ghost">상 점</button>
+    <button id="btnRank" class="ghost" style="border-color:#ffd45e55;color:#ffd45e">랭킹</button>
   </div>
 
   <div id="backupBox" style="display:none">
@@ -401,6 +400,7 @@
   </div>
 
   <p class="hint" style="margin-top:22px;color:#4e5872">사방에서 몰려오는 적으로부터 중앙 넥서스를 지켜내십시오.</p>
+  <button id="btnBackup" style="margin-top:10px;background:none;border:none;color:#3a415a;font-size:11px;padding:4px;text-decoration:underline;cursor:pointer">코드 관리</button>
 </div>
 
 <!-- ── 상점 화면 ────────────────────────────── -->
@@ -950,7 +950,7 @@ const NEXUS_UPS = [
   { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
     cost: lv => Math.floor(400 * Math.pow(1.35, lv)),
     get max() { return 10 - (mlv('m_drone') > 0 ? 1 + mlv('m_droneCnt') : 0); },
-    cond: () => S && (S.hasMechanic || S.drone),
+    cond: () => mlv('m_drone') > 0,
     apply: s => {
       if (!s.drone) s.drone = { count:0, dmg:DRONE.dmg, orbitR:DRONE.orbitR,
                                 spd:DRONE.spd, baseAng:0, cds:[] };
@@ -958,11 +958,11 @@ const NEXUS_UPS = [
     } },
   { id:'droneDmg', name:'드론 공격력',   desc:`드론 충돌 피해 +${DRONE.dmgStep}`,
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
-    cond: () => S && S.drone && S.drone.count > 0,
+    cond: () => mlv('m_drone') > 0 && S && S.drone && S.drone.count > 0,
     apply: s => { s.drone.dmg += DRONE.dmgStep; } },
   { id:'droneSpd', name:'드론 속도',     desc:`드론 선회 속도 +${DRONE.spdStep}`,
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
-    cond: () => S && S.drone && S.drone.count > 0,
+    cond: () => mlv('m_drone') > 0 && S && S.drone && S.drone.count > 0,
     apply: s => { s.drone.spd += DRONE.spdStep; } },
   { id:'grav',     name:'중력파 가동',   desc:'넥서스 주변 범위 내 적에게 초당 피해',
     stat: () => S.gravWave ? `피해 ${S.gravWave.dmg} · 범위 ${S.gravWave.range}` : '미가동',
