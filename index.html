@@ -430,7 +430,7 @@
   </div>
 
   <div id="shopBarrack" style="display:none">
-    <p class="hint" style="margin-bottom:12px">병과를 해금하고 유닛을 영구 배치합니다.</p>
+    <p class="hint" style="margin-bottom:12px">병과를 해금하고, 보유 중인 단계 중 하나를 선택하여 출격합니다.</p>
     <div id="barrackMetaList" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
@@ -704,8 +704,9 @@ const MECH_UNITS = [
     desc:'궤도에서 떨어지는 압도적인 화력' },
 ];
 
-// 공중 병과 — 빠르고 넓은 활동 반경. 두 기체가 마지막 병력 단계를 함께 구성한다.
+// 공중 병과 — 빠르고 넓은 활동 반경.
 const AIR_UNITS = [
+  // 공중병력 I
   { id:'fighter', name:'전투기', cost:2000, color:'#e040fb', accent:'#f8bbd0',
     dmg:22, range:120, rate:2.0, bspd:700, spd:210, splash:0, slow:0, slowT:0,
     roam:380, air:true,
@@ -714,6 +715,36 @@ const AIR_UNITS = [
     dmg:55, range:100, rate:0.5, bspd:0, spd:140, splash:70, slow:0, slowT:0,
     roam:350, air:true, bomb:true, patrol:true,
     desc:'상시 순찰하며 적에게 폭탄을 투하한다' },
+  { id:'interceptor', name:'요격기', cost:3000, color:'#00e5ff', accent:'#80deea',
+    dmg:65, range:160, rate:1.2, bspd:900, spd:180, splash:0, slow:0.3, slowT:1.5,
+    roam:340, air:true,
+    desc:'빠른 기동과 정밀 사격으로 적을 요격한다' },
+  // 공중병력 II
+  { id:'stealthFighter', name:'스텔스기', cost:5500, color:'#e040fb', accent:'#f8bbd0',
+    dmg:50, range:140, rate:2.2, bspd:800, spd:240, splash:0, slow:0, slowT:0,
+    roam:400, air:true,
+    desc:'탐지를 피하며 초고속 연사로 적을 제압한다' },
+  { id:'bomber', name:'폭격기', cost:6500, color:'#ffab00', accent:'#ffe082',
+    dmg:130, range:120, rate:0.45, bspd:0, spd:130, splash:100, slow:0, slowT:0,
+    roam:360, air:true, bomb:true, patrol:true,
+    desc:'대형 폭탄으로 넓은 범위를 초토화한다' },
+  { id:'missileInterceptor', name:'미사일기', cost:7500, color:'#00e5ff', accent:'#80deea',
+    dmg:160, range:200, rate:1.0, bspd:1000, spd:190, splash:0, slow:0.35, slowT:1.8,
+    roam:370, air:true,
+    desc:'유도 미사일로 원거리에서 정밀 타격한다' },
+  // 공중병력 III — 궁극 형태
+  { id:'aceStriker', name:'에이스기', cost:13000, color:'#e040fb', accent:'#f8bbd0',
+    dmg:110, range:160, rate:2.5, bspd:900, spd:270, splash:0, slow:0, slowT:0,
+    roam:420, air:true,
+    desc:'하늘의 왕, 압도적인 속도와 화력의 정점' },
+  { id:'strategicBomber', name:'전략폭격기', cost:15000, color:'#ffab00', accent:'#ffe082',
+    dmg:320, range:140, rate:0.4, bspd:0, spd:120, splash:130, slow:0, slowT:0,
+    roam:380, air:true, bomb:true, patrol:true,
+    desc:'전장 전체를 뒤흔드는 궁극의 폭격' },
+  { id:'orbitalStriker', name:'궤도타격기', cost:18000, color:'#00e5ff', accent:'#80deea',
+    dmg:400, range:240, rate:0.8, bspd:1200, spd:200, splash:40, slow:0.4, slowT:2.0,
+    roam:400, air:true,
+    desc:'궤도에서 정밀 레이저를 발사하는 최종 병기' },
 ];
 
 const ALL_DEFS = [...HEROES, ...GROUND_UNITS, ...MECH_UNITS, ...AIR_UNITS];
@@ -729,18 +760,21 @@ const gu = id => GROUND_UNITS.find(d => d.id === id);
 const mu = id => MECH_UNITS.find(d => d.id === id);
 const au = id => AIR_UNITS.find(d => d.id === id);
 const TROOP_TIERS = [
-  { tier: 'tier_g1', name: '지상병력 I',  units: [gu('swordsman'), gu('g_sniper'), gu('buffer')] },
-  { tier: 'tier_g2', name: '지상병력 II', units: [gu('warrior2'), gu('ranger'), gu('shaman')] },
+  { tier: 'tier_g1', name: '지상병력 I',   units: [gu('swordsman'), gu('g_sniper'), gu('buffer')] },
+  { tier: 'tier_g2', name: '지상병력 II',  units: [gu('warrior2'), gu('ranger'), gu('shaman')] },
   { tier: 'tier_g3', name: '지상병력 III', units: [gu('paladin'), gu('bowmaster'), gu('witchdoctor')] },
-  { tier: 'tier_m1', name: '기갑병력 I',  units: [mu('tank'), mu('railgun'), mu('artillery')] },
-  { tier: 'tier_m2', name: '기갑병력 II', units: [mu('assaultTank'), mu('ionRailgun'), mu('thermoArtillery')] },
+  { tier: 'tier_m1', name: '기갑병력 I',   units: [mu('tank'), mu('railgun'), mu('artillery')] },
+  { tier: 'tier_m2', name: '기갑병력 II',  units: [mu('assaultTank'), mu('ionRailgun'), mu('thermoArtillery')] },
   { tier: 'tier_m3', name: '기갑병력 III', units: [mu('dreadnought'), mu('plasmaRailgun'), mu('orbitalArtillery')] },
-  { tier: 'tier_a1', name: '공중병력',    units: [au('fighter'), au('scout')] },
+  { tier: 'tier_a1', name: '공중병력 I',   units: [au('fighter'), au('scout'), au('interceptor')] },
+  { tier: 'tier_a2', name: '공중병력 II',  units: [au('stealthFighter'), au('bomber'), au('missileInterceptor')] },
+  { tier: 'tier_a3', name: '공중병력 III', units: [au('aceStriker'), au('strategicBomber'), au('orbitalStriker')] },
 ];
 function currentTier() {
-  let cur = null;
-  for (const t of TROOP_TIERS) if (mlv(t.tier) > 0) cur = t;
-  return cur;
+  const id = save.meta.selectedTier;
+  if (!id) return null;
+  const t = TROOP_TIERS.find(x => x.tier === id);
+  return (t && mlv(id) > 0) ? t : null;
 }
 function troopCategory(def) {
   return def.mech ? 'mech' : def.air ? 'air' : 'ground';
@@ -1111,25 +1145,31 @@ const BARRACK_META = [
   { id:'p_mech',   name:'작업공 영구 배치', max:1, base:5000,
     desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
   { id:'tier_g1', name:'지상병력 I — 검사·저격수·버퍼', max:1, base:1500,
-    desc: lv => lv ? '검사·저격수·버퍼를 고용할 수 있다' : '게임 내에서 검사·저격수·버퍼를 고용할 수 있게 된다' },
+    desc: lv => lv ? '보유 — 선택 시 검사·저격수·버퍼를 고용' : '게임 내에서 검사·저격수·버퍼를 고용할 수 있게 된다' },
   { id:'tier_g2', name:'지상병력 II — 전사·레인저·술사', max:1, base:4500,
-    req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
-    desc: lv => lv ? '전사·레인저·술사를 고용할 수 있다' : '지상병력 I이 더 강한 전사·레인저·술사로 업그레이드된다' },
+    req: () => mlv('tier_g1') > 0 && save.best >= 100, lockMsg: '지상병력 I 보유 + 100웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 전사·레인저·술사를 고용' : '전사·레인저·술사를 해금한다' },
   { id:'tier_g3', name:'지상병력 III — 팔라딘·보우마스터·주술사', max:1, base:10000,
-    req: () => mlv('tier_g2') > 0, lockMsg: '지상병력 II 필요',
-    desc: lv => lv ? '팔라딘·보우마스터·주술사를 고용할 수 있다' : '지상병력 II가 지상 최강인 팔라딘·보우마스터·주술사로 업그레이드된다' },
+    req: () => mlv('tier_g2') > 0 && save.best >= 200, lockMsg: '지상병력 II 보유 + 200웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 팔라딘·보우마스터·주술사를 고용' : '팔라딘·보우마스터·주술사를 해금한다' },
   { id:'tier_m1', name:'기갑병력 I — 전차·레일건·자주포', max:1, base:22000,
-    req: () => mlv('tier_g3') > 0, lockMsg: '지상병력 III 필요',
-    desc: lv => lv ? '전차·레일건·자주포를 고용할 수 있다' : '지상군 대신 전차·레일건·자주포를 고용할 수 있게 된다' },
+    req: () => mlv('tier_g3') > 0 && save.best >= 300, lockMsg: '지상병력 III 보유 + 300웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 전차·레일건·자주포를 고용' : '전차·레일건·자주포를 해금한다' },
   { id:'tier_m2', name:'기갑병력 II — 강습전차·이온레일건·열압자주포', max:1, base:42000,
-    req: () => mlv('tier_m1') > 0, lockMsg: '기갑병력 I 필요',
-    desc: lv => lv ? '강습전차·이온레일건·열압자주포를 고용할 수 있다' : '기갑병력 I이 강습전차·이온레일건·열압자주포로 업그레이드된다' },
+    req: () => mlv('tier_m1') > 0 && save.best >= 400, lockMsg: '기갑병력 I 보유 + 400웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 강습전차·이온레일건·열압자주포를 고용' : '강습전차·이온레일건·열압자주포를 해금한다' },
   { id:'tier_m3', name:'기갑병력 III — 드레드노트·플라즈마레일건·궤도자주포', max:1, base:75000,
-    req: () => mlv('tier_m2') > 0, lockMsg: '기갑병력 II 필요',
-    desc: lv => lv ? '드레드노트·플라즈마레일건·궤도자주포를 고용할 수 있다' : '기갑병력 II가 기갑 최강인 드레드노트·플라즈마레일건·궤도자주포로 업그레이드된다' },
-  { id:'tier_a1', name:'공중병력 — 전투기·정찰기', max:1, base:130000,
-    req: () => mlv('tier_m3') > 0, lockMsg: '기갑병력 III 필요',
-    desc: lv => lv ? '전투기·정찰기를 고용할 수 있다' : '기갑 대신 전투기·정찰기를 고용할 수 있게 된다' },
+    req: () => mlv('tier_m2') > 0 && save.best >= 500, lockMsg: '기갑병력 II 보유 + 500웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 드레드노트·플라즈마레일건·궤도자주포를 고용' : '드레드노트·플라즈마레일건·궤도자주포를 해금한다' },
+  { id:'tier_a1', name:'공중병력 I — 전투기·정찰기·요격기', max:1, base:130000,
+    req: () => mlv('tier_m3') > 0 && save.best >= 600, lockMsg: '기갑병력 III 보유 + 600웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 전투기·정찰기·요격기를 고용' : '전투기·정찰기·요격기를 해금한다' },
+  { id:'tier_a2', name:'공중병력 II — 스텔스기·폭격기·미사일기', max:1, base:200000,
+    req: () => mlv('tier_a1') > 0 && save.best >= 700, lockMsg: '공중병력 I 보유 + 700웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 스텔스기·폭격기·미사일기를 고용' : '스텔스기·폭격기·미사일기를 해금한다' },
+  { id:'tier_a3', name:'공중병력 III — 에이스기·전략폭격기·궤도타격기', max:1, base:300000,
+    req: () => mlv('tier_a2') > 0 && save.best >= 800, lockMsg: '공중병력 II 보유 + 800웨이브 필요',
+    desc: lv => lv ? '보유 — 선택 시 에이스기·전략폭격기·궤도타격기를 고용' : '에이스기·전략폭격기·궤도타격기를 해금한다' },
   { id:'troopDmg', name:'병력 영구 강화', max:Infinity, base:70,
     req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
     desc: lv => `병력 공격력 +${num(lv * MSTEP.troopDmg)} (현재 +${num(lv * MSTEP.troopDmg)})` },
@@ -1168,15 +1208,20 @@ let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0 };
 
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
    save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
-const MIGRATION = 2;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
+const MIGRATION = 3;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
                                    // 2: 지상/기갑/공중 일괄 해금 -> 단계별 순차 해금으로 개편
+                                   // 3: 단계 선택제 도입 + 공중 3단계 확장
 function migrate() {
   if ((save.mig || 0) < 1) save.cores = Math.floor(save.cores / 10);
   if ((save.mig || 0) < 2) {
-    // 예전에 병과를 통째로 사둔 플레이어는 그 병과의 모든 단계를 그대로 돌려받는다
     if (save.meta.t_ground > 0) { save.meta.tier_g1 = 1; save.meta.tier_g2 = 1; save.meta.tier_g3 = 1; }
     if (save.meta.t_mech > 0) { save.meta.tier_m1 = 1; save.meta.tier_m2 = 1; save.meta.tier_m3 = 1; }
-    if (save.meta.t_air > 0) { save.meta.tier_a1 = 1; save.meta.tier_a2 = 1; }
+    if (save.meta.t_air > 0) { save.meta.tier_a1 = 1; }
+  }
+  if ((save.mig || 0) < 3) {
+    let best = null;
+    for (const t of TROOP_TIERS) if (save.meta[t.tier] > 0) best = t.tier;
+    if (best) save.meta.selectedTier = best;
   }
   save.mig = MIGRATION;
 }
@@ -1189,6 +1234,7 @@ function loadSave() {
   for (const c of HERO_CLASSES) {
     if (!save.meta.heroLevels[c.id]) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   }
+  if (save.meta.selectedTier && !TROOP_TIERS.some(t => t.tier === save.meta.selectedTier)) save.meta.selectedTier = null;
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
   if (old > save.best) save.best = old;
   const stale = (save.mig || 0) < MIGRATION;
@@ -1244,6 +1290,7 @@ function importSave(code) {
   save.meta = {};
   for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
   save.meta.heroClass = d.meta.heroClass || null;
+  save.meta.selectedTier = d.meta.selectedTier || null;
   save.meta.heroLevels = {};
   for (const c of HERO_CLASSES) {
     const src = d.meta.heroLevels && d.meta.heroLevels[c.id];
@@ -1355,9 +1402,9 @@ function newGame(startWave) {
     goldMul: 1 + mlv('minc') * MSTEP.minc / 100,  // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     autoSkill: true,                       // 스킬 자동 발동
-    groundShop: mlv('tier_g1') > 0,
-    mechShop: mlv('tier_m1') > 0,
-    airShop: mlv('tier_a1') > 0,
+    groundShop: !!(currentTier() && currentTier().tier.startsWith('tier_g')),
+    mechShop: !!(currentTier() && currentTier().tier.startsWith('tier_m')),
+    airShop: !!(currentTier() && currentTier().tier.startsWith('tier_a')),
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
@@ -1415,9 +1462,9 @@ function resumeGame(snap) {
   S.startWave = snap.startWave ?? 1;
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
-  S.groundShop = mlv('tier_g1') > 0;
-  S.mechShop = mlv('tier_m1') > 0;
-  S.airShop = mlv('tier_a1') > 0;
+  S.groundShop = !!(currentTier() && currentTier().tier.startsWith('tier_g'));
+  S.mechShop = !!(currentTier() && currentTier().tier.startsWith('tier_m'));
+  S.airShop = !!(currentTier() && currentTier().tier.startsWith('tier_a'));
   S.hasMechanic = snap.hasMechanic ?? false;
   S.autoSkill = snap.autoSkill ?? true;
   S.drone = snap.drone ?? null;
@@ -1561,7 +1608,10 @@ const groundBlocked = def => !S.groundShop || popFull() ||
 
 function hireGround(def) {
   const cost = groundCost(def);
-  if (S.gold < cost || groundBlocked(def)) return;
+  const blocked = def.noCombat
+    ? (!mlv('tier_g1') || popFull() || (def.unique && ownedCount(def.id) > 0))
+    : groundBlocked(def);
+  if (S.gold < cost || blocked) return;
   S.gold -= cost;
   const ang = S.hired * GOLDEN;
   const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
@@ -2920,14 +2970,20 @@ function renderZoneMeta() {
 function renderBarrack() {
   forceAdminCores();
   $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
-  $('barrackMetaList').innerHTML = BARRACK_META.map(m => {
+
+  const ownedTiers = TROOP_TIERS.filter(t => mlv(t.tier) > 0);
+  const selId = save.meta.selectedTier || null;
+
+  let html = BARRACK_META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const inf = !Number.isFinite(m.max);
     const locked = m.req && !m.req();
-    const lvText = locked ? '' : inf ? `Lv.${lv}` : (maxed ? '보유' : '');
-    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
+    const isTier = TROOP_TIERS.some(t => t.tier === m.id);
+    const isSelected = isTier && selId === m.id;
+    const lvText = locked ? '' : inf ? `Lv.${lv}` : (maxed ? (isSelected ? '선택됨' : '보유') : '');
+    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}" ${isSelected ? 'style="border-color:#ffe066"' : ''}>
       <div class="info">
-        <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">${lvText}</span></div>
+        <div class="nm">${m.name} <span style="color:${isSelected ? '#ffe066' : '#7b88a8'};font-weight:400">${lvText}</span></div>
         <div class="ds">${locked ? (m.lockMsg || '조건 미충족') : `${m.desc(lv)}${inf && !maxed ? ` → ${m.desc(lv + 1)}` : ''}`}</div>
       </div>
       <button data-bm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
@@ -2937,6 +2993,21 @@ function renderBarrack() {
       </button>
     </div>`;
   }).join('');
+
+  if (ownedTiers.length > 0) {
+    html += `<div style="margin-top:18px;padding-top:14px;border-top:1px solid #2a3048">
+      <div style="font-size:14px;font-weight:700;color:#c8d0e0;margin-bottom:10px">병력 선택 <span style="color:#7b88a8;font-weight:400;font-size:12px">— 출격 시 사용할 병력을 선택하세요</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${ownedTiers.map(t => {
+          const sel = selId === t.tier;
+          return `<button data-tiersel="${t.tier}" class="ghost" style="padding:8px 14px;font-size:13px;border-radius:6px;${sel ? 'background:#ffe066;color:#1a1f2e;font-weight:700;border-color:#ffe066' : 'opacity:0.8'}">${t.name}${sel ? ' ✦' : ''}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  $('barrackMetaList').innerHTML = html;
+
   $('barrackMetaList').querySelectorAll('button[data-bm]').forEach(el => {
     el.onclick = () => {
       const m = BARRACK_META.find(x => x.id === el.dataset.bm);
@@ -2944,6 +3015,15 @@ function renderBarrack() {
       const lv = mlv(m.id), c = metaCost(m, lv);
       if (lv >= m.max || save.cores < c) return;
       save.cores -= c; save.meta[m.id] = lv + 1;
+      const isTier = TROOP_TIERS.some(t => t.tier === m.id);
+      if (isTier && !save.meta.selectedTier) save.meta.selectedTier = m.id;
+      writeSave(); renderBarrack();
+    };
+  });
+
+  $('barrackMetaList').querySelectorAll('button[data-tiersel]').forEach(el => {
+    el.onclick = () => {
+      save.meta.selectedTier = el.dataset.tiersel;
       writeSave(); renderBarrack();
     };
   });
@@ -3231,7 +3311,8 @@ function renderTroopShop() {
   // 작업공 — 전투 병력과 별개로, 지상병력 I 이상 해금되면 언제나 고용 가능
   {
     const e = els.mechanic;
-    const c = groundCost(e.d), owned = ownedCount(e.d.id), blocked = groundBlocked(e.d);
+    const c = groundCost(e.d), owned = ownedCount(e.d.id);
+    const blocked = !mlv('tier_g1') || popFull() || (e.d.unique && owned > 0);
     const off = blocked || S.gold < c;
     e.cnt.textContent = owned ? '×' + owned : '';
     e.btn.textContent = popFull() ? '인구 초과' : owned > 0 ? '보유중' : c + 'G';
@@ -3404,13 +3485,15 @@ document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
     const t = el.dataset.tab;
     if (t === 'hero' && heroTabLocked()) return;
-    if (TECH_TABS[t] && !mlv(TECH_TABS[t])) return;
+    if (t === 'troops' && !currentTier()) return;
+    if (t !== 'troops' && TECH_TABS[t] && !mlv(TECH_TABS[t])) return;
     setTab(t);
   };
 });
 function setTab(name) {
   if (name === 'hero' && heroTabLocked()) name = 'nexus';
-  if (TECH_TABS[name] && !mlv(TECH_TABS[name])) name = 'nexus';
+  if (name === 'troops' && !currentTier()) name = 'nexus';
+  if (name !== 'troops' && TECH_TABS[name] && !mlv(TECH_TABS[name])) name = 'nexus';
   tab = name;
   document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
   for (const p of SHOP_PANELS) {
@@ -3423,7 +3506,12 @@ function setTab(name) {
 function syncTechTabs() {
   for (const [tabName, metaId] of Object.entries(TECH_TABS)) {
     const el = document.querySelector(`.tabs .tab[data-tab="${tabName}"]`);
-    if (el) el.style.display = mlv(metaId) > 0 ? '' : 'none';
+    if (!el) continue;
+    if (tabName === 'troops') {
+      el.style.display = currentTier() ? '' : 'none';
+    } else {
+      el.style.display = mlv(metaId) > 0 ? '' : 'none';
+    }
   }
 }
 
@@ -3613,6 +3701,7 @@ $('btnAdminResetMeta').onclick = () => {
   if (!confirm('영구 강화와 지역 해금을 모두 초기화할까요?\n(코어와 최고 기록은 그대로 남습니다)')) return;
   for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META]) save.meta[m.id] = 0;
   save.meta.heroClass = null;
+  save.meta.selectedTier = null;
   save.meta.heroLevels = {};
   for (const c of HERO_CLASSES) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   writeSave();
