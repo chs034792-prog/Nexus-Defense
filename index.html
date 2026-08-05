@@ -181,6 +181,12 @@
     font-size: clamp(10px, 2.4vw, 12px);
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
+  #pauseEndWrap { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); z-index: 4; }
+  #pauseEndWrap button {
+    width: auto; padding: 9px 20px;
+    font-size: clamp(12px, 2.6vw, 14px);
+    box-shadow: 0 2px 10px rgba(0,0,0,.4);
+  }
   #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 6px; align-items: flex-end; }
   #btnSkill {
     width: 60px; height: 60px; border-radius: 50%; border: 2px solid #555;
@@ -468,6 +474,7 @@
       <button id="btnRestart">다시 출격</button>
       <button id="btnToMenu" class="ghost" style="width:180px">메인으로</button>
     </div>
+    <div id="pauseEndWrap" style="display:none"><button id="btnEndRound" class="danger">라운드 종료</button></div>
     <div id="waveBtnWrap"><button id="btnWave">웨이브 1 시작</button></div>
     <div id="nexusBtn"><button id="btnNexusInfo" class="ghost">넥서스 정보</button></div>
     <div id="skillArea">
@@ -1644,6 +1651,31 @@ function gameOver() {
   $('overTitle').textContent = '넥서스 파괴됨';
   $('overTitle').style.color = '#ff6b81';
   $('overMsg').textContent = `웨이브 ${S.wave}에서 무너졌습니다 · 최고 기록 ${save.best}`;
+  $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
+  $('overBonus').style.display = 'none';
+  $('over').classList.add('on');
+  syncUI();
+  submitRanking();
+}
+
+/* 일시정지 중 수동으로 판을 끝낸다 — 넥서스가 파괴된 것과 같은 방식으로
+   코어를 정산하지만, 죽지 않고 스스로 그만두는 것이라 문구만 다르게 표시한다. */
+function endRound() {
+  if (!S || S.phase === 'over') return;
+  S.phase = 'over';
+  S.autoT = 0;
+  const cleared = S.wave - 1;
+  const clearedInRun = Math.max(0, S.wave - S.startWave);
+  const cores = coreReward(clearedInRun);
+  save.cores += cores;
+  save.runs++;
+  if (cleared > save.best) save.best = cleared;
+  writeSave();
+  clearRun();
+  paused = false; pausedBySel = false;
+  $('overTitle').textContent = '라운드 종료';
+  $('overTitle').style.color = '#7fe7ff';
+  $('overMsg').textContent = `웨이브 ${S.wave}에서 스스로 종료했습니다 · 최고 기록 ${save.best}`;
   $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
   $('overBonus').style.display = 'none';
   $('over').classList.add('on');
@@ -3351,6 +3383,7 @@ function syncUI() {
   $('hpfill').style.width = clamp(S.nexus.hp / S.nexus.maxHp, 0, 1) * 100 + '%';
   $('uiSpeed').textContent = speed + 'x';
   $('uiPause').textContent = paused ? '▶' : '⏸';
+  $('pauseEndWrap').style.display = (paused && !sel && S.phase !== 'over') ? '' : 'none';
 
   const b = $('btnWave');
   b.disabled = S.phase !== 'build';
@@ -3457,6 +3490,11 @@ $('btnSell').onclick = () => {
 };
 
 $('btnNexusInfo').onclick = () => { if (!S || S.phase === 'over') return; openSel({ kind: 'nexus' }); };
+$('btnEndRound').onclick = () => {
+  if (!S || S.phase === 'over') return;
+  if (!confirm('현재 라운드를 여기서 종료할까요?\n지금까지 넘은 웨이브만큼 코어가 지급됩니다.')) return;
+  endRound();
+};
 $('btnSkill').onclick = () => useHeroSkill();
 $('btnAutoSkill').onclick = () => {
   if (!S) return;
