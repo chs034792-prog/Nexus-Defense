@@ -567,9 +567,10 @@ const popCost = lv => 150 + 100 * lv * (lv + 1);
 const HERO_UP = { base: 60, grow: 1.18, step: 0.05 };
 const heroUpCost = lv => Math.floor(HERO_UP.base * Math.pow(HERO_UP.grow, lv));
 
-// 지상군 강화 — 비용은 50, 100, 150 ... 선형 증가. 살 때마다 공격력 +1(고정값).
-const GROUND_UP = { base: 50, step: 1 };
-const groundUpCost = lv => GROUND_UP.base * (lv + 1);
+// 병력 강화 — 비용은 60, 120, 180 ... 선형 증가. 살 때마다 공격력 +2(고정값).
+// 지상/기갑/공중 구분 없이 지금 해금된 병력 전체에 적용된다.
+const TROOP_UP = { base: 60, step: 2 };
+const troopUpCost = lv => TROOP_UP.base * (lv + 1);
 
 // 영웅 — 단 1기만 소환, 직업 전환 가능. 인구를 차지하지 않는다.
 const HEROES = [];
@@ -612,6 +613,7 @@ function heroStatScaled(cls, lv) {
 }
 
 const GROUND_UNITS = [
+  // 지상병력 I
   { id:'swordsman', name:'검사', cost:500, color:'#4ade80', accent:'#a7f3d0',
     dmg:14, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
     roam:265,
@@ -625,33 +627,84 @@ const GROUND_UNITS = [
     roam:265,
     aura:true, auraDmg:8, auraRange:80,
     desc:'적을 느리게 하고 주변에 지속 피해를 준다' },
+  // 지상병력 II — 검사/저격수/버퍼가 더 강해지며 이름이 바뀐다
+  { id:'warrior2', name:'전사', cost:1800, color:'#4ade80', accent:'#a7f3d0',
+    dmg:32, range:90, rate:1.6, bspd:500, spd:145, splash:0, slow:0, slowT:0,
+    roam:280,
+    desc:'검사보다 훨씬 강해진 근접 전투원' },
+  { id:'ranger', name:'레인저', cost:2400, color:'#f472b6', accent:'#fbcfe8',
+    dmg:150, range:280, rate:0.55, bspd:950, spd:110, splash:0, slow:0, slowT:0,
+    roam:290,
+    desc:'고정 저격에서 벗어나 이동하며 원거리 사격을 퍼붓는다' },
+  { id:'shaman', name:'술사', cost:1800, color:'#38bdf8', accent:'#bae6fd',
+    dmg:14, range:90, rate:1.3, bspd:450, spd:130, splash:0, slow:0.5, slowT:2.5,
+    roam:280,
+    aura:true, auraDmg:18, auraRange:100,
+    desc:'버퍼보다 강한 감속과 지속 피해 오라를 두른다' },
+  // 지상병력 III — 궁극 형태
+  { id:'paladin', name:'팔라딘', cost:4200, color:'#4ade80', accent:'#a7f3d0',
+    dmg:70, range:100, rate:1.7, bspd:520, spd:160, splash:20, slow:0, slowT:0,
+    roam:300,
+    desc:'성스러운 힘으로 주변까지 함께 베어내는 지상 최강 전투원' },
+  { id:'bowmaster', name:'보우마스터', cost:5600, color:'#f472b6', accent:'#fbcfe8',
+    dmg:320, range:320, rate:0.6, bspd:1000, spd:120, splash:0, slow:0, slowT:0,
+    roam:310,
+    desc:'초장거리에서 강력한 일격을 꽂아 넣는 궁술의 달인' },
+  { id:'witchdoctor', name:'주술사', cost:4200, color:'#38bdf8', accent:'#bae6fd',
+    dmg:32, range:100, rate:1.4, bspd:480, spd:140, splash:0, slow:0.6, slowT:3.0,
+    roam:300,
+    aura:true, auraDmg:38, auraRange:120,
+    desc:'강력한 저주로 적을 묶고 광역에 저주의 피해를 흩뿌린다' },
   { id:'mechanic', name:'작업공', cost:400, color:'#fbbf24', accent:'#fde68a',
     dmg:0, range:0, rate:0, bspd:0, spd:100, splash:0, slow:0, slowT:0,
     hold:true, unique:true, noCombat:true,
     desc:'넥서스에 드론 시스템을 설치한다 (1기 한정)' },
 ];
 
-// 기갑 병과 — 느리고 묵직, 광역·관통 특화. 지상군 강화(groundDmgAdd) 공유.
+// 기갑 병과 — 느리고 묵직, 광역·관통 특화.
 const MECH_UNITS = [
+  // 기갑병력 I
   { id:'tank', name:'전차', cost:1200, color:'#78909c', accent:'#b0bec5',
     dmg:40, range:150, rate:0.6, bspd:360, spd:55, splash:60, slow:0, slowT:0,
     roam:200, mech:true,
     desc:'광역 포격으로 뭉친 적을 쓸어낸다' },
-  { id:'artillery', name:'자주포', cost:1800, color:'#ef6c00', accent:'#ffcc80',
-    dmg:120, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
-    hold:true, mech:true,
-    desc:'초장거리 포격, 넓은 폭발 반경' },
   { id:'railgun', name:'레일건', cost:1500, color:'#00bcd4', accent:'#80deea',
     dmg:70, range:280, rate:0.5, bspd:1200, spd:0, splash:0, slow:0.3, slowT:1.5,
     hold:true, mech:true, pierce:3,
     desc:'관통탄이 적을 꿰뚫어 최대 3체 적중' },
+  { id:'artillery', name:'자주포', cost:1800, color:'#ef6c00', accent:'#ffcc80',
+    dmg:120, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
+    hold:true, mech:true,
+    desc:'초장거리 포격, 넓은 폭발 반경' },
+  // 기갑병력 II
+  { id:'assaultTank', name:'강습전차', cost:3200, color:'#78909c', accent:'#b0bec5',
+    dmg:95, range:170, rate:0.65, bspd:400, spd:65, splash:70, slow:0, slowT:0,
+    roam:220, mech:true,
+    desc:'전차보다 두꺼운 장갑과 화력으로 전선을 돌파한다' },
+  { id:'ionRailgun', name:'이온레일건', cost:4000, color:'#00bcd4', accent:'#80deea',
+    dmg:170, range:310, rate:0.55, bspd:1300, spd:0, slow:0.35, slowT:1.8,
+    hold:true, mech:true, pierce:4,
+    desc:'이온화된 관통탄이 최대 4체까지 꿰뚫는다' },
+  { id:'thermoArtillery', name:'열압자주포', cost:4800, color:'#ef6c00', accent:'#ffcc80',
+    dmg:280, range:350, rate:0.28, bspd:550, spd:0, splash:110, slow:0, slowT:0,
+    hold:true, mech:true,
+    desc:'열압력탄으로 더 넓은 범위를 초토화시킨다' },
+  // 기갑병력 III — 궁극 형태
+  { id:'dreadnought', name:'드레드노트', cost:8000, color:'#78909c', accent:'#b0bec5',
+    dmg:210, range:190, rate:0.7, bspd:440, spd:75, splash:85, slow:0, slowT:0,
+    roam:240, mech:true,
+    desc:'움직이는 요새, 기갑 병과의 정점' },
+  { id:'plasmaRailgun', name:'플라즈마레일건', cost:10000, color:'#00bcd4', accent:'#80deea',
+    dmg:400, range:340, rate:0.6, bspd:1400, spd:0, slow:0.4, slowT:2.0,
+    hold:true, mech:true, pierce:5,
+    desc:'플라즈마 관통탄이 최대 5체를 꿰뚫는다' },
+  { id:'orbitalArtillery', name:'궤도자주포', cost:12000, color:'#ef6c00', accent:'#ffcc80',
+    dmg:650, range:380, rate:0.3, bspd:600, spd:0, splash:140, slow:0, slowT:0,
+    hold:true, mech:true,
+    desc:'궤도에서 떨어지는 압도적인 화력' },
 ];
 
-// 기갑 강화 — 기갑 유닛 공격력 +2. 지상군 강화와 별도.
-const MECH_UP = { base: 80, step: 2 };
-const mechUpCost = lv => MECH_UP.base * (lv + 1);
-
-// 공중 병과 — 빠르고 넓은 활동 반경.
+// 공중 병과 — 빠르고 넓은 활동 반경. 두 기체가 마지막 병력 단계를 함께 구성한다.
 const AIR_UNITS = [
   { id:'fighter', name:'전투기', cost:2000, color:'#e040fb', accent:'#f8bbd0',
     dmg:22, range:120, rate:2.0, bspd:700, spd:210, splash:0, slow:0, slowT:0,
@@ -663,36 +716,36 @@ const AIR_UNITS = [
     desc:'상시 순찰하며 적에게 폭탄을 투하한다' },
 ];
 
-// 공중 강화 — 공중 유닛 공격력 +3.
-const AIR_UP = { base: 100, step: 3 };
-const airUpCost = lv => AIR_UP.base * (lv + 1);
-
 const ALL_DEFS = [...HEROES, ...GROUND_UNITS, ...MECH_UNITS, ...AIR_UNITS];
 const defById = id => ALL_DEFS.find(d => d.id === id);
 
 /* ── 병력 진행 시스템 ─────────────────────────────────
-   지상/기갑/공중을 동시에 골라 쓰는 대신, 영구 상점에서 코어로
-   단계를 하나씩 순서대로 해금하며 그때그때 딱 하나의 병력만 고용할 수 있다.
+   영구 상점에서 코어로 단계를 하나씩 순서대로 해금한다. 각 단계는
+   같은 계열의 유닛 2~3종을 한꺼번에 열어주고, 다음 단계를 사면
+   그 단계의 유닛들로 교체된다(더 강한 이름으로 업그레이드).
    작업공은 전투 유닛이 아니라 드론 시스템용이라 이 진행과 별개로 취급한다. */
 const mechanicDef = GROUND_UNITS.find(d => d.id === 'mechanic');
-const TROOP_ORDER = [
-  { tier: 'tier_g1', def: GROUND_UNITS.find(d => d.id === 'swordsman') },
-  { tier: 'tier_g2', def: GROUND_UNITS.find(d => d.id === 'buffer') },
-  { tier: 'tier_g3', def: GROUND_UNITS.find(d => d.id === 'g_sniper') },
-  { tier: 'tier_m1', def: MECH_UNITS.find(d => d.id === 'tank') },
-  { tier: 'tier_m2', def: MECH_UNITS.find(d => d.id === 'railgun') },
-  { tier: 'tier_m3', def: MECH_UNITS.find(d => d.id === 'artillery') },
-  { tier: 'tier_a1', def: AIR_UNITS.find(d => d.id === 'fighter') },
-  { tier: 'tier_a2', def: AIR_UNITS.find(d => d.id === 'scout') },
+const gu = id => GROUND_UNITS.find(d => d.id === id);
+const mu = id => MECH_UNITS.find(d => d.id === id);
+const au = id => AIR_UNITS.find(d => d.id === id);
+const TROOP_TIERS = [
+  { tier: 'tier_g1', name: '지상병력 I',  units: [gu('swordsman'), gu('g_sniper'), gu('buffer')] },
+  { tier: 'tier_g2', name: '지상병력 II', units: [gu('warrior2'), gu('ranger'), gu('shaman')] },
+  { tier: 'tier_g3', name: '지상병력 III', units: [gu('paladin'), gu('bowmaster'), gu('witchdoctor')] },
+  { tier: 'tier_m1', name: '기갑병력 I',  units: [mu('tank'), mu('railgun'), mu('artillery')] },
+  { tier: 'tier_m2', name: '기갑병력 II', units: [mu('assaultTank'), mu('ionRailgun'), mu('thermoArtillery')] },
+  { tier: 'tier_m3', name: '기갑병력 III', units: [mu('dreadnought'), mu('plasmaRailgun'), mu('orbitalArtillery')] },
+  { tier: 'tier_a1', name: '공중병력',    units: [au('fighter'), au('scout')] },
 ];
-function currentTroop() {
+function currentTier() {
   let cur = null;
-  for (const t of TROOP_ORDER) if (mlv(t.tier) > 0) cur = t;
+  for (const t of TROOP_TIERS) if (mlv(t.tier) > 0) cur = t;
   return cur;
 }
 function troopCategory(def) {
   return def.mech ? 'mech' : def.air ? 'air' : 'ground';
 }
+const isTroop = def => !isHeroClass(def) && !def.noCombat;
 
 const ZONE_ENEMIES = {
   초원: {
@@ -1015,7 +1068,7 @@ const NEXUS_UPS = [
    값을 고치면 상점 표시·새 판 스탯·넥서스 정보가 함께 따라온다. */
 const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
-  gndDmg: 3, mechDmg: 5, airDmg: 7,
+  troopDmg: 4,
   gravDmg: 4, gravRng: 10, droneCnt: 1, droneDmg: 3,
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
@@ -1057,38 +1110,29 @@ const META = [
 const BARRACK_META = [
   { id:'p_mech',   name:'작업공 영구 배치', max:1, base:5000,
     desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
-  { id:'tier_g1', name:'지상병력 I — 검사', max:1, base:1500,
-    desc: lv => lv ? '검사를 고용할 수 있다' : '게임 내에서 검사를 고용할 수 있게 된다' },
-  { id:'tier_g2', name:'지상병력 II — 버퍼', max:1, base:3500,
+  { id:'tier_g1', name:'지상병력 I — 검사·저격수·버퍼', max:1, base:1500,
+    desc: lv => lv ? '검사·저격수·버퍼를 고용할 수 있다' : '게임 내에서 검사·저격수·버퍼를 고용할 수 있게 된다' },
+  { id:'tier_g2', name:'지상병력 II — 전사·레인저·술사', max:1, base:4500,
     req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
-    desc: lv => lv ? '버퍼를 고용할 수 있다' : '검사 대신 버퍼를 고용할 수 있게 된다' },
-  { id:'tier_g3', name:'지상병력 III — 저격수', max:1, base:7000,
+    desc: lv => lv ? '전사·레인저·술사를 고용할 수 있다' : '지상병력 I이 더 강한 전사·레인저·술사로 업그레이드된다' },
+  { id:'tier_g3', name:'지상병력 III — 팔라딘·보우마스터·주술사', max:1, base:10000,
     req: () => mlv('tier_g2') > 0, lockMsg: '지상병력 II 필요',
-    desc: lv => lv ? '저격수를 고용할 수 있다' : '버퍼 대신 저격수를 고용할 수 있게 된다' },
-  { id:'tier_m1', name:'기갑병력 I — 전차', max:1, base:18000,
+    desc: lv => lv ? '팔라딘·보우마스터·주술사를 고용할 수 있다' : '지상병력 II가 지상 최강인 팔라딘·보우마스터·주술사로 업그레이드된다' },
+  { id:'tier_m1', name:'기갑병력 I — 전차·레일건·자주포', max:1, base:22000,
     req: () => mlv('tier_g3') > 0, lockMsg: '지상병력 III 필요',
-    desc: lv => lv ? '전차를 고용할 수 있다' : '지상군 대신 전차를 고용할 수 있게 된다' },
-  { id:'tier_m2', name:'기갑병력 II — 레일건', max:1, base:35000,
+    desc: lv => lv ? '전차·레일건·자주포를 고용할 수 있다' : '지상군 대신 전차·레일건·자주포를 고용할 수 있게 된다' },
+  { id:'tier_m2', name:'기갑병력 II — 강습전차·이온레일건·열압자주포', max:1, base:42000,
     req: () => mlv('tier_m1') > 0, lockMsg: '기갑병력 I 필요',
-    desc: lv => lv ? '레일건을 고용할 수 있다' : '전차 대신 레일건을 고용할 수 있게 된다' },
-  { id:'tier_m3', name:'기갑병력 III — 자주포', max:1, base:60000,
+    desc: lv => lv ? '강습전차·이온레일건·열압자주포를 고용할 수 있다' : '기갑병력 I이 강습전차·이온레일건·열압자주포로 업그레이드된다' },
+  { id:'tier_m3', name:'기갑병력 III — 드레드노트·플라즈마레일건·궤도자주포', max:1, base:75000,
     req: () => mlv('tier_m2') > 0, lockMsg: '기갑병력 II 필요',
-    desc: lv => lv ? '자주포를 고용할 수 있다' : '레일건 대신 자주포를 고용할 수 있게 된다' },
-  { id:'tier_a1', name:'공중병력 I — 전투기', max:1, base:100000,
+    desc: lv => lv ? '드레드노트·플라즈마레일건·궤도자주포를 고용할 수 있다' : '기갑병력 II가 기갑 최강인 드레드노트·플라즈마레일건·궤도자주포로 업그레이드된다' },
+  { id:'tier_a1', name:'공중병력 — 전투기·정찰기', max:1, base:130000,
     req: () => mlv('tier_m3') > 0, lockMsg: '기갑병력 III 필요',
-    desc: lv => lv ? '전투기를 고용할 수 있다' : '기갑 대신 전투기를 고용할 수 있게 된다' },
-  { id:'tier_a2', name:'공중병력 II — 정찰기', max:1, base:170000,
-    req: () => mlv('tier_a1') > 0, lockMsg: '공중병력 I 필요',
-    desc: lv => lv ? '정찰기를 고용할 수 있다' : '전투기 대신 정찰기를 고용할 수 있게 된다' },
-  { id:'gndDmg', name:'지상군 영구 강화', max:Infinity, base:60,
+    desc: lv => lv ? '전투기·정찰기를 고용할 수 있다' : '기갑 대신 전투기·정찰기를 고용할 수 있게 된다' },
+  { id:'troopDmg', name:'병력 영구 강화', max:Infinity, base:70,
     req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
-    desc: lv => `지상 유닛 공격력 +${num(lv * MSTEP.gndDmg)} (현재 +${num(lv * MSTEP.gndDmg)})` },
-  { id:'mechDmg', name:'기갑 영구 강화',  max:Infinity, base:80,
-    req: () => mlv('tier_m1') > 0, lockMsg: '기갑병력 I 필요',
-    desc: lv => `기갑 유닛 공격력 +${num(lv * MSTEP.mechDmg)} (현재 +${num(lv * MSTEP.mechDmg)})` },
-  { id:'airDmg', name:'공중 영구 강화',   max:Infinity, base:100,
-    req: () => mlv('tier_a1') > 0, lockMsg: '공중병력 I 필요',
-    desc: lv => `공중 유닛 공격력 +${num(lv * MSTEP.airDmg)} (현재 +${num(lv * MSTEP.airDmg)})` },
+    desc: lv => `병력 공격력 +${num(lv * MSTEP.troopDmg)} (현재 +${num(lv * MSTEP.troopDmg)})` },
 ];
 
 const HERO_META = [
@@ -1233,9 +1277,7 @@ function saveRun() {
     hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
-    groundUpLv: S.groundUpLv, groundDmgAdd: S.groundDmgAdd,
-    mechUpLv: S.mechUpLv, mechDmgAdd: S.mechDmgAdd,
-    airUpLv: S.airUpLv, airDmgAdd: S.airDmgAdd,
+    troopUpLv: S.troopUpLv, troopDmgAdd: S.troopDmgAdd,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
@@ -1319,12 +1361,8 @@ function newGame(startWave) {
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
-    groundUpLv: 0,                       // 지상군 강화 횟수
-    groundDmgAdd: mlv('gndDmg') * MSTEP.gndDmg,
-    mechUpLv: 0,                         // 기갑 강화 횟수
-    mechDmgAdd: mlv('mechDmg') * MSTEP.mechDmg,
-    airUpLv: 0,                          // 공중 강화 횟수
-    airDmgAdd: mlv('airDmg') * MSTEP.airDmg,
+    troopUpLv: 0,                        // 병력 강화 횟수 (판 안에서)
+    troopDmgAdd: mlv('troopDmg') * MSTEP.troopDmg,
     hasMechanic: false,
     drone: null,
     gravWave: null,
@@ -1394,12 +1432,8 @@ function resumeGame(snap) {
   S.popLv = snap.popLv ?? 0;
   S.maxPop = Math.min(POP_UP.max, snap.maxPop ?? (CFG.basePop + S.popLv * POP_UP.step));
   S.heroUpLv = snap.heroUpLv ?? 0;
-  S.groundUpLv = snap.groundUpLv ?? 0;
-  S.groundDmgAdd = snap.groundDmgAdd ?? (S.groundUpLv * GROUND_UP.step);
-  S.mechUpLv = snap.mechUpLv ?? 0;
-  S.mechDmgAdd = snap.mechDmgAdd ?? (S.mechUpLv * MECH_UP.step);
-  S.airUpLv = snap.airUpLv ?? 0;
-  S.airDmgAdd = snap.airDmgAdd ?? (S.airUpLv * AIR_UP.step);
+  S.troopUpLv = snap.troopUpLv ?? 0;
+  S.troopDmgAdd = snap.troopDmgAdd ?? (mlv('troopDmg') * MSTEP.troopDmg + S.troopUpLv * TROOP_UP.step);
   Object.assign(S.nexus, snap.nexus);
   Object.assign(S.nexusLv, snap.nexusLv);
   S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
@@ -1453,15 +1487,9 @@ const popFull = () => S.heroes.filter(h => !h.permaMech).length >= S.maxPop;
 const heroBlocked = def => CFG.heroesLocked || popFull() ||
                            (CFG.heroUnique && ownedCount(def.id) > 0);
 
-const isGround = def => GROUND_UNITS.some(g => g.id === def.id);
-const isMech   = def => MECH_UNITS.some(g => g.id === def.id);
-const isAir    = def => AIR_UNITS.some(g => g.id === def.id);
 const isHeroClass = def => !!def.heroClass;
 const heroStat = h => ({
-  dmg:   isGround(h.def) ? h.def.dmg + S.groundDmgAdd
-       : isMech(h.def)   ? h.def.dmg + S.mechDmgAdd
-       : isAir(h.def)    ? h.def.dmg + S.airDmgAdd
-       :                    h.def.dmg * S.dmgMul,
+  dmg:   isTroop(h.def) ? h.def.dmg + S.troopDmgAdd : h.def.dmg * S.dmgMul,
   range: h.def.range,
   rate:  h.def.rate,
 });
@@ -3042,7 +3070,8 @@ function buildShops() {
     </div>`
     ;
 
-  // 병력 상점 — 영구 상점에서 순서대로 해금한 단 하나의 병력만 고용할 수 있다
+  // 병력 상점 — 영구 상점에서 순서대로 해금한 단계의 유닛들만 고용할 수 있다
+  const troopCards = TROOP_TIERS.flatMap(t => t.units.map(d => ({ tier: t.tier, d })));
   $('troopShop').innerHTML = `<div class="card" data-g="${mechanicDef.id}">
       <div class="swatch" style="background:${mechanicDef.color};color:${mechanicDef.color}"></div>
       <div>
@@ -3051,21 +3080,21 @@ function buildShops() {
       </div>
       <button class="buy"></button>
     </div>`
-    + TROOP_ORDER.map(t => `
-    <div class="card" data-troop="${t.tier}" style="display:none">
-      <div class="swatch" style="background:${t.def.color};color:${t.def.color}"></div>
+    + troopCards.map(({ tier, d }) => `
+    <div class="card" data-troop="${d.id}" style="display:none">
+      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
       <div>
-        <div class="nm">${t.def.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${t.def.desc}</div>
+        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${d.desc}</div>
         <div class="ds stat" style="color:#7b88a8;font-size:11px"></div>
       </div>
       <button class="buy"></button>
     </div>`).join('')
     + `<div class="card" id="troopUpCard" style="display:none">
-      <div class="swatch" id="troopUpSwatch"></div>
+      <div class="swatch" style="background:#4ade80;color:#4ade80"></div>
       <div>
-        <div class="nm"><span id="troopUpName"></span> <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds" id="troopUpDesc"></div>
+        <div class="nm">병력 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">지금 해금된 모든 병력의 공격력 +${TROOP_UP.step}</div>
       </div>
       <button class="buy"></button>
     </div>`
@@ -3082,18 +3111,17 @@ function buildShops() {
     els.mechanic = { d: mechanicDef, card, btn, cnt: card.querySelector('.cnt') };
   }
 
-  els.troop = TROOP_ORDER.map(t => {
-    const card = $('troopShop').querySelector(`.card[data-troop="${t.tier}"]`);
+  els.troop = troopCards.map(({ tier, d }) => {
+    const card = $('troopShop').querySelector(`.card[data-troop="${d.id}"]`);
     const btn = card.querySelector('button');
-    const hireFn = t.def.mech ? hireMech : t.def.air ? hireAir : hireGround;
-    card.onclick = () => hireFn(t.def);
-    btn.onclick = ev => { ev.stopPropagation(); hireFn(t.def); };
-    return { t, d: t.def, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
+    const hireFn = d.mech ? hireMech : d.air ? hireAir : hireGround;
+    card.onclick = () => hireFn(d);
+    btn.onclick = ev => { ev.stopPropagation(); hireFn(d); };
+    return { tier, d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
   });
 
   const tupCard = $('troopUpCard');
-  els.troopUp = { card: tupCard, btn: tupCard.querySelector('button'), lv: tupCard.querySelector('.lv'),
-                  name: $('troopUpName'), desc: $('troopUpDesc'), swatch: $('troopUpSwatch') };
+  els.troopUp = { card: tupCard, btn: tupCard.querySelector('button'), lv: tupCard.querySelector('.lv') };
   tupCard.onclick = buyTroopUp;
   els.troopUp.btn.onclick = ev => { ev.stopPropagation(); buyTroopUp(); };
 
@@ -3115,44 +3143,15 @@ function buyPop() {
   syncUI();
 }
 
-function buyGroundUp() {
-  if (!S.groundShop) return;
-  const c = groundUpCost(S.groundUpLv);
-  if (S.gold < c) return;
-  S.gold -= c; S.groundUpLv++; S.groundDmgAdd += GROUND_UP.step;
-  addText(CX, CY - 88, `지상군 공격력 +${S.groundDmgAdd}`, '#4ade80');
-  saveRun();
-  syncUI();
-}
-
-function buyMechUp() {
-  if (!S.mechShop) return;
-  const c = mechUpCost(S.mechUpLv);
-  if (S.gold < c) return;
-  S.gold -= c; S.mechUpLv++; S.mechDmgAdd += MECH_UP.step;
-  addText(CX, CY - 88, `기갑 공격력 +${S.mechDmgAdd}`, '#78909c');
-  saveRun();
-  syncUI();
-}
-
-function buyAirUp() {
-  if (!S.airShop) return;
-  const c = airUpCost(S.airUpLv);
-  if (S.gold < c) return;
-  S.gold -= c; S.airUpLv++; S.airDmgAdd += AIR_UP.step;
-  addText(CX, CY - 88, `공중 공격력 +${S.airDmgAdd}`, '#e040fb');
-  saveRun();
-  syncUI();
-}
-
-// 현재 해금된 병력의 병과에 맞춰 지상군/기갑/공중 강화 중 하나로 넘긴다
+// 지상/기갑/공중 구분 없이 지금 해금된 모든 병력에 함께 적용된다
 function buyTroopUp() {
-  const cur = currentTroop();
-  if (!cur) return;
-  const cat = troopCategory(cur.def);
-  if (cat === 'mech') buyMechUp();
-  else if (cat === 'air') buyAirUp();
-  else buyGroundUp();
+  if (!currentTier()) return;
+  const c = troopUpCost(S.troopUpLv);
+  if (S.gold < c) return;
+  S.gold -= c; S.troopUpLv++; S.troopDmgAdd += TROOP_UP.step;
+  addText(CX, CY - 88, `병력 공격력 +${S.troopDmgAdd}`, '#4ade80');
+  saveRun();
+  syncUI();
 }
 
 function buyHeroUp() {
@@ -3240,10 +3239,10 @@ function renderTroopShop() {
     e.card.classList.toggle('poor', off);
   }
 
-  // 현재 해금된 단계의 병력 카드 하나만 보여준다
-  const cur = currentTroop();
+  // 현재 해금된 단계의 병력 카드들(계열당 2~3종)만 보여준다
+  const cur = currentTier();
   for (const e of els.troop) {
-    const active = !!cur && cur.tier === e.t.tier;
+    const active = !!cur && cur.tier === e.tier;
     e.card.style.display = active ? '' : 'none';
     if (!active) continue;
     const cat = troopCategory(e.d);
@@ -3251,32 +3250,21 @@ function renderTroopShop() {
     const owned = ownedCount(e.d.id);
     const blocked = cat === 'mech' ? mechBlocked(e.d) : cat === 'air' ? airBlocked(e.d) : groundBlocked(e.d);
     const off = blocked || S.gold < cost;
-    const dmgAdd = cat === 'mech' ? S.mechDmgAdd : cat === 'air' ? S.airDmgAdd : S.groundDmgAdd;
     e.cnt.textContent = owned ? '×' + owned : '';
     e.btn.textContent = popFull() ? '인구 초과' : cost + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
-    const dmg = e.d.dmg + dmgAdd;
+    const dmg = e.d.dmg + S.troopDmgAdd;
     e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}${e.d.splash ? ' · 폭발 ' + e.d.splash : ''}`;
   }
 
-  // 병력 강화 — 현재 병과에 맞춰 이름·효과·비용이 바뀐다
+  // 병력 강화 — 지상/기갑/공중 구분 없이 단일 강화
   if (cur) {
-    const cat = troopCategory(cur.def);
-    const lv = cat === 'mech' ? S.mechUpLv : cat === 'air' ? S.airUpLv : S.groundUpLv;
-    const dmgAdd = cat === 'mech' ? S.mechDmgAdd : cat === 'air' ? S.airDmgAdd : S.groundDmgAdd;
-    const cost = cat === 'mech' ? mechUpCost(lv) : cat === 'air' ? airUpCost(lv) : groundUpCost(lv);
-    const step = cat === 'mech' ? MECH_UP.step : cat === 'air' ? AIR_UP.step : GROUND_UP.step;
-    const catName = cat === 'mech' ? '기갑' : cat === 'air' ? '공중' : '지상군';
-    const color = cat === 'mech' ? '#78909c' : cat === 'air' ? '#e040fb' : '#4ade80';
-    const off = S.gold < cost;
+    const c = troopUpCost(S.troopUpLv);
+    const off = S.gold < c;
     els.troopUp.card.style.display = '';
-    els.troopUp.swatch.style.background = color;
-    els.troopUp.swatch.style.color = color;
-    els.troopUp.name.textContent = `${catName} 강화`;
-    els.troopUp.desc.textContent = `모든 ${catName} 유닛 공격력 +${step}`;
-    els.troopUp.lv.textContent = `(+${dmgAdd})`;
-    els.troopUp.btn.textContent = cost + 'G';
+    els.troopUp.lv.textContent = `(+${S.troopDmgAdd})`;
+    els.troopUp.btn.textContent = c + 'G';
     els.troopUp.btn.disabled = off;
     els.troopUp.card.classList.toggle('poor', off);
   } else {
