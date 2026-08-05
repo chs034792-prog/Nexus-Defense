@@ -983,7 +983,7 @@ const HARD_STEPS = [
 const hardMul = w => HARD_STEPS.reduce((m, s) => (w >= s.from ? m * s.mul : m), 1);
 
 // 보스 체력 = BOSS_HP_BASE × (웨이브/10)^BOSS_HP_EXP
-const BOSS_HP_BASE = 417, BOSS_HP_EXP = 1.35;
+const BOSS_HP_BASE = 2500, BOSS_HP_EXP = 1.5;
 
 function getActiveTypes(w) {
   const z = currentZone(w);
@@ -1692,7 +1692,7 @@ function spawn(type) {
   if (type === 'boss') {
     const tier = S.wave / bi;
     const hp = Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP) * zm);
-    e = { ...e, hp, dmg: Math.round((135 + (tier - 1) * 30) * zm) };
+    e = { ...e, hp, dmg: Math.round((25 + (tier - 1) * 6) * zm) };
   } else if (zm > 1) {
     e = { ...e, hp: e.hp * zm, dmg: e.dmg * zm };
   }
@@ -2971,7 +2971,6 @@ function renderBarrack() {
   forceAdminCores();
   $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
 
-  const ownedTiers = TROOP_TIERS.filter(t => mlv(t.tier) > 0);
   const selId = save.meta.selectedTier || null;
 
   let html = BARRACK_META.map(m => {
@@ -2980,31 +2979,25 @@ function renderBarrack() {
     const locked = m.req && !m.req();
     const isTier = TROOP_TIERS.some(t => t.tier === m.id);
     const isSelected = isTier && selId === m.id;
-    const lvText = locked ? '' : inf ? `Lv.${lv}` : (maxed ? (isSelected ? '선택됨' : '보유') : '');
-    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}" ${isSelected ? 'style="border-color:#ffe066"' : ''}>
+    const lvText = locked ? '' : inf ? `Lv.${lv}` : (maxed ? (isSelected ? '선택됨' : '') : '');
+    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}" ${isSelected ? 'style="border-color:#ffe066;background:rgba(255,224,102,0.08)"' : ''}>
       <div class="info">
         <div class="nm">${m.name} <span style="color:${isSelected ? '#ffe066' : '#7b88a8'};font-weight:400">${lvText}</span></div>
         <div class="ds">${locked ? (m.lockMsg || '조건 미충족') : `${m.desc(lv)}${inf && !maxed ? ` → ${m.desc(lv + 1)}` : ''}`}</div>
       </div>
-      <button data-bm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
-        ${maxed ? '<span class="cost">보유</span>'
-                : locked ? '<span class="cost">잠김</span>'
-                : `<span class="cost">${c}</span><span class="unit">코어</span>`}
-      </button>
+      ${isTier && maxed
+        ? `<button data-tiersel="${m.id}" style="${isSelected
+            ? 'background:#ffe066;color:#1a1f2e;font-weight:700;border-color:#ffe066'
+            : 'background:#2a3048;color:#c8d0e0;border-color:#3a4068'}">
+            <span class="cost">${isSelected ? '✦ 선택됨' : '선택'}</span>
+          </button>`
+        : `<button data-bm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
+            ${locked ? '<span class="cost">잠김</span>'
+                     : `<span class="cost">${c}</span><span class="unit">코어</span>`}
+          </button>`
+      }
     </div>`;
   }).join('');
-
-  if (ownedTiers.length > 0) {
-    html += `<div style="margin-top:18px;padding-top:14px;border-top:1px solid #2a3048">
-      <div style="font-size:14px;font-weight:700;color:#c8d0e0;margin-bottom:10px">병력 선택 <span style="color:#7b88a8;font-weight:400;font-size:12px">— 출격 시 사용할 병력을 선택하세요</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px">
-        ${ownedTiers.map(t => {
-          const sel = selId === t.tier;
-          return `<button data-tiersel="${t.tier}" class="ghost" style="padding:8px 14px;font-size:13px;border-radius:6px;${sel ? 'background:#ffe066;color:#1a1f2e;font-weight:700;border-color:#ffe066' : 'opacity:0.8'}">${t.name}${sel ? ' ✦' : ''}</button>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }
 
   $('barrackMetaList').innerHTML = html;
 
