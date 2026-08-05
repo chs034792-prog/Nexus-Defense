@@ -488,15 +488,11 @@
       <div class="tabs">
         <div class="tab on" data-tab="nexus">넥서스</div>
         <div class="tab" data-tab="hero" style="display:none">영웅</div>
-        <div class="tab" data-tab="ground" style="display:none">지상</div>
-        <div class="tab" data-tab="mech" style="display:none">기갑</div>
-        <div class="tab" data-tab="air" style="display:none">공중</div>
+        <div class="tab" data-tab="troops" style="display:none">병력</div>
       </div>
       <div id="nexusShop"></div>
       <div id="heroShop" style="display:none"></div>
-      <div id="groundShop" style="display:none"><p class="hint" style="margin:8px 0;color:#6d7ba0">지상 유닛이 곧 추가됩니다.</p></div>
-      <div id="mechShop" style="display:none"></div>
-      <div id="airShop" style="display:none"></div>
+      <div id="troopShop" style="display:none"></div>
     </div>
 
     <div class="box">
@@ -673,6 +669,30 @@ const airUpCost = lv => AIR_UP.base * (lv + 1);
 
 const ALL_DEFS = [...HEROES, ...GROUND_UNITS, ...MECH_UNITS, ...AIR_UNITS];
 const defById = id => ALL_DEFS.find(d => d.id === id);
+
+/* ── 병력 진행 시스템 ─────────────────────────────────
+   지상/기갑/공중을 동시에 골라 쓰는 대신, 영구 상점에서 코어로
+   단계를 하나씩 순서대로 해금하며 그때그때 딱 하나의 병력만 고용할 수 있다.
+   작업공은 전투 유닛이 아니라 드론 시스템용이라 이 진행과 별개로 취급한다. */
+const mechanicDef = GROUND_UNITS.find(d => d.id === 'mechanic');
+const TROOP_ORDER = [
+  { tier: 'tier_g1', def: GROUND_UNITS.find(d => d.id === 'swordsman') },
+  { tier: 'tier_g2', def: GROUND_UNITS.find(d => d.id === 'buffer') },
+  { tier: 'tier_g3', def: GROUND_UNITS.find(d => d.id === 'g_sniper') },
+  { tier: 'tier_m1', def: MECH_UNITS.find(d => d.id === 'tank') },
+  { tier: 'tier_m2', def: MECH_UNITS.find(d => d.id === 'railgun') },
+  { tier: 'tier_m3', def: MECH_UNITS.find(d => d.id === 'artillery') },
+  { tier: 'tier_a1', def: AIR_UNITS.find(d => d.id === 'fighter') },
+  { tier: 'tier_a2', def: AIR_UNITS.find(d => d.id === 'scout') },
+];
+function currentTroop() {
+  let cur = null;
+  for (const t of TROOP_ORDER) if (mlv(t.tier) > 0) cur = t;
+  return cur;
+}
+function troopCategory(def) {
+  return def.mech ? 'mech' : def.air ? 'air' : 'ground';
+}
 
 const ZONE_ENEMIES = {
   초원: {
@@ -1037,20 +1057,37 @@ const META = [
 const BARRACK_META = [
   { id:'p_mech',   name:'작업공 영구 배치', max:1, base:5000,
     desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
-  { id:'t_ground', name:'지상 병과 해금', max:1, base:2500,
-    desc: lv => lv ? '지상 탭 해금됨' : '게임 내 지상 유닛 탭을 해금한다' },
-  { id:'t_mech',   name:'기갑 병과 해금', max:1, base:25000,
-    desc: lv => lv ? '기갑 탭 해금됨' : '게임 내 기갑 유닛 탭을 해금한다' },
-  { id:'t_air',    name:'공중 병과 해금', max:1, base:100000,
-    desc: lv => lv ? '공중 탭 해금됨' : '게임 내 공중 유닛 탭을 해금한다' },
+  { id:'tier_g1', name:'지상병력 I — 검사', max:1, base:1500,
+    desc: lv => lv ? '검사를 고용할 수 있다' : '게임 내에서 검사를 고용할 수 있게 된다' },
+  { id:'tier_g2', name:'지상병력 II — 버퍼', max:1, base:3500,
+    req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
+    desc: lv => lv ? '버퍼를 고용할 수 있다' : '검사 대신 버퍼를 고용할 수 있게 된다' },
+  { id:'tier_g3', name:'지상병력 III — 저격수', max:1, base:7000,
+    req: () => mlv('tier_g2') > 0, lockMsg: '지상병력 II 필요',
+    desc: lv => lv ? '저격수를 고용할 수 있다' : '버퍼 대신 저격수를 고용할 수 있게 된다' },
+  { id:'tier_m1', name:'기갑병력 I — 전차', max:1, base:18000,
+    req: () => mlv('tier_g3') > 0, lockMsg: '지상병력 III 필요',
+    desc: lv => lv ? '전차를 고용할 수 있다' : '지상군 대신 전차를 고용할 수 있게 된다' },
+  { id:'tier_m2', name:'기갑병력 II — 레일건', max:1, base:35000,
+    req: () => mlv('tier_m1') > 0, lockMsg: '기갑병력 I 필요',
+    desc: lv => lv ? '레일건을 고용할 수 있다' : '전차 대신 레일건을 고용할 수 있게 된다' },
+  { id:'tier_m3', name:'기갑병력 III — 자주포', max:1, base:60000,
+    req: () => mlv('tier_m2') > 0, lockMsg: '기갑병력 II 필요',
+    desc: lv => lv ? '자주포를 고용할 수 있다' : '레일건 대신 자주포를 고용할 수 있게 된다' },
+  { id:'tier_a1', name:'공중병력 I — 전투기', max:1, base:100000,
+    req: () => mlv('tier_m3') > 0, lockMsg: '기갑병력 III 필요',
+    desc: lv => lv ? '전투기를 고용할 수 있다' : '기갑 대신 전투기를 고용할 수 있게 된다' },
+  { id:'tier_a2', name:'공중병력 II — 정찰기', max:1, base:170000,
+    req: () => mlv('tier_a1') > 0, lockMsg: '공중병력 I 필요',
+    desc: lv => lv ? '정찰기를 고용할 수 있다' : '전투기 대신 정찰기를 고용할 수 있게 된다' },
   { id:'gndDmg', name:'지상군 영구 강화', max:Infinity, base:60,
-    req: () => mlv('t_ground') > 0, lockMsg: '지상 병과 해금 필요',
+    req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
     desc: lv => `지상 유닛 공격력 +${num(lv * MSTEP.gndDmg)} (현재 +${num(lv * MSTEP.gndDmg)})` },
   { id:'mechDmg', name:'기갑 영구 강화',  max:Infinity, base:80,
-    req: () => mlv('t_mech') > 0, lockMsg: '기갑 병과 해금 필요',
+    req: () => mlv('tier_m1') > 0, lockMsg: '기갑병력 I 필요',
     desc: lv => `기갑 유닛 공격력 +${num(lv * MSTEP.mechDmg)} (현재 +${num(lv * MSTEP.mechDmg)})` },
   { id:'airDmg', name:'공중 영구 강화',   max:Infinity, base:100,
-    req: () => mlv('t_air') > 0, lockMsg: '공중 병과 해금 필요',
+    req: () => mlv('tier_a1') > 0, lockMsg: '공중병력 I 필요',
     desc: lv => `공중 유닛 공격력 +${num(lv * MSTEP.airDmg)} (현재 +${num(lv * MSTEP.airDmg)})` },
 ];
 
@@ -1087,9 +1124,16 @@ let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0 };
 
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
    save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
-const MIGRATION = 1;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
+const MIGRATION = 2;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
+                                   // 2: 지상/기갑/공중 일괄 해금 -> 단계별 순차 해금으로 개편
 function migrate() {
   if ((save.mig || 0) < 1) save.cores = Math.floor(save.cores / 10);
+  if ((save.mig || 0) < 2) {
+    // 예전에 병과를 통째로 사둔 플레이어는 그 병과의 모든 단계를 그대로 돌려받는다
+    if (save.meta.t_ground > 0) { save.meta.tier_g1 = 1; save.meta.tier_g2 = 1; save.meta.tier_g3 = 1; }
+    if (save.meta.t_mech > 0) { save.meta.tier_m1 = 1; save.meta.tier_m2 = 1; save.meta.tier_m3 = 1; }
+    if (save.meta.t_air > 0) { save.meta.tier_a1 = 1; save.meta.tier_a2 = 1; }
+  }
   save.mig = MIGRATION;
 }
 
@@ -1161,6 +1205,10 @@ function importSave(code) {
     const src = d.meta.heroLevels && d.meta.heroLevels[c.id];
     save.meta.heroLevels[c.id] = src ? { xp: +src.xp || 0, level: Math.max(1, +src.level || 1) } : { xp: 0, level: 1 };
   }
+  // 지상/기갑/공중 일괄 해금 옛 코드 호환 — migrate()가 이 값을 보고 새 단계로 전환해준다
+  save.meta.t_ground = +(d.meta.t_ground) || 0;
+  save.meta.t_mech = +(d.meta.t_mech) || 0;
+  save.meta.t_air = +(d.meta.t_air) || 0;
   // 옛 코드(v1)는 보정 전 값이라 여기서 한 번 깎인다
   save.mig = Math.max(0, +d.mig || 0);
   migrate();
@@ -1265,9 +1313,9 @@ function newGame(startWave) {
     goldMul: 1 + mlv('minc') * MSTEP.minc / 100,  // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     autoSkill: true,                       // 스킬 자동 발동
-    groundShop: mlv('t_ground') > 0,
-    mechShop: mlv('t_mech') > 0,
-    airShop: mlv('t_air') > 0,
+    groundShop: mlv('tier_g1') > 0,
+    mechShop: mlv('tier_m1') > 0,
+    airShop: mlv('tier_a1') > 0,
     popLv: 0,                            // 최대 인구 강화 횟수
     maxPop: CFG.basePop,
     heroUpLv: 0,                         // 영웅 강화 횟수
@@ -1329,9 +1377,9 @@ function resumeGame(snap) {
   S.startWave = snap.startWave ?? 1;
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
-  S.groundShop = mlv('t_ground') > 0;
-  S.mechShop = mlv('t_mech') > 0;
-  S.airShop = mlv('t_air') > 0;
+  S.groundShop = mlv('tier_g1') > 0;
+  S.mechShop = mlv('tier_m1') > 0;
+  S.airShop = mlv('tier_a1') > 0;
   S.hasMechanic = snap.hasMechanic ?? false;
   S.autoSkill = snap.autoSkill ?? true;
   S.drone = snap.drone ?? null;
@@ -2994,59 +3042,30 @@ function buildShops() {
     </div>`
     ;
 
-  // 지상 유닛 상점
-  $('groundShop').innerHTML = GROUND_UNITS.map(d => `
-    <div class="card" data-g="${d.id}">
-      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
+  // 병력 상점 — 영구 상점에서 순서대로 해금한 단 하나의 병력만 고용할 수 있다
+  $('troopShop').innerHTML = `<div class="card" data-g="${mechanicDef.id}">
+      <div class="swatch" style="background:${mechanicDef.color};color:${mechanicDef.color}"></div>
       <div>
-        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${d.desc}</div>
-        ${d.noCombat ? '' : `<div class="ds stat" style="color:#7b88a8;font-size:11px"></div>`}
-      </div>
-      <button class="buy"></button>
-    </div>`).join('')
-    + `<div class="card" id="groundUpCard">
-      <div class="swatch" style="background:#4ade80;color:#4ade80"></div>
-      <div>
-        <div class="nm">지상군 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">모든 지상 유닛 공격력 +${GROUND_UP.step}</div>
+        <div class="nm">${mechanicDef.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${mechanicDef.desc}</div>
       </div>
       <button class="buy"></button>
     </div>`
-    + `<div class="card popCard"><div>
-        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
-      </div><button class="buy"></button></div>`;
-
-  els.ground = GROUND_UNITS.map(d => {
-    const card = $('groundShop').querySelector(`.card[data-g="${d.id}"]`);
-    const btn = card.querySelector('button');
-    card.onclick = () => hireGround(d);
-    btn.onclick = ev => { ev.stopPropagation(); hireGround(d); };
-    return { d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
-  });
-
-  const gupCard = $('groundUpCard');
-  els.groundUp = { card: gupCard, btn: gupCard.querySelector('button'), lv: gupCard.querySelector('.lv') };
-  gupCard.onclick = buyGroundUp;
-  els.groundUp.btn.onclick = ev => { ev.stopPropagation(); buyGroundUp(); };
-
-  // 기갑 유닛 상점
-  $('mechShop').innerHTML = MECH_UNITS.map(d => `
-    <div class="card" data-m="${d.id}">
-      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
+    + TROOP_ORDER.map(t => `
+    <div class="card" data-troop="${t.tier}" style="display:none">
+      <div class="swatch" style="background:${t.def.color};color:${t.def.color}"></div>
       <div>
-        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${d.desc}</div>
+        <div class="nm">${t.def.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds">${t.def.desc}</div>
         <div class="ds stat" style="color:#7b88a8;font-size:11px"></div>
       </div>
       <button class="buy"></button>
     </div>`).join('')
-    + `<div class="card" id="mechUpCard">
-      <div class="swatch" style="background:#78909c;color:#78909c"></div>
+    + `<div class="card" id="troopUpCard" style="display:none">
+      <div class="swatch" id="troopUpSwatch"></div>
       <div>
-        <div class="nm">기갑 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">모든 기갑 유닛 공격력 +${MECH_UP.step}</div>
+        <div class="nm"><span id="troopUpName"></span> <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
+        <div class="ds" id="troopUpDesc"></div>
       </div>
       <button class="buy"></button>
     </div>`
@@ -3055,55 +3074,28 @@ function buildShops() {
         <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
       </div><button class="buy"></button></div>`;
 
-  els.mech = MECH_UNITS.map(d => {
-    const card = $('mechShop').querySelector(`.card[data-m="${d.id}"]`);
+  {
+    const card = $('troopShop').querySelector(`.card[data-g="${mechanicDef.id}"]`);
     const btn = card.querySelector('button');
-    card.onclick = () => hireMech(d);
-    btn.onclick = ev => { ev.stopPropagation(); hireMech(d); };
-    return { d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
+    card.onclick = () => hireGround(mechanicDef);
+    btn.onclick = ev => { ev.stopPropagation(); hireGround(mechanicDef); };
+    els.mechanic = { d: mechanicDef, card, btn, cnt: card.querySelector('.cnt') };
+  }
+
+  els.troop = TROOP_ORDER.map(t => {
+    const card = $('troopShop').querySelector(`.card[data-troop="${t.tier}"]`);
+    const btn = card.querySelector('button');
+    const hireFn = t.def.mech ? hireMech : t.def.air ? hireAir : hireGround;
+    card.onclick = () => hireFn(t.def);
+    btn.onclick = ev => { ev.stopPropagation(); hireFn(t.def); };
+    return { t, d: t.def, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
   });
 
-  const mupCard = $('mechUpCard');
-  els.mechUp = { card: mupCard, btn: mupCard.querySelector('button'), lv: mupCard.querySelector('.lv') };
-  mupCard.onclick = buyMechUp;
-  els.mechUp.btn.onclick = ev => { ev.stopPropagation(); buyMechUp(); };
-
-  // 공중 유닛 상점
-  $('airShop').innerHTML = AIR_UNITS.map(d => `
-    <div class="card" data-a="${d.id}">
-      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
-      <div>
-        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${d.desc}</div>
-        <div class="ds stat" style="color:#7b88a8;font-size:11px"></div>
-      </div>
-      <button class="buy"></button>
-    </div>`).join('')
-    + `<div class="card" id="airUpCard">
-      <div class="swatch" style="background:#e040fb;color:#e040fb"></div>
-      <div>
-        <div class="nm">공중 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">모든 공중 유닛 공격력 +${AIR_UP.step}</div>
-      </div>
-      <button class="buy"></button>
-    </div>`
-    + `<div class="card popCard"><div>
-        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
-      </div><button class="buy"></button></div>`;
-
-  els.air = AIR_UNITS.map(d => {
-    const card = $('airShop').querySelector(`.card[data-a="${d.id}"]`);
-    const btn = card.querySelector('button');
-    card.onclick = () => hireAir(d);
-    btn.onclick = ev => { ev.stopPropagation(); hireAir(d); };
-    return { d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
-  });
-
-  const aupCard = $('airUpCard');
-  els.airUp = { card: aupCard, btn: aupCard.querySelector('button'), lv: aupCard.querySelector('.lv') };
-  aupCard.onclick = buyAirUp;
-  els.airUp.btn.onclick = ev => { ev.stopPropagation(); buyAirUp(); };
+  const tupCard = $('troopUpCard');
+  els.troopUp = { card: tupCard, btn: tupCard.querySelector('button'), lv: tupCard.querySelector('.lv'),
+                  name: $('troopUpName'), desc: $('troopUpDesc'), swatch: $('troopUpSwatch') };
+  tupCard.onclick = buyTroopUp;
+  els.troopUp.btn.onclick = ev => { ev.stopPropagation(); buyTroopUp(); };
 
   els.pop = [...document.querySelectorAll('.popCard')].map(card => {
     const btn = card.querySelector('button');
@@ -3151,6 +3143,16 @@ function buyAirUp() {
   addText(CX, CY - 88, `공중 공격력 +${S.airDmgAdd}`, '#e040fb');
   saveRun();
   syncUI();
+}
+
+// 현재 해금된 병력의 병과에 맞춰 지상군/기갑/공중 강화 중 하나로 넘긴다
+function buyTroopUp() {
+  const cur = currentTroop();
+  if (!cur) return;
+  const cat = troopCategory(cur.def);
+  if (cat === 'mech') buyMechUp();
+  else if (cat === 'air') buyAirUp();
+  else buyGroundUp();
 }
 
 function buyHeroUp() {
@@ -3226,65 +3228,60 @@ function buyNexusUp(id) {
   syncUI();
 }
 
-function renderGroundShop() {
-  for (const e of els.ground) {
+function renderTroopShop() {
+  // 작업공 — 전투 병력과 별개로, 지상병력 I 이상 해금되면 언제나 고용 가능
+  {
+    const e = els.mechanic;
     const c = groundCost(e.d), owned = ownedCount(e.d.id), blocked = groundBlocked(e.d);
     const off = blocked || S.gold < c;
     e.cnt.textContent = owned ? '×' + owned : '';
-    e.btn.textContent = popFull() ? '인구 초과'
-                      : (e.d.unique && owned > 0) ? '보유중'
-                      : c + 'G';
+    e.btn.textContent = popFull() ? '인구 초과' : owned > 0 ? '보유중' : c + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
-    if (e.stat) {
-      const dmg = e.d.dmg + S.groundDmgAdd;
-      e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}`;
-    }
   }
 
-  const gc = groundUpCost(S.groundUpLv), gOff = !S.groundShop || S.gold < gc;
-  els.groundUp.lv.textContent = `(+${S.groundDmgAdd})`;
-  els.groundUp.btn.textContent = gc + 'G';
-  els.groundUp.btn.disabled = gOff;
-  els.groundUp.card.classList.toggle('poor', gOff);
-}
-
-function renderMechShop() {
-  for (const e of els.mech) {
-    const c = mechCost(e.d), owned = ownedCount(e.d.id), blocked = mechBlocked(e.d);
-    const off = blocked || S.gold < c;
+  // 현재 해금된 단계의 병력 카드 하나만 보여준다
+  const cur = currentTroop();
+  for (const e of els.troop) {
+    const active = !!cur && cur.tier === e.t.tier;
+    e.card.style.display = active ? '' : 'none';
+    if (!active) continue;
+    const cat = troopCategory(e.d);
+    const cost = cat === 'mech' ? mechCost(e.d) : cat === 'air' ? airCost(e.d) : groundCost(e.d);
+    const owned = ownedCount(e.d.id);
+    const blocked = cat === 'mech' ? mechBlocked(e.d) : cat === 'air' ? airBlocked(e.d) : groundBlocked(e.d);
+    const off = blocked || S.gold < cost;
+    const dmgAdd = cat === 'mech' ? S.mechDmgAdd : cat === 'air' ? S.airDmgAdd : S.groundDmgAdd;
     e.cnt.textContent = owned ? '×' + owned : '';
-    e.btn.textContent = popFull() ? '인구 초과' : c + 'G';
+    e.btn.textContent = popFull() ? '인구 초과' : cost + 'G';
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
-    const dmg = e.d.dmg + S.mechDmgAdd;
+    const dmg = e.d.dmg + dmgAdd;
     e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}${e.d.splash ? ' · 폭발 ' + e.d.splash : ''}`;
   }
 
-  const mc = mechUpCost(S.mechUpLv), mOff = !S.mechShop || S.gold < mc;
-  els.mechUp.lv.textContent = `(+${S.mechDmgAdd})`;
-  els.mechUp.btn.textContent = mc + 'G';
-  els.mechUp.btn.disabled = mOff;
-  els.mechUp.card.classList.toggle('poor', mOff);
-}
-
-function renderAirShop() {
-  for (const e of els.air) {
-    const c = airCost(e.d), owned = ownedCount(e.d.id), blocked = airBlocked(e.d);
-    const off = blocked || S.gold < c;
-    e.cnt.textContent = owned ? '×' + owned : '';
-    e.btn.textContent = popFull() ? '인구 초과' : c + 'G';
-    e.btn.disabled = off;
-    e.card.classList.toggle('poor', off);
-    const dmg = e.d.dmg + S.airDmgAdd;
-    e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}${e.d.splash ? ' · 폭발 ' + e.d.splash : ''}`;
+  // 병력 강화 — 현재 병과에 맞춰 이름·효과·비용이 바뀐다
+  if (cur) {
+    const cat = troopCategory(cur.def);
+    const lv = cat === 'mech' ? S.mechUpLv : cat === 'air' ? S.airUpLv : S.groundUpLv;
+    const dmgAdd = cat === 'mech' ? S.mechDmgAdd : cat === 'air' ? S.airDmgAdd : S.groundDmgAdd;
+    const cost = cat === 'mech' ? mechUpCost(lv) : cat === 'air' ? airUpCost(lv) : groundUpCost(lv);
+    const step = cat === 'mech' ? MECH_UP.step : cat === 'air' ? AIR_UP.step : GROUND_UP.step;
+    const catName = cat === 'mech' ? '기갑' : cat === 'air' ? '공중' : '지상군';
+    const color = cat === 'mech' ? '#78909c' : cat === 'air' ? '#e040fb' : '#4ade80';
+    const off = S.gold < cost;
+    els.troopUp.card.style.display = '';
+    els.troopUp.swatch.style.background = color;
+    els.troopUp.swatch.style.color = color;
+    els.troopUp.name.textContent = `${catName} 강화`;
+    els.troopUp.desc.textContent = `모든 ${catName} 유닛 공격력 +${step}`;
+    els.troopUp.lv.textContent = `(+${dmgAdd})`;
+    els.troopUp.btn.textContent = cost + 'G';
+    els.troopUp.btn.disabled = off;
+    els.troopUp.card.classList.toggle('poor', off);
+  } else {
+    els.troopUp.card.style.display = 'none';
   }
-
-  const ac = airUpCost(S.airUpLv), aOff = !S.airShop || S.gold < ac;
-  els.airUp.lv.textContent = `(+${S.airDmgAdd})`;
-  els.airUp.btn.textContent = ac + 'G';
-  els.airUp.btn.disabled = aOff;
-  els.airUp.card.classList.toggle('poor', aOff);
 }
 
 function renderNexusShop() {
@@ -3406,14 +3403,14 @@ function syncUI() {
     $('btnAutoSkill').classList.toggle('on', S.autoSkill);
   }
 
-  renderHeroShop(); renderGroundShop(); renderMechShop(); renderAirShop(); renderNexusShop(); renderSel(); syncTechTabs();
+  renderHeroShop(); renderTroopShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
 const heroTabLocked = () => !(mlv('t_hero') > 0);
-const SHOP_PANELS = ['nexus', 'hero', 'ground', 'mech', 'air'];
-const TECH_TABS = { hero: 't_hero', ground: 't_ground', mech: 't_mech', air: 't_air' };
+const SHOP_PANELS = ['nexus', 'hero', 'troops'];
+const TECH_TABS = { hero: 't_hero', troops: 'tier_g1' };
 
 document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
@@ -3429,7 +3426,7 @@ function setTab(name) {
   tab = name;
   document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
   for (const p of SHOP_PANELS) {
-    const el = $(p === 'nexus' ? 'nexusShop' : p === 'hero' ? 'heroShop' : p + 'Shop');
+    const el = $(p === 'nexus' ? 'nexusShop' : p === 'hero' ? 'heroShop' : p === 'troops' ? 'troopShop' : p + 'Shop');
     if (el) el.style.display = tab === p ? '' : 'none';
   }
 }
