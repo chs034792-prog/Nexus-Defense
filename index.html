@@ -704,46 +704,46 @@ const MECH_UNITS = [
     desc:'궤도에서 떨어지는 압도적인 화력' },
 ];
 
-// 공중 병과 — 빠르고 넓은 활동 반경.
+// 공중 병과 — 빠르고 넓은 활동 반경. 기갑보다 상위 단계.
 const AIR_UNITS = [
-  // 공중병력 I
-  { id:'fighter', name:'전투기', cost:2000, color:'#e040fb', accent:'#f8bbd0',
-    dmg:22, range:120, rate:2.0, bspd:700, spd:210, splash:0, slow:0, slowT:0,
+  // 공중병력 I — 기갑 III보다 강력
+  { id:'fighter', name:'전투기', cost:6000, color:'#e040fb', accent:'#f8bbd0',
+    dmg:280, range:140, rate:2.0, bspd:800, spd:220, splash:0, slow:0, slowT:0,
     roam:380, air:true,
-    desc:'빠른 속도와 연사로 넓은 구역을 순찰한다' },
-  { id:'scout', name:'정찰기', cost:2500, color:'#ffab00', accent:'#ffe082',
-    dmg:55, range:100, rate:0.5, bspd:0, spd:140, splash:70, slow:0, slowT:0,
+    desc:'압도적인 연사력으로 넓은 구역을 제압한다' },
+  { id:'scout', name:'정찰기', cost:7500, color:'#ffab00', accent:'#ffe082',
+    dmg:420, range:120, rate:0.5, bspd:0, spd:150, splash:80, slow:0, slowT:0,
     roam:350, air:true, bomb:true, patrol:true,
-    desc:'상시 순찰하며 적에게 폭탄을 투하한다' },
-  { id:'interceptor', name:'요격기', cost:3000, color:'#00e5ff', accent:'#80deea',
-    dmg:65, range:160, rate:1.2, bspd:900, spd:180, splash:0, slow:0.3, slowT:1.5,
-    roam:340, air:true,
-    desc:'빠른 기동과 정밀 사격으로 적을 요격한다' },
-  // 공중병력 II
-  { id:'stealthFighter', name:'스텔스기', cost:5500, color:'#e040fb', accent:'#f8bbd0',
-    dmg:50, range:140, rate:2.2, bspd:800, spd:240, splash:0, slow:0, slowT:0,
+    desc:'강력한 폭탄으로 적 무리를 초토화한다' },
+  { id:'interceptor', name:'요격기', cost:9000, color:'#00e5ff', accent:'#80deea',
+    dmg:350, range:180, rate:1.2, bspd:1000, spd:200, splash:0, slow:0.3, slowT:1.5,
+    roam:360, air:true,
+    desc:'정밀 사격과 감속으로 적을 무력화한다' },
+  // 공중병력 II — 공중 I의 강화형
+  { id:'stealthFighter', name:'스텔스기', cost:16000, color:'#e040fb', accent:'#f8bbd0',
+    dmg:520, range:160, rate:2.2, bspd:900, spd:250, splash:0, slow:0, slowT:0,
     roam:400, air:true,
     desc:'탐지를 피하며 초고속 연사로 적을 제압한다' },
-  { id:'bomber', name:'폭격기', cost:6500, color:'#ffab00', accent:'#ffe082',
-    dmg:130, range:120, rate:0.45, bspd:0, spd:130, splash:100, slow:0, slowT:0,
-    roam:360, air:true, bomb:true, patrol:true,
+  { id:'bomber', name:'폭격기', cost:20000, color:'#ffab00', accent:'#ffe082',
+    dmg:800, range:140, rate:0.45, bspd:0, spd:140, splash:110, slow:0, slowT:0,
+    roam:380, air:true, bomb:true, patrol:true,
     desc:'대형 폭탄으로 넓은 범위를 초토화한다' },
-  { id:'missileInterceptor', name:'미사일기', cost:7500, color:'#00e5ff', accent:'#80deea',
-    dmg:160, range:200, rate:1.0, bspd:1000, spd:190, splash:0, slow:0.35, slowT:1.8,
-    roam:370, air:true,
+  { id:'missileInterceptor', name:'미사일기', cost:24000, color:'#00e5ff', accent:'#80deea',
+    dmg:650, range:220, rate:1.0, bspd:1100, spd:210, splash:0, slow:0.35, slowT:1.8,
+    roam:390, air:true,
     desc:'유도 미사일로 원거리에서 정밀 타격한다' },
-  // 공중병력 III — 궁극 형태
-  { id:'aceStriker', name:'에이스기', cost:13000, color:'#e040fb', accent:'#f8bbd0',
-    dmg:110, range:160, rate:2.5, bspd:900, spd:270, splash:0, slow:0, slowT:0,
+  // 공중병력 III — 궁극 형태, 전체 병력 중 최강
+  { id:'aceStriker', name:'에이스기', cost:40000, color:'#e040fb', accent:'#f8bbd0',
+    dmg:950, range:180, rate:2.5, bspd:1000, spd:280, splash:0, slow:0, slowT:0,
     roam:420, air:true,
     desc:'하늘의 왕, 압도적인 속도와 화력의 정점' },
-  { id:'strategicBomber', name:'전략폭격기', cost:15000, color:'#ffab00', accent:'#ffe082',
-    dmg:320, range:140, rate:0.4, bspd:0, spd:120, splash:130, slow:0, slowT:0,
-    roam:380, air:true, bomb:true, patrol:true,
+  { id:'strategicBomber', name:'전략폭격기', cost:50000, color:'#ffab00', accent:'#ffe082',
+    dmg:1500, range:160, rate:0.4, bspd:0, spd:130, splash:140, slow:0, slowT:0,
+    roam:400, air:true, bomb:true, patrol:true,
     desc:'전장 전체를 뒤흔드는 궁극의 폭격' },
-  { id:'orbitalStriker', name:'궤도타격기', cost:18000, color:'#00e5ff', accent:'#80deea',
-    dmg:400, range:240, rate:0.8, bspd:1200, spd:200, splash:40, slow:0.4, slowT:2.0,
-    roam:400, air:true,
+  { id:'orbitalStriker', name:'궤도타격기', cost:60000, color:'#00e5ff', accent:'#80deea',
+    dmg:1200, range:260, rate:0.8, bspd:1300, spd:220, splash:50, slow:0.4, slowT:2.0,
+    roam:420, air:true,
     desc:'궤도에서 정밀 레이저를 발사하는 최종 병기' },
 ];
 
@@ -3308,16 +3308,21 @@ function buyNexusUp(id) {
 }
 
 function renderTroopShop() {
-  // 작업공 — 전투 병력과 별개로, 지상병력 I 이상 해금되면 언제나 고용 가능
+  // 작업공 — 영구 배치(p_mech)가 있으면 인게임에서 구매할 필요 없음
   {
     const e = els.mechanic;
-    const c = groundCost(e.d), owned = ownedCount(e.d.id);
-    const blocked = !mlv('tier_g1') || popFull() || (e.d.unique && owned > 0);
-    const off = blocked || S.gold < c;
-    e.cnt.textContent = owned ? '×' + owned : '';
-    e.btn.textContent = popFull() ? '인구 초과' : owned > 0 ? '보유중' : c + 'G';
-    e.btn.disabled = off;
-    e.card.classList.toggle('poor', off);
+    if (mlv('p_mech') > 0) {
+      e.card.style.display = 'none';
+    } else {
+      e.card.style.display = '';
+      const c = groundCost(e.d), owned = ownedCount(e.d.id);
+      const blocked = !mlv('tier_g1') || popFull() || (e.d.unique && owned > 0);
+      const off = blocked || S.gold < c;
+      e.cnt.textContent = owned ? '×' + owned : '';
+      e.btn.textContent = popFull() ? '인구 초과' : owned > 0 ? '보유중' : c + 'G';
+      e.btn.disabled = off;
+      e.card.classList.toggle('poor', off);
+    }
   }
 
   // 현재 해금된 단계의 병력 카드들(계열당 2~3종)만 보여준다
