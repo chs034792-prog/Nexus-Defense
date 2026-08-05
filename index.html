@@ -3661,7 +3661,7 @@ $('btnBackupLoad').onclick = () => {
     alert('코드를 읽지 못했습니다. 복사한 코드 전체가 맞는지 확인해 주십시오.');
   }
 };
-$('btnRestart').onclick = () => { newGame(); setTab('nexus'); show('game'); };
+$('btnRestart').onclick = () => { newGame(getSelectedZoneFrom()); setTab('nexus'); show('game'); };
 $('btnToMenu').onclick = goMenu;
 $('uiBack').onclick = leaveToMenu;
 
