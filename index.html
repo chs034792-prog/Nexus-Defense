@@ -1321,7 +1321,7 @@ function saveRun() {
   const snap = {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired,
     groundShop: S.groundShop, mechShop: S.mechShop, airShop: S.airShop,
-    hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
+    nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
     troopUpLv: S.troopUpLv, troopDmgAdd: S.troopDmgAdd,
@@ -1410,6 +1410,7 @@ function newGame(startWave) {
     heroUpLv: 0,                         // 영웅 강화 횟수
     troopUpLv: 0,                        // 병력 강화 횟수 (판 안에서)
     troopDmgAdd: mlv('troopDmg') * MSTEP.troopDmg,
+    nexusEvolved: false,
     hasMechanic: false,
     drone: null,
     gravWave: null,
@@ -1446,6 +1447,7 @@ function newGame(startWave) {
                  xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0 };
     }
   }
+  if (startWave > 100) evolveNexus();
   sel = null;
   speed = DEFAULT_SPEED;
   paused = false;
@@ -1465,6 +1467,7 @@ function resumeGame(snap) {
   S.groundShop = !!(currentTier() && currentTier().tier.startsWith('tier_g'));
   S.mechShop = !!(currentTier() && currentTier().tier.startsWith('tier_m'));
   S.airShop = !!(currentTier() && currentTier().tier.startsWith('tier_a'));
+  S.nexusEvolved = snap.nexusEvolved ?? false;
   S.hasMechanic = snap.hasMechanic ?? false;
   S.autoSkill = snap.autoSkill ?? true;
   S.drone = snap.drone ?? null;
@@ -1719,12 +1722,27 @@ function spawn(type) {
   });
 }
 
+function evolveNexus() {
+  S.nexusEvolved = true;
+  const n = S.nexus;
+  n.maxHp = Math.round(n.maxHp * 1.5);
+  n.hp = n.maxHp;
+  n.dmg = Math.round(n.dmg * 1.4);
+  n.rate = +(n.rate * 1.3).toFixed(2);
+  n.range = Math.round(n.range * 1.2);
+  n.regen = +(n.regen + 2).toFixed(2);
+  addText(CX, CY - 100, '넥서스 진화!', '#ff9f43');
+  addText(CX, CY - 80, 'HP ×1.5 · 공격력 ×1.4 · 공속 ×1.3', '#ffd45e');
+}
+
 function endWave() {
   const bonus = Math.floor(waveBonus(S.wave) * S.goldMul * S.incomeMul);
   S.gold += bonus;
   addText(CX, CY - 70, '+' + bonus + ' 클리어 보너스', '#ffd45e');
   S.wave++;
   if (S.wave - 1 > save.best) { save.best = S.wave - 1; writeSave(); submitRanking(); }
+
+  if (!S.nexusEvolved && S.wave > 100) evolveNexus();
 
   S.phase = 'build';
   S.autoT = AUTO_WAVE_SEC;
@@ -1940,7 +1958,7 @@ function update(dt) {
   n.cd -= dt;
   if (n.cd <= 0) {
     const t = pickTarget(CX, CY, n.range);
-    if (t) { n.cd = 1 / n.rate; fire({ x: CX, y: CY }, t, n.dmg, 560, 0, 0, 0, '#7fe7ff'); }
+    if (t) { n.cd = 1 / n.rate; fire({ x: CX, y: CY }, t, n.dmg, 560, 0, 0, 0, S.nexusEvolved ? '#ffb347' : '#7fe7ff'); }
   }
 
   /* 영웅 — 이동 후 사격.
@@ -2789,16 +2807,17 @@ function drawNexus() {
   const n = S.nexus;
   const pulse = 1 + Math.sin(performance.now() / 400) * 0.03;
 
-  // 넥서스 사거리는 항상 보이게 그린다
-  ctx.strokeStyle = 'rgba(127,231,255,.30)';
-  ctx.fillStyle = 'rgba(127,231,255,.035)';
+  ctx.strokeStyle = S.nexusEvolved ? 'rgba(255,200,80,.30)' : 'rgba(127,231,255,.30)';
+  ctx.fillStyle = S.nexusEvolved ? 'rgba(255,200,80,.035)' : 'rgba(127,231,255,.035)';
   ctx.beginPath(); ctx.arc(CX, CY, n.range, 0, 6.284);
   ctx.fill();
   ctx.stroke();
 
+  const evo = S.nexusEvolved;
+  const glowCol = evo ? 'rgba(255,180,60,' : 'rgba(80,180,255,';
   const g = ctx.createRadialGradient(CX, CY, 8, CX, CY, NEXUS_R * 2.1);
-  g.addColorStop(0, n.hitFlash > 0 ? 'rgba(255,80,110,.5)' : 'rgba(80,180,255,.28)');
-  g.addColorStop(1, 'rgba(80,180,255,0)');
+  g.addColorStop(0, n.hitFlash > 0 ? 'rgba(255,80,110,.5)' : glowCol + '.28)');
+  g.addColorStop(1, glowCol + '0)');
   ctx.fillStyle = g;
   ctx.beginPath(); ctx.arc(CX, CY, NEXUS_R * 2.1, 0, 6.284); ctx.fill();
 
@@ -2806,26 +2825,52 @@ function drawNexus() {
   ctx.translate(CX, CY);
   ctx.rotate(n.ang);
   ctx.scale(pulse, pulse);
-  ctx.fillStyle = n.hitFlash > 0 ? '#ff6b81' : '#2b7de0';
-  ctx.strokeStyle = '#9fd6ff';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = i * 6.2832 / 6;
-    i ? ctx.lineTo(Math.cos(a) * NEXUS_R, Math.sin(a) * NEXUS_R)
-      : ctx.moveTo(Math.cos(a) * NEXUS_R, Math.sin(a) * NEXUS_R);
-  }
-  ctx.closePath(); ctx.fill(); ctx.stroke();
 
-  ctx.rotate(-n.ang * 2.4);
-  ctx.fillStyle = '#dff2ff';
-  ctx.beginPath();
-  for (let i = 0; i < 4; i++) {
-    const a = i * 6.2832 / 4;
-    i ? ctx.lineTo(Math.cos(a) * 15, Math.sin(a) * 15)
-      : ctx.moveTo(Math.cos(a) * 15, Math.sin(a) * 15);
+  if (evo) {
+    ctx.fillStyle = n.hitFlash > 0 ? '#ff6b81' : '#e6a817';
+    ctx.strokeStyle = '#ffe066';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = i * 6.2832 / 8;
+      const r = i % 2 === 0 ? NEXUS_R : NEXUS_R * 0.55;
+      i ? ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r)
+        : ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    ctx.rotate(-n.ang * 2.4);
+    ctx.fillStyle = '#fff8e0';
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = i * 6.2832 / 6;
+      const r = i % 2 === 0 ? 18 : 10;
+      i ? ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r)
+        : ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill();
+  } else {
+    ctx.fillStyle = n.hitFlash > 0 ? '#ff6b81' : '#2b7de0';
+    ctx.strokeStyle = '#9fd6ff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = i * 6.2832 / 6;
+      i ? ctx.lineTo(Math.cos(a) * NEXUS_R, Math.sin(a) * NEXUS_R)
+        : ctx.moveTo(Math.cos(a) * NEXUS_R, Math.sin(a) * NEXUS_R);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+
+    ctx.rotate(-n.ang * 2.4);
+    ctx.fillStyle = '#dff2ff';
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a = i * 6.2832 / 4;
+      i ? ctx.lineTo(Math.cos(a) * 15, Math.sin(a) * 15)
+        : ctx.moveTo(Math.cos(a) * 15, Math.sin(a) * 15);
+    }
+    ctx.closePath(); ctx.fill();
   }
-  ctx.closePath(); ctx.fill();
   ctx.restore();
 
   const ratio = clamp(n.hp / n.maxHp, 0, 1);
