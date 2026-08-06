@@ -1744,10 +1744,36 @@ function endWave() {
 
   if (!S.nexusEvolved && S.wave > 100) evolveNexus();
 
+  if ((S.wave - 1) % 100 === 0 && S.wave - 1 > 0) {
+    centuryClear(S.wave - 1);
+    return;
+  }
+
   S.phase = 'build';
   S.autoT = AUTO_WAVE_SEC;
   saveRun();
   syncUI();
+}
+
+function centuryClear(wave) {
+  S.phase = 'over';
+  S.autoT = 0;
+  const clearedInRun = Math.max(0, wave - S.startWave);
+  const cores = coreReward(clearedInRun);
+  save.cores += cores;
+  save.runs++;
+  if (wave > save.best) save.best = wave;
+  writeSave();
+  clearRun();
+  const z = currentZone(wave);
+  $('overTitle').textContent = `${wave} 웨이브 클리어!`;
+  $('overTitle').style.color = '#ffd45e';
+  $('overMsg').textContent = `${z.name} · 웨이브 ${wave} 돌파 · 최고 기록 ${save.best}`;
+  $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
+  $('overBonus').style.display = 'none';
+  $('over').classList.add('on');
+  syncUI();
+  submitRanking();
 }
 
 function zoneClear(zone) {
