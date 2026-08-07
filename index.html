@@ -628,43 +628,43 @@ function heroStatScaled(cls, lv) {
 
 const GROUND_UNITS = [
   // 지상병력 I
-  { id:'swordsman', name:'검사', cost:500, color:'#4ade80', accent:'#a7f3d0',
+  { id:'swordsman', name:'검사', cost:200, color:'#4ade80', accent:'#a7f3d0',
     dmg:6, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
     roam:265,
     desc:'발이 빠르고 범용적인 지상 전투원' },
-  { id:'g_sniper', name:'저격수', cost:750, color:'#f472b6', accent:'#fbcfe8',
+  { id:'g_sniper', name:'저격수', cost:300, color:'#f472b6', accent:'#fbcfe8',
     dmg:38, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
     hold:true,
     desc:'먼 적을 정확히 저격한다' },
-  { id:'buffer', name:'버퍼', cost:750, color:'#38bdf8', accent:'#bae6fd',
+  { id:'buffer', name:'버퍼', cost:300, color:'#38bdf8', accent:'#bae6fd',
     dmg:3, range:80, rate:1.2, bspd:400, spd:120, splash:0, slow:0.4, slowT:2.0,
     roam:265,
     aura:true, auraDmg:8, auraRange:80,
     desc:'적을 느리게 하고 주변에 지속 피해를 준다' },
   // 지상병력 II — 검사/저격수/버퍼가 더 강해지며 이름이 바뀐다
-  { id:'warrior2', name:'전사', cost:1800, color:'#4ade80', accent:'#a7f3d0',
+  { id:'warrior2', name:'전사', cost:720, color:'#4ade80', accent:'#a7f3d0',
     dmg:13, range:90, rate:1.6, bspd:500, spd:145, splash:0, slow:0, slowT:0,
     roam:280,
     desc:'검사보다 훨씬 강해진 근접 전투원' },
-  { id:'ranger', name:'레인저', cost:2400, color:'#f472b6', accent:'#fbcfe8',
+  { id:'ranger', name:'레인저', cost:960, color:'#f472b6', accent:'#fbcfe8',
     dmg:60, range:280, rate:0.55, bspd:950, spd:110, splash:0, slow:0, slowT:0,
     roam:290,
     desc:'고정 저격에서 벗어나 이동하며 원거리 사격을 퍼붓는다' },
-  { id:'shaman', name:'술사', cost:1800, color:'#38bdf8', accent:'#bae6fd',
+  { id:'shaman', name:'술사', cost:720, color:'#38bdf8', accent:'#bae6fd',
     dmg:6, range:90, rate:1.3, bspd:450, spd:130, splash:0, slow:0.5, slowT:2.5,
     roam:280,
     aura:true, auraDmg:7, auraRange:100,
     desc:'버퍼보다 강한 감속과 지속 피해 오라를 두른다' },
   // 지상병력 III — 궁극 형태
-  { id:'paladin', name:'팔라딘', cost:4200, color:'#4ade80', accent:'#a7f3d0',
+  { id:'paladin', name:'팔라딘', cost:1680, color:'#4ade80', accent:'#a7f3d0',
     dmg:28, range:100, rate:1.7, bspd:520, spd:160, splash:20, slow:0, slowT:0,
     roam:300,
     desc:'성스러운 힘으로 주변까지 함께 베어내는 지상 최강 전투원' },
-  { id:'bowmaster', name:'보우마스터', cost:5600, color:'#f472b6', accent:'#fbcfe8',
+  { id:'bowmaster', name:'보우마스터', cost:2240, color:'#f472b6', accent:'#fbcfe8',
     dmg:128, range:320, rate:0.6, bspd:1000, spd:120, splash:0, slow:0, slowT:0,
     roam:310,
     desc:'초장거리에서 강력한 일격을 꽂아 넣는 궁술의 달인' },
-  { id:'witchdoctor', name:'주술사', cost:4200, color:'#38bdf8', accent:'#bae6fd',
+  { id:'witchdoctor', name:'주술사', cost:1680, color:'#38bdf8', accent:'#bae6fd',
     dmg:13, range:100, rate:1.4, bspd:480, spd:140, splash:0, slow:0.6, slowT:3.0,
     roam:300,
     aura:true, auraDmg:15, auraRange:120,
@@ -678,41 +678,41 @@ const GROUND_UNITS = [
 // 기갑 병과 — 느리고 묵직, 광역·관통 특화.
 const MECH_UNITS = [
   // 기갑병력 I
-  { id:'tank', name:'전차', cost:1200, color:'#78909c', accent:'#b0bec5',
+  { id:'tank', name:'전차', cost:480, color:'#78909c', accent:'#b0bec5',
     dmg:16, range:150, rate:0.6, bspd:360, spd:55, splash:60, slow:0, slowT:0,
     roam:200, mech:true,
     desc:'광역 포격으로 뭉친 적을 쓸어낸다' },
-  { id:'railgun', name:'레일건', cost:1500, color:'#00bcd4', accent:'#80deea',
+  { id:'railgun', name:'레일건', cost:600, color:'#00bcd4', accent:'#80deea',
     dmg:28, range:280, rate:0.5, bspd:1200, spd:0, splash:0, slow:0.3, slowT:1.5,
     hold:true, mech:true, pierce:3,
     desc:'관통탄이 적을 꿰뚫어 최대 3체 적중' },
-  { id:'artillery', name:'자주포', cost:1800, color:'#ef6c00', accent:'#ffcc80',
+  { id:'artillery', name:'자주포', cost:720, color:'#ef6c00', accent:'#ffcc80',
     dmg:48, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
     hold:true, mech:true,
     desc:'초장거리 포격, 넓은 폭발 반경' },
   // 기갑병력 II
-  { id:'assaultTank', name:'강습전차', cost:3200, color:'#78909c', accent:'#b0bec5',
+  { id:'assaultTank', name:'강습전차', cost:1280, color:'#78909c', accent:'#b0bec5',
     dmg:38, range:170, rate:0.65, bspd:400, spd:65, splash:70, slow:0, slowT:0,
     roam:220, mech:true,
     desc:'전차보다 두꺼운 장갑과 화력으로 전선을 돌파한다' },
-  { id:'ionRailgun', name:'이온레일건', cost:4000, color:'#00bcd4', accent:'#80deea',
+  { id:'ionRailgun', name:'이온레일건', cost:1600, color:'#00bcd4', accent:'#80deea',
     dmg:68, range:310, rate:0.55, bspd:1300, spd:0, slow:0.35, slowT:1.8,
     hold:true, mech:true, pierce:4,
     desc:'이온화된 관통탄이 최대 4체까지 꿰뚫는다' },
-  { id:'thermoArtillery', name:'열압자주포', cost:4800, color:'#ef6c00', accent:'#ffcc80',
+  { id:'thermoArtillery', name:'열압자주포', cost:1920, color:'#ef6c00', accent:'#ffcc80',
     dmg:112, range:350, rate:0.28, bspd:550, spd:0, splash:110, slow:0, slowT:0,
     hold:true, mech:true,
     desc:'열압력탄으로 더 넓은 범위를 초토화시킨다' },
   // 기갑병력 III — 궁극 형태
-  { id:'dreadnought', name:'드레드노트', cost:8000, color:'#78909c', accent:'#b0bec5',
+  { id:'dreadnought', name:'드레드노트', cost:3200, color:'#78909c', accent:'#b0bec5',
     dmg:84, range:190, rate:0.7, bspd:440, spd:75, splash:85, slow:0, slowT:0,
     roam:240, mech:true,
     desc:'움직이는 요새, 기갑 병과의 정점' },
-  { id:'plasmaRailgun', name:'플라즈마레일건', cost:10000, color:'#00bcd4', accent:'#80deea',
+  { id:'plasmaRailgun', name:'플라즈마레일건', cost:4000, color:'#00bcd4', accent:'#80deea',
     dmg:160, range:340, rate:0.6, bspd:1400, spd:0, slow:0.4, slowT:2.0,
     hold:true, mech:true, pierce:5,
     desc:'플라즈마 관통탄이 최대 5체를 꿰뚫는다' },
-  { id:'orbitalArtillery', name:'궤도자주포', cost:12000, color:'#ef6c00', accent:'#ffcc80',
+  { id:'orbitalArtillery', name:'궤도자주포', cost:4800, color:'#ef6c00', accent:'#ffcc80',
     dmg:260, range:380, rate:0.3, bspd:600, spd:0, splash:140, slow:0, slowT:0,
     hold:true, mech:true,
     desc:'궤도에서 떨어지는 압도적인 화력' },
@@ -721,41 +721,41 @@ const MECH_UNITS = [
 // 공중 병과 — 빠르고 넓은 활동 반경. 기갑보다 상위 단계.
 const AIR_UNITS = [
   // 공중병력 I — 기갑 III보다 강력
-  { id:'fighter', name:'전투기', cost:6000, color:'#e040fb', accent:'#f8bbd0',
+  { id:'fighter', name:'전투기', cost:2400, color:'#e040fb', accent:'#f8bbd0',
     dmg:112, range:140, rate:2.0, bspd:800, spd:220, splash:0, slow:0, slowT:0,
     roam:380, air:true,
     desc:'압도적인 연사력으로 넓은 구역을 제압한다' },
-  { id:'scout', name:'정찰기', cost:7500, color:'#ffab00', accent:'#ffe082',
+  { id:'scout', name:'정찰기', cost:3000, color:'#ffab00', accent:'#ffe082',
     dmg:168, range:120, rate:0.5, bspd:0, spd:150, splash:80, slow:0, slowT:0,
     roam:350, air:true, bomb:true, patrol:true,
     desc:'강력한 폭탄으로 적 무리를 초토화한다' },
-  { id:'interceptor', name:'요격기', cost:9000, color:'#00e5ff', accent:'#80deea',
+  { id:'interceptor', name:'요격기', cost:3600, color:'#00e5ff', accent:'#80deea',
     dmg:140, range:180, rate:1.2, bspd:1000, spd:200, splash:0, slow:0.3, slowT:1.5,
     roam:360, air:true,
     desc:'정밀 사격과 감속으로 적을 무력화한다' },
   // 공중병력 II — 공중 I의 강화형
-  { id:'stealthFighter', name:'스텔스기', cost:16000, color:'#e040fb', accent:'#f8bbd0',
+  { id:'stealthFighter', name:'스텔스기', cost:6400, color:'#e040fb', accent:'#f8bbd0',
     dmg:208, range:160, rate:2.2, bspd:900, spd:250, splash:0, slow:0, slowT:0,
     roam:400, air:true,
     desc:'탐지를 피하며 초고속 연사로 적을 제압한다' },
-  { id:'bomber', name:'폭격기', cost:20000, color:'#ffab00', accent:'#ffe082',
+  { id:'bomber', name:'폭격기', cost:8000, color:'#ffab00', accent:'#ffe082',
     dmg:320, range:140, rate:0.45, bspd:0, spd:140, splash:110, slow:0, slowT:0,
     roam:380, air:true, bomb:true, patrol:true,
     desc:'대형 폭탄으로 넓은 범위를 초토화한다' },
-  { id:'missileInterceptor', name:'미사일기', cost:24000, color:'#00e5ff', accent:'#80deea',
+  { id:'missileInterceptor', name:'미사일기', cost:9600, color:'#00e5ff', accent:'#80deea',
     dmg:260, range:220, rate:1.0, bspd:1100, spd:210, splash:0, slow:0.35, slowT:1.8,
     roam:390, air:true,
     desc:'유도 미사일로 원거리에서 정밀 타격한다' },
   // 공중병력 III — 궁극 형태, 전체 병력 중 최강
-  { id:'aceStriker', name:'에이스기', cost:40000, color:'#e040fb', accent:'#f8bbd0',
+  { id:'aceStriker', name:'에이스기', cost:16000, color:'#e040fb', accent:'#f8bbd0',
     dmg:380, range:180, rate:2.5, bspd:1000, spd:280, splash:0, slow:0, slowT:0,
     roam:420, air:true,
     desc:'하늘의 왕, 압도적인 속도와 화력의 정점' },
-  { id:'strategicBomber', name:'전략폭격기', cost:50000, color:'#ffab00', accent:'#ffe082',
+  { id:'strategicBomber', name:'전략폭격기', cost:20000, color:'#ffab00', accent:'#ffe082',
     dmg:600, range:160, rate:0.4, bspd:0, spd:130, splash:140, slow:0, slowT:0,
     roam:400, air:true, bomb:true, patrol:true,
     desc:'전장 전체를 뒤흔드는 궁극의 폭격' },
-  { id:'orbitalStriker', name:'궤도타격기', cost:60000, color:'#00e5ff', accent:'#80deea',
+  { id:'orbitalStriker', name:'궤도타격기', cost:24000, color:'#00e5ff', accent:'#80deea',
     dmg:480, range:260, rate:0.8, bspd:1300, spd:220, splash:50, slow:0.4, slowT:2.0,
     roam:420, air:true,
     desc:'궤도에서 정밀 레이저를 발사하는 최종 병기' },
@@ -789,6 +789,11 @@ function currentTier() {
   if (!id) return null;
   const t = TROOP_TIERS.find(x => x.tier === id);
   return (t && mlv(id) > 0) ? t : null;
+}
+function gameTier() {
+  if (!S || !S.lockedTier) return currentTier();
+  const t = TROOP_TIERS.find(x => x.tier === S.lockedTier);
+  return (t && mlv(t.tier) > 0) ? t : null;
 }
 function troopCategory(def) {
   return def.mech ? 'mech' : def.air ? 'air' : 'ground';
@@ -1342,7 +1347,7 @@ function saveRun() {
   const snap = {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired,
     groundShop: S.groundShop, mechShop: S.mechShop, airShop: S.airShop,
-    nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
+    lockedTier: S.lockedTier, nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
     troopUpLv: S.troopUpLv, troopDmgAdd: S.troopDmgAdd,
@@ -1423,6 +1428,7 @@ function newGame(startWave) {
     goldMul: 1 + mlv('minc') * MSTEP.minc / 100,  // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     autoSkill: true,                       // 스킬 자동 발동
+    lockedTier: save.meta.selectedTier || null,
     groundShop: !!(currentTier() && currentTier().tier.startsWith('tier_g')),
     mechShop: !!(currentTier() && currentTier().tier.startsWith('tier_m')),
     airShop: !!(currentTier() && currentTier().tier.startsWith('tier_a')),
@@ -1485,9 +1491,11 @@ function resumeGame(snap) {
   S.startWave = snap.startWave ?? 1;
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
-  S.groundShop = !!(currentTier() && currentTier().tier.startsWith('tier_g'));
-  S.mechShop = !!(currentTier() && currentTier().tier.startsWith('tier_m'));
-  S.airShop = !!(currentTier() && currentTier().tier.startsWith('tier_a'));
+  S.lockedTier = snap.lockedTier || save.meta.selectedTier || null;
+  const gt = gameTier();
+  S.groundShop = !!(gt && gt.tier.startsWith('tier_g'));
+  S.mechShop = !!(gt && gt.tier.startsWith('tier_m'));
+  S.airShop = !!(gt && gt.tier.startsWith('tier_a'));
   S.nexusEvolved = snap.nexusEvolved ?? false;
   S.hasMechanic = snap.hasMechanic ?? false;
   S.autoSkill = snap.autoSkill ?? true;
@@ -3325,7 +3333,7 @@ function buyPop() {
 
 // 지상/기갑/공중 구분 없이 지금 해금된 모든 병력에 함께 적용된다
 function buyTroopUp() {
-  if (!currentTier()) return;
+  if (!gameTier()) return;
   const c = troopUpCost(S.troopUpLv);
   if (S.gold < c) return;
   S.gold -= c; S.troopUpLv++; S.troopDmgAdd += TROOP_UP.step;
@@ -3426,7 +3434,7 @@ function renderTroopShop() {
   }
 
   // 현재 해금된 단계의 병력 카드들(계열당 2~3종)만 보여준다
-  const cur = currentTier();
+  const cur = gameTier();
   for (const e of els.troop) {
     const active = !!cur && cur.tier === e.tier;
     e.card.style.display = active ? '' : 'none';
@@ -3590,14 +3598,14 @@ document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
     const t = el.dataset.tab;
     if (t === 'hero' && heroTabLocked()) return;
-    if (t === 'troops' && !currentTier()) return;
+    if (t === 'troops' && !gameTier()) return;
     if (t !== 'troops' && TECH_TABS[t] && !mlv(TECH_TABS[t])) return;
     setTab(t);
   };
 });
 function setTab(name) {
   if (name === 'hero' && heroTabLocked()) name = 'nexus';
-  if (name === 'troops' && !currentTier()) name = 'nexus';
+  if (name === 'troops' && !gameTier()) name = 'nexus';
   if (name !== 'troops' && TECH_TABS[name] && !mlv(TECH_TABS[name])) name = 'nexus';
   tab = name;
   document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
@@ -3613,7 +3621,7 @@ function syncTechTabs() {
     const el = document.querySelector(`.tabs .tab[data-tab="${tabName}"]`);
     if (!el) continue;
     if (tabName === 'troops') {
-      el.style.display = currentTier() ? '' : 'none';
+      el.style.display = gameTier() ? '' : 'none';
     } else {
       el.style.display = mlv(metaId) > 0 ? '' : 'none';
     }
