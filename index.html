@@ -595,14 +595,16 @@ const HERO_CLASSES = [
     desc:'적에게 달려들어 근접 공격하는 전투의 달인',
     summonCost: 0, switchCost: 500,
     dmgPerLv:4, ratePerLv:0.03, spdPerLv:5,
-    skill: { name:'파워 스트라이크', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:30 } },
+    skill: { name:'파워 스트라이크', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:30 },
+    passive: { name:'생명력 착취', desc:'적 처치 시 넥서스 HP 1% 회복', unlockLv:60 } },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
     dmg:10, range:400, rate:4.5, bspd:900, spd:120, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true, arrow: true,
     desc:'초장거리에서 빠른 화살을 퍼붓는 원거리 전문가',
     summonCost: 0, switchCost: 500,
     dmgPerLv:1, ratePerLv:0.08, spdPerLv:2,
-    skill: { name:'연발샷', desc:'가장 가까운 적에게 화살 6발을 연달아 발사', cd:14, shots:6, dmgMul:2, unlockLv:30 } },
+    skill: { name:'연발샷', desc:'가장 가까운 적에게 화살 6발을 연달아 발사', cd:14, shots:6, dmgMul:2, unlockLv:30 },
+    passive: { name:'속사', desc:'공격 시 15% 확률로 즉시 한 발 더 발사', unlockLv:60 } },
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
     dmg:60, range:200, rate:0.5, bspd:350, spd:100, splash:50, slow:0.3, slowT:1.5,
     roam:9999, heroClass:true, energyBolt: true,
@@ -610,7 +612,8 @@ const HERO_CLASSES = [
     desc:'마나를 소모해 에너지 볼트로 적을 제압하고 감속시킨다',
     summonCost: 0, switchCost: 500,
     dmgPerLv:5, ratePerLv:0.02, manaPerLv:5, regenPerLv:0.3,
-    skill: { name:'매직샷', desc:'거대한 마법 구체를 발사해 주변에 폭발 피해', cd:18, radius:110, dmgMul:5, unlockLv:30 } },
+    skill: { name:'매직샷', desc:'거대한 마법 구체를 발사해 주변에 폭발 피해', cd:18, radius:110, dmgMul:5, unlockLv:30 },
+    passive: { name:'마력 환류', desc:'적 처치 시 스킬 쿨타임 1초 감소', unlockLv:60 } },
 ];
 const heroClassById = id => HERO_CLASSES.find(c => c.id === id);
 const HERO_XP_BASE = 5;
@@ -1913,6 +1916,16 @@ function damage(e, amount, slow, slowT) {
         burst(S.hero.x, S.hero.y, '#ffe066', 16);
       }
       save.meta.heroLevels[S.hero.classId] = { xp: S.hero.xp, level: S.hero.level };
+      const ps = S.hero.def.passive;
+      if (ps && S.hero.level >= ps.unlockLv) {
+        if (S.hero.def.id === 'warrior') {
+          const heal = Math.round(S.nexus.maxHp * 0.01);
+          S.nexus.hp = Math.min(S.nexus.maxHp, S.nexus.hp + heal);
+          addText(CX, CY - 40, '+' + heal, '#66ff66');
+        } else if (S.hero.def.id === 'mage') {
+          if (S.hero.skillCd > 0) S.hero.skillCd = Math.max(0, S.hero.skillCd - 1);
+        }
+      }
     }
   }
 }
@@ -2227,6 +2240,9 @@ function update(dt) {
         } else {
           fire(hr, inRange, hs.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, cls.accent,
                cls.energyBolt ? { energyBolt: true } : cls.arrow ? { arrow: true } : undefined);
+          if (cls.id === 'archer' && cls.passive && hr.level >= cls.passive.unlockLv && Math.random() < 0.15) {
+            fire(hr, inRange, hs.dmg, cls.bspd, cls.splash, cls.slow, cls.slowT, '#ffff66', { arrow: true });
+          }
         }
       }
     }
@@ -3182,6 +3198,7 @@ function renderHeroMeta() {
             <div class="ds">${cls.desc}</div>
             <div class="ds" style="color:#7b88a8;margin-top:2px">공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range}${cls.mana ? ' · 마나 ' + hs.maxMana : ''}</div>
             <div class="ds" style="color:#7b88a8">스킬: ${sk.name} (Lv.${sk.unlockLv} 해금, ${sk.cd}초 쿨다운)${hl.level > 1 ? ' · 경험치 ' + hl.xp + '/' + heroXpToNext(hl.level) : ''}</div>
+            ${cls.passive ? `<div class="ds" style="color:${hl.level >= cls.passive.unlockLv ? '#66ff66' : '#555'}">패시브: ${cls.passive.name} — ${cls.passive.desc} (Lv.${cls.passive.unlockLv} 해금${hl.level >= cls.passive.unlockLv ? ' ✦' : ''})</div>` : ''}
           </div>
         </div>
         <button data-hcsel="${cls.id}" ${sel || (!sel && needSpecial && !canSwitch) ? 'disabled' : ''}>${btnText}</button>
@@ -3259,6 +3276,14 @@ function buildShops() {
           <div class="ds" id="heroSkillInfo" style="font-size:11px;color:#7b88a8"></div>
         </div>
         <div id="heroSkillBadge" style="font-size:12px;font-weight:600;white-space:nowrap;padding:0 6px"></div>
+      </div>
+      <div id="heroPassiveCard" class="card" style="margin:4px 0 0;pointer-events:none;display:none">
+        <div class="swatch" id="heroPassiveSwatch"></div>
+        <div>
+          <div class="nm" id="heroPassiveName"></div>
+          <div class="ds" id="heroPassiveDesc"></div>
+        </div>
+        <div id="heroPassiveBadge" style="font-size:12px;font-weight:600;white-space:nowrap;padding:0 6px"></div>
       </div>
     </div>`
     ;
@@ -3396,6 +3421,20 @@ function renderHeroShop() {
       $('heroSkillBadge').style.color = ok ? '#66ffaa' : '#ff6b81';
     } else {
       skillSec.style.display = 'none';
+    }
+    if (cls.passive) {
+      const ps = cls.passive;
+      const pOk = S.hero.level >= ps.unlockLv;
+      $('heroPassiveCard').style.display = '';
+      $('heroPassiveSwatch').style.background = pOk ? '#66ff66' : '#3a3f4e';
+      $('heroPassiveSwatch').style.color = pOk ? '#66ff66' : '#3a3f4e';
+      $('heroPassiveName').textContent = ps.name;
+      $('heroPassiveName').style.color = pOk ? '#66ff66' : '#7b88a8';
+      $('heroPassiveDesc').textContent = ps.desc;
+      $('heroPassiveBadge').textContent = pOk ? '활성' : `Lv.${ps.unlockLv} 해금`;
+      $('heroPassiveBadge').style.color = pOk ? '#66ffaa' : '#ff6b81';
+    } else {
+      $('heroPassiveCard').style.display = 'none';
     }
   } else {
     statusEl.textContent = '영구 상점에서 영웅을 선택하면 출격 시 자동 소환됩니다.';
