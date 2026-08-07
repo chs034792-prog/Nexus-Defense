@@ -1208,9 +1208,10 @@ let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0 };
 
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
    save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
-const MIGRATION = 3;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
+const MIGRATION = 4;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
                                    // 2: 지상/기갑/공중 일괄 해금 -> 단계별 순차 해금으로 개편
                                    // 3: 단계 선택제 도입 + 공중 3단계 확장
+                                   // 4: 전체 유저 150,000 코어 보상
 function migrate() {
   if ((save.mig || 0) < 1) save.cores = Math.floor(save.cores / 10);
   if ((save.mig || 0) < 2) {
@@ -1222,6 +1223,9 @@ function migrate() {
     let best = null;
     for (const t of TROOP_TIERS) if (save.meta[t.tier] > 0) best = t.tier;
     if (best) save.meta.selectedTier = best;
+  }
+  if ((save.mig || 0) < 4) {
+    save.cores += 150000;
   }
   save.mig = MIGRATION;
 }
