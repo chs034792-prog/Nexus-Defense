@@ -385,6 +385,17 @@
     <textarea id="backupText" readonly placeholder="코드가 여기에 나옵니다"></textarea>
   </div>
 
+  <div id="couponBox" style="display:none">
+    <h3>쿠폰 입력</h3>
+    <p class="hint">쿠폰 코드를 입력하면 보상을 받을 수 있습니다.</p>
+    <div class="row" style="margin-top:9px;gap:8px">
+      <input id="couponInput" type="text" placeholder="쿠폰 코드 입력"
+             style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2a3350;background:#0f1524;color:#e6ecff;font-size:15px;text-transform:uppercase">
+      <button id="btnCouponUse" style="flex:0 0 auto;padding:8px 16px">사용</button>
+    </div>
+    <p id="couponMsg" class="hint" style="margin-top:8px;min-height:18px"></p>
+  </div>
+
   <div id="zoneBox" style="display:none">
     <h3>지역 정보</h3>
     <p class="hint">웨이브가 진행될수록 새로운 지역이 열립니다. 해금한 지역을 누르면 출격 시작 지점으로 고를 수 있습니다.</p>
@@ -406,7 +417,10 @@
   </div>
 
   <p class="hint" style="margin-top:22px;color:#4e5872">사방에서 몰려오는 적으로부터 중앙 넥서스를 지켜내십시오.</p>
-  <button id="btnBackup" style="margin-top:10px;background:none;border:none;color:#3a415a;font-size:11px;padding:4px;text-decoration:underline;cursor:pointer">코드 관리</button>
+  <div style="margin-top:10px;display:flex;gap:12px;justify-content:center">
+    <button id="btnBackup" style="background:none;border:none;color:#3a415a;font-size:11px;padding:4px;text-decoration:underline;cursor:pointer">코드 관리</button>
+    <button id="btnCoupon" style="background:none;border:none;color:#ffd45e;font-size:11px;padding:4px;text-decoration:underline;cursor:pointer">쿠폰 입력</button>
+  </div>
 </div>
 
 <!-- ── 상점 화면 ────────────────────────────── -->
@@ -1204,14 +1218,17 @@ const ZONE_META = ZONES.slice(1).map(z => {
 });
 
 const SAVE_KEY = 'nexusdefense.save';
-let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0 };
+let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0, coupons: [] };
+
+const COUPONS = {
+  'WELCOME150K': { cores: 150000, desc: '전체 유저 보상 150,000 코어' },
+};
 
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
    save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
-const MIGRATION = 4;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
+const MIGRATION = 3;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
                                    // 2: 지상/기갑/공중 일괄 해금 -> 단계별 순차 해금으로 개편
                                    // 3: 단계 선택제 도입 + 공중 3단계 확장
-                                   // 4: 전체 유저 150,000 코어 보상
 function migrate() {
   if ((save.mig || 0) < 1) save.cores = Math.floor(save.cores / 10);
   if ((save.mig || 0) < 2) {
@@ -1223,9 +1240,6 @@ function migrate() {
     let best = null;
     for (const t of TROOP_TIERS) if (save.meta[t.tier] > 0) best = t.tier;
     if (best) save.meta.selectedTier = best;
-  }
-  if ((save.mig || 0) < 4) {
-    save.cores += 150000;
   }
   save.mig = MIGRATION;
 }
@@ -1239,6 +1253,7 @@ function loadSave() {
     if (!save.meta.heroLevels[c.id]) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   }
   if (save.meta.selectedTier && !TROOP_TIERS.some(t => t.tier === save.meta.selectedTier)) save.meta.selectedTier = null;
+  if (!Array.isArray(save.coupons)) save.coupons = [];
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
   if (old > save.best) save.best = old;
   const stale = (save.mig || 0) < MIGRATION;
@@ -1278,7 +1293,8 @@ function exportSave() {
   const body = JSON.stringify({ v: 2, best: save.best,
                                 cores: DEV ? realCores : save.cores,
                                 specialCores: save.specialCores || 0,
-                                runs: save.runs, meta: save.meta, mig: save.mig || 0 });
+                                runs: save.runs, meta: save.meta, mig: save.mig || 0,
+                                coupons: save.coupons || [] });
   return btoa(String.fromCharCode(...new TextEncoder().encode(body)));
 }
 
@@ -1305,6 +1321,7 @@ function importSave(code) {
   save.meta.t_mech = +(d.meta.t_mech) || 0;
   save.meta.t_air = +(d.meta.t_air) || 0;
   // 옛 코드(v1)는 보정 전 값이라 여기서 한 번 깎인다
+  save.coupons = Array.isArray(d.coupons) ? d.coupons : [];
   save.mig = Math.max(0, +d.mig || 0);
   migrate();
   realCores = save.cores;          // 불러온 값이 운영자 모드에 덮이지 않게 한다
@@ -3721,10 +3738,39 @@ $('btnShopBack').onclick = goMenu;
 
 $('btnBackup').onclick = () => {
   $('zoneBox').style.display = 'none';
+  $('couponBox').style.display = 'none';
   const box = $('backupBox');
   const open = box.style.display === 'none';
   box.style.display = open ? '' : 'none';
   if (!open) $('backupText').value = '';
+};
+
+$('btnCoupon').onclick = () => {
+  $('zoneBox').style.display = 'none';
+  $('backupBox').style.display = 'none';
+  const box = $('couponBox');
+  const open = box.style.display === 'none';
+  box.style.display = open ? '' : 'none';
+  if (!open) { $('couponInput').value = ''; $('couponMsg').textContent = ''; }
+};
+
+$('btnCouponUse').onclick = () => {
+  const code = $('couponInput').value.trim().toUpperCase();
+  const msg = $('couponMsg');
+  if (!code) { msg.textContent = '코드를 입력해주세요.'; msg.style.color = '#ff6b81'; return; }
+  const coupon = COUPONS[code];
+  if (!coupon) { msg.textContent = '존재하지 않는 쿠폰입니다.'; msg.style.color = '#ff6b81'; return; }
+  if (save.coupons.includes(code)) { msg.textContent = '이미 사용한 쿠폰입니다.'; msg.style.color = '#ff6b81'; return; }
+  save.coupons.push(code);
+  if (coupon.cores) save.cores += coupon.cores;
+  if (coupon.specialCores) save.specialCores += coupon.specialCores;
+  writeSave();
+  const rewards = [];
+  if (coupon.cores) rewards.push(`코어 +${coupon.cores.toLocaleString()}`);
+  if (coupon.specialCores) rewards.push(`특수 코어 +${coupon.specialCores}`);
+  msg.textContent = `${coupon.desc} — ${rewards.join(', ')}`;
+  msg.style.color = '#ffd45e';
+  $('mCores').textContent = save.cores;
 };
 
 function renderZoneList() {
