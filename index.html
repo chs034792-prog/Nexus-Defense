@@ -614,7 +614,11 @@ const HERO_CLASSES = [
 ];
 const heroClassById = id => HERO_CLASSES.find(c => c.id === id);
 const HERO_XP_BASE = 5;
-function heroXpToNext(lv) { return HERO_XP_BASE + lv * 5; }
+function heroXpToNext(lv) {
+  const base = HERO_XP_BASE + lv * 5;
+  if (lv < 60) return base;
+  return Math.round(base * Math.pow(1.04, lv - 59));
+}
 function heroStatScaled(cls, lv) {
   const l = lv - 1;
   return {
