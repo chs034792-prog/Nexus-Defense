@@ -1722,19 +1722,19 @@ function spawn(type) {
   const baseRew = type === 'boss' ? (S.wave / bi) * 50 : e.rew;
   const zm = zoneScale(S.wave);
   if (type === 'boss') {
-    const tier = S.wave / bi;
-    const hp = Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP) * zm);
-    e = { ...e, hp, dmg: Math.round((15 + (tier - 1) * 4) * zm), atkRate: 1.0 };
+    const z = currentZone(S.wave);
+    const relWave = S.wave - z.from + 1;
+    const zoneTier = relWave / bi;
+    const zoneIdx = ZONES.indexOf(z);
+    const zoneBoost = Math.pow(2, zoneIdx);
+    const hp = Math.round(BOSS_HP_BASE * Math.pow(zoneTier, BOSS_HP_EXP) * zoneBoost * zm);
+    e = { ...e, hp, dmg: Math.round((15 + (zoneTier - 1) * 4) * zoneBoost * zm), atkRate: 1.0 };
   } else if (zm > 1) {
     e = { ...e, hp: e.hp * zm, dmg: e.dmg * zm };
   }
   // 50~100 웨이브 적 약화 (35%)
   if (S.wave >= 50 && S.wave <= 100) {
     e = { ...e, hp: e.hp * 0.65, dmg: e.dmg * 0.65 };
-  }
-  // 숲(101~200) 보스 HP 절반
-  if (type === 'boss' && S.wave >= 101 && S.wave <= 200) {
-    e = { ...e, hp: e.hp * 0.5 };
   }
   const hard = hardMul(S.wave);
   if (hard > 1) e = { ...e, dmg: e.dmg * hard };
