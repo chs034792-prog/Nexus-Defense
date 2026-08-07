@@ -1716,8 +1716,10 @@ function spawn(type) {
   } else if (zm > 1) {
     e = { ...e, hp: e.hp * zm, dmg: e.dmg * zm };
   }
-  // 50~100 웨이브 적 약화 (35%)
-  if (S.wave >= 50 && S.wave <= 100) {
+  // 1~50 웨이브 적 약화 (15%), 51~100 웨이브 적 약화 (35%)
+  if (S.wave <= 50) {
+    e = { ...e, hp: e.hp * 0.85, dmg: e.dmg * 0.85 };
+  } else if (S.wave <= 100) {
     e = { ...e, hp: e.hp * 0.65, dmg: e.dmg * 0.65 };
   }
   const hard = hardMul(S.wave);
