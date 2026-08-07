@@ -1903,7 +1903,8 @@ function damage(e, amount, slow, slowT) {
     burst(e.x, e.y, e.def.color, e.type === 'boss' ? 34 : 12);
     if (e.type === 'boss') S.shake = 10;
     if (S.hero) {
-      S.hero.xp++;
+      const xpGain = S.wave >= 200 ? Math.floor(S.wave / 100) : 1;
+      S.hero.xp += xpGain;
       const need = heroXpToNext(S.hero.level);
       if (S.hero.xp >= need) {
         S.hero.xp -= need;
