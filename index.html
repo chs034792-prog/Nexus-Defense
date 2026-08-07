@@ -432,7 +432,7 @@
     <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">강화</button>
     <button id="shopTabBarrack" class="ghost" style="flex:1;padding:8px 0;font-size:14px">병영</button>
     <button id="shopTabHero" class="ghost" style="flex:1;padding:8px 0;font-size:14px">영웅</button>
-    <button id="shopTabZone" class="ghost" style="flex:1;padding:8px 0;font-size:14px">지역 해금</button>
+    <button id="shopTabZone" class="ghost" style="flex:1;padding:8px 0;font-size:14px;display:none">지역 해금</button>
   </div>
 
   <div id="shopMeta">
@@ -629,45 +629,45 @@ function heroStatScaled(cls, lv) {
 const GROUND_UNITS = [
   // 지상병력 I
   { id:'swordsman', name:'검사', cost:500, color:'#4ade80', accent:'#a7f3d0',
-    dmg:14, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
+    dmg:6, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
     roam:265,
     desc:'발이 빠르고 범용적인 지상 전투원' },
   { id:'g_sniper', name:'저격수', cost:750, color:'#f472b6', accent:'#fbcfe8',
-    dmg:95, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
+    dmg:38, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
     hold:true,
     desc:'먼 적을 정확히 저격한다' },
   { id:'buffer', name:'버퍼', cost:750, color:'#38bdf8', accent:'#bae6fd',
-    dmg:6, range:80, rate:1.2, bspd:400, spd:120, splash:0, slow:0.4, slowT:2.0,
+    dmg:3, range:80, rate:1.2, bspd:400, spd:120, splash:0, slow:0.4, slowT:2.0,
     roam:265,
     aura:true, auraDmg:8, auraRange:80,
     desc:'적을 느리게 하고 주변에 지속 피해를 준다' },
   // 지상병력 II — 검사/저격수/버퍼가 더 강해지며 이름이 바뀐다
   { id:'warrior2', name:'전사', cost:1800, color:'#4ade80', accent:'#a7f3d0',
-    dmg:32, range:90, rate:1.6, bspd:500, spd:145, splash:0, slow:0, slowT:0,
+    dmg:13, range:90, rate:1.6, bspd:500, spd:145, splash:0, slow:0, slowT:0,
     roam:280,
     desc:'검사보다 훨씬 강해진 근접 전투원' },
   { id:'ranger', name:'레인저', cost:2400, color:'#f472b6', accent:'#fbcfe8',
-    dmg:150, range:280, rate:0.55, bspd:950, spd:110, splash:0, slow:0, slowT:0,
+    dmg:60, range:280, rate:0.55, bspd:950, spd:110, splash:0, slow:0, slowT:0,
     roam:290,
     desc:'고정 저격에서 벗어나 이동하며 원거리 사격을 퍼붓는다' },
   { id:'shaman', name:'술사', cost:1800, color:'#38bdf8', accent:'#bae6fd',
-    dmg:14, range:90, rate:1.3, bspd:450, spd:130, splash:0, slow:0.5, slowT:2.5,
+    dmg:6, range:90, rate:1.3, bspd:450, spd:130, splash:0, slow:0.5, slowT:2.5,
     roam:280,
-    aura:true, auraDmg:18, auraRange:100,
+    aura:true, auraDmg:7, auraRange:100,
     desc:'버퍼보다 강한 감속과 지속 피해 오라를 두른다' },
   // 지상병력 III — 궁극 형태
   { id:'paladin', name:'팔라딘', cost:4200, color:'#4ade80', accent:'#a7f3d0',
-    dmg:70, range:100, rate:1.7, bspd:520, spd:160, splash:20, slow:0, slowT:0,
+    dmg:28, range:100, rate:1.7, bspd:520, spd:160, splash:20, slow:0, slowT:0,
     roam:300,
     desc:'성스러운 힘으로 주변까지 함께 베어내는 지상 최강 전투원' },
   { id:'bowmaster', name:'보우마스터', cost:5600, color:'#f472b6', accent:'#fbcfe8',
-    dmg:320, range:320, rate:0.6, bspd:1000, spd:120, splash:0, slow:0, slowT:0,
+    dmg:128, range:320, rate:0.6, bspd:1000, spd:120, splash:0, slow:0, slowT:0,
     roam:310,
     desc:'초장거리에서 강력한 일격을 꽂아 넣는 궁술의 달인' },
   { id:'witchdoctor', name:'주술사', cost:4200, color:'#38bdf8', accent:'#bae6fd',
-    dmg:32, range:100, rate:1.4, bspd:480, spd:140, splash:0, slow:0.6, slowT:3.0,
+    dmg:13, range:100, rate:1.4, bspd:480, spd:140, splash:0, slow:0.6, slowT:3.0,
     roam:300,
-    aura:true, auraDmg:38, auraRange:120,
+    aura:true, auraDmg:15, auraRange:120,
     desc:'강력한 저주로 적을 묶고 광역에 저주의 피해를 흩뿌린다' },
   { id:'mechanic', name:'작업공', cost:400, color:'#fbbf24', accent:'#fde68a',
     dmg:0, range:0, rate:0, bspd:0, spd:100, splash:0, slow:0, slowT:0,
@@ -679,41 +679,41 @@ const GROUND_UNITS = [
 const MECH_UNITS = [
   // 기갑병력 I
   { id:'tank', name:'전차', cost:1200, color:'#78909c', accent:'#b0bec5',
-    dmg:40, range:150, rate:0.6, bspd:360, spd:55, splash:60, slow:0, slowT:0,
+    dmg:16, range:150, rate:0.6, bspd:360, spd:55, splash:60, slow:0, slowT:0,
     roam:200, mech:true,
     desc:'광역 포격으로 뭉친 적을 쓸어낸다' },
   { id:'railgun', name:'레일건', cost:1500, color:'#00bcd4', accent:'#80deea',
-    dmg:70, range:280, rate:0.5, bspd:1200, spd:0, splash:0, slow:0.3, slowT:1.5,
+    dmg:28, range:280, rate:0.5, bspd:1200, spd:0, splash:0, slow:0.3, slowT:1.5,
     hold:true, mech:true, pierce:3,
     desc:'관통탄이 적을 꿰뚫어 최대 3체 적중' },
   { id:'artillery', name:'자주포', cost:1800, color:'#ef6c00', accent:'#ffcc80',
-    dmg:120, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
+    dmg:48, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
     hold:true, mech:true,
     desc:'초장거리 포격, 넓은 폭발 반경' },
   // 기갑병력 II
   { id:'assaultTank', name:'강습전차', cost:3200, color:'#78909c', accent:'#b0bec5',
-    dmg:95, range:170, rate:0.65, bspd:400, spd:65, splash:70, slow:0, slowT:0,
+    dmg:38, range:170, rate:0.65, bspd:400, spd:65, splash:70, slow:0, slowT:0,
     roam:220, mech:true,
     desc:'전차보다 두꺼운 장갑과 화력으로 전선을 돌파한다' },
   { id:'ionRailgun', name:'이온레일건', cost:4000, color:'#00bcd4', accent:'#80deea',
-    dmg:170, range:310, rate:0.55, bspd:1300, spd:0, slow:0.35, slowT:1.8,
+    dmg:68, range:310, rate:0.55, bspd:1300, spd:0, slow:0.35, slowT:1.8,
     hold:true, mech:true, pierce:4,
     desc:'이온화된 관통탄이 최대 4체까지 꿰뚫는다' },
   { id:'thermoArtillery', name:'열압자주포', cost:4800, color:'#ef6c00', accent:'#ffcc80',
-    dmg:280, range:350, rate:0.28, bspd:550, spd:0, splash:110, slow:0, slowT:0,
+    dmg:112, range:350, rate:0.28, bspd:550, spd:0, splash:110, slow:0, slowT:0,
     hold:true, mech:true,
     desc:'열압력탄으로 더 넓은 범위를 초토화시킨다' },
   // 기갑병력 III — 궁극 형태
   { id:'dreadnought', name:'드레드노트', cost:8000, color:'#78909c', accent:'#b0bec5',
-    dmg:210, range:190, rate:0.7, bspd:440, spd:75, splash:85, slow:0, slowT:0,
+    dmg:84, range:190, rate:0.7, bspd:440, spd:75, splash:85, slow:0, slowT:0,
     roam:240, mech:true,
     desc:'움직이는 요새, 기갑 병과의 정점' },
   { id:'plasmaRailgun', name:'플라즈마레일건', cost:10000, color:'#00bcd4', accent:'#80deea',
-    dmg:400, range:340, rate:0.6, bspd:1400, spd:0, slow:0.4, slowT:2.0,
+    dmg:160, range:340, rate:0.6, bspd:1400, spd:0, slow:0.4, slowT:2.0,
     hold:true, mech:true, pierce:5,
     desc:'플라즈마 관통탄이 최대 5체를 꿰뚫는다' },
   { id:'orbitalArtillery', name:'궤도자주포', cost:12000, color:'#ef6c00', accent:'#ffcc80',
-    dmg:650, range:380, rate:0.3, bspd:600, spd:0, splash:140, slow:0, slowT:0,
+    dmg:260, range:380, rate:0.3, bspd:600, spd:0, splash:140, slow:0, slowT:0,
     hold:true, mech:true,
     desc:'궤도에서 떨어지는 압도적인 화력' },
 ];
@@ -722,41 +722,41 @@ const MECH_UNITS = [
 const AIR_UNITS = [
   // 공중병력 I — 기갑 III보다 강력
   { id:'fighter', name:'전투기', cost:6000, color:'#e040fb', accent:'#f8bbd0',
-    dmg:280, range:140, rate:2.0, bspd:800, spd:220, splash:0, slow:0, slowT:0,
+    dmg:112, range:140, rate:2.0, bspd:800, spd:220, splash:0, slow:0, slowT:0,
     roam:380, air:true,
     desc:'압도적인 연사력으로 넓은 구역을 제압한다' },
   { id:'scout', name:'정찰기', cost:7500, color:'#ffab00', accent:'#ffe082',
-    dmg:420, range:120, rate:0.5, bspd:0, spd:150, splash:80, slow:0, slowT:0,
+    dmg:168, range:120, rate:0.5, bspd:0, spd:150, splash:80, slow:0, slowT:0,
     roam:350, air:true, bomb:true, patrol:true,
     desc:'강력한 폭탄으로 적 무리를 초토화한다' },
   { id:'interceptor', name:'요격기', cost:9000, color:'#00e5ff', accent:'#80deea',
-    dmg:350, range:180, rate:1.2, bspd:1000, spd:200, splash:0, slow:0.3, slowT:1.5,
+    dmg:140, range:180, rate:1.2, bspd:1000, spd:200, splash:0, slow:0.3, slowT:1.5,
     roam:360, air:true,
     desc:'정밀 사격과 감속으로 적을 무력화한다' },
   // 공중병력 II — 공중 I의 강화형
   { id:'stealthFighter', name:'스텔스기', cost:16000, color:'#e040fb', accent:'#f8bbd0',
-    dmg:520, range:160, rate:2.2, bspd:900, spd:250, splash:0, slow:0, slowT:0,
+    dmg:208, range:160, rate:2.2, bspd:900, spd:250, splash:0, slow:0, slowT:0,
     roam:400, air:true,
     desc:'탐지를 피하며 초고속 연사로 적을 제압한다' },
   { id:'bomber', name:'폭격기', cost:20000, color:'#ffab00', accent:'#ffe082',
-    dmg:800, range:140, rate:0.45, bspd:0, spd:140, splash:110, slow:0, slowT:0,
+    dmg:320, range:140, rate:0.45, bspd:0, spd:140, splash:110, slow:0, slowT:0,
     roam:380, air:true, bomb:true, patrol:true,
     desc:'대형 폭탄으로 넓은 범위를 초토화한다' },
   { id:'missileInterceptor', name:'미사일기', cost:24000, color:'#00e5ff', accent:'#80deea',
-    dmg:650, range:220, rate:1.0, bspd:1100, spd:210, splash:0, slow:0.35, slowT:1.8,
+    dmg:260, range:220, rate:1.0, bspd:1100, spd:210, splash:0, slow:0.35, slowT:1.8,
     roam:390, air:true,
     desc:'유도 미사일로 원거리에서 정밀 타격한다' },
   // 공중병력 III — 궁극 형태, 전체 병력 중 최강
   { id:'aceStriker', name:'에이스기', cost:40000, color:'#e040fb', accent:'#f8bbd0',
-    dmg:950, range:180, rate:2.5, bspd:1000, spd:280, splash:0, slow:0, slowT:0,
+    dmg:380, range:180, rate:2.5, bspd:1000, spd:280, splash:0, slow:0, slowT:0,
     roam:420, air:true,
     desc:'하늘의 왕, 압도적인 속도와 화력의 정점' },
   { id:'strategicBomber', name:'전략폭격기', cost:50000, color:'#ffab00', accent:'#ffe082',
-    dmg:1500, range:160, rate:0.4, bspd:0, spd:130, splash:140, slow:0, slowT:0,
+    dmg:600, range:160, rate:0.4, bspd:0, spd:130, splash:140, slow:0, slowT:0,
     roam:400, air:true, bomb:true, patrol:true,
     desc:'전장 전체를 뒤흔드는 궁극의 폭격' },
   { id:'orbitalStriker', name:'궤도타격기', cost:60000, color:'#00e5ff', accent:'#80deea',
-    dmg:1200, range:260, rate:0.8, bspd:1300, spd:220, splash:50, slow:0.4, slowT:2.0,
+    dmg:480, range:260, rate:0.8, bspd:1300, spd:220, splash:50, slow:0.4, slowT:2.0,
     roam:420, air:true,
     desc:'궤도에서 정밀 레이저를 발사하는 최종 병기' },
 ];
@@ -1795,6 +1795,8 @@ function centuryClear(wave) {
   $('over').classList.add('on');
   syncUI();
   submitRanking();
+  const nextZone = ZONES.find(zz => zz.from === wave + 1);
+  if (nextZone && zoneUnlocked(nextZone)) setSelectedZone(nextZone.from);
 }
 
 function zoneClear(zone) {
@@ -3707,10 +3709,9 @@ function leaveToMenu() {
 }
 
 function zoneUnlocked(z) {
-  if (DEV) return true;                  // 운영자 모드에서는 모든 지역을 열어 둔다
+  if (DEV) return true;
   if (z.from === 1) return true;
-  const m = ZONE_META.find(mm => mm.zone === z.name);
-  return m && mlv(m.id) > 0;
+  return save.best >= z.from - 1;
 }
 
 /* ── 출격 시작 지역 선택 ────────────────────────────────
