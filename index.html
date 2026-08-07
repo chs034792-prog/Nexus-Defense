@@ -40,8 +40,7 @@
   /* 내용이 넘칠 땐 위쪽이 잘리지 않도록 가운데 정렬을 포기한다 */
   #menu { justify-content: safe center; }
   #shopScreen { justify-content: flex-start; }
-  #metaList, #zoneMetaList, #backupBox { flex-shrink: 0; }
-  #zoneMetaList { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 8px; }
+  #metaList, #backupBox { flex-shrink: 0; }
   #menu .title {
     font-size: clamp(30px, 8vw, 62px); font-weight: 800; letter-spacing: .1em; text-align: center;
     background: linear-gradient(180deg,#cfe6ff,#4b8ff0);
@@ -432,7 +431,6 @@
     <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">강화</button>
     <button id="shopTabBarrack" class="ghost" style="flex:1;padding:8px 0;font-size:14px">병영</button>
     <button id="shopTabHero" class="ghost" style="flex:1;padding:8px 0;font-size:14px">영웅</button>
-    <button id="shopTabZone" class="ghost" style="flex:1;padding:8px 0;font-size:14px;display:none">지역 해금</button>
   </div>
 
   <div id="shopMeta">
@@ -452,10 +450,6 @@
     <div id="heroMetaContent" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
-  <div id="shopZone" style="display:none">
-    <p class="hint" style="margin-bottom:12px">지역을 해금하면 해당 지역부터 출격할 수 있습니다.</p>
-    <div id="zoneMetaList"></div>
-  </div>
 
   <button class="ghost back" id="btnShopBack">메인으로</button>
   <p class="hint" style="margin-top:12px;color:#4e5872">코어는 출격을 마칠 때 도달한 웨이브에 비례해 지급됩니다.</p>
@@ -1211,23 +1205,6 @@ const HERO_META = [
 const metaCost = (m, lv) => m.base * (lv + 1);
 const coreReward = cleared => Math.floor(10 * Math.pow(Math.max(0, cleared), 1.3));
 
-/* 지역 출격 해금 — 초원을 뺀 모든 지역에 자동으로 생성된다.
-   조건은 '그 지역 바로 앞 웨이브까지 실제로 클리어했는가'(첫 도달),
-   비용은 그 지점에서 받는 코어 보상의 2.5배를 100 단위로 반올림한 값이다.
-   (예: 숲 조건 웨이브100, 코어보상 3981 → 10,000코어로 기존 값과 정확히 일치)
-   숲만 예전부터 쓰던 id('z_forest')를 그대로 유지해 이미 해금한 플레이어가
-   다시 잠기지 않게 한다. */
-const ZONE_META = ZONES.slice(1).map(z => {
-  const prevWave = z.from - 1;
-  const id = z.name === '숲' ? 'z_forest' : `z_${z.name.replace(/\s/g, '')}`;
-  return {
-    id, zone: z.name, max: 1,
-    base: Math.round(coreReward(prevWave) * 2.5 / 100) * 100,
-    name: `${z.name} 출격 해금`,
-    desc: lv => lv ? `${z.name}(웨이브 ${z.from}) 출격 가능` : `${z.name} 지역부터 출격 (넥서스 강화 시작)`,
-    req: () => save.best >= prevWave,
-  };
-});
 
 const SAVE_KEY = 'nexusdefense.save';
 let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0, coupons: [] };
@@ -1258,7 +1235,7 @@ function migrate() {
 
 function loadSave() {
   try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) {}
-  for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META])
+  for (const m of [...META, ...BARRACK_META, ...HERO_META])
     if (typeof save.meta[m.id] !== 'number') save.meta[m.id] = 0;
   if (!save.meta.heroLevels || typeof save.meta.heroLevels !== 'object') save.meta.heroLevels = {};
   for (const c of HERO_CLASSES) {
@@ -1320,7 +1297,7 @@ function importSave(code) {
   save.specialCores = Math.max(0, +d.specialCores || 0);
   save.runs  = Math.max(0, +d.runs  || 0);
   save.meta = {};
-  for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
+  for (const m of [...META, ...BARRACK_META, ...HERO_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
   save.meta.heroClass = d.meta.heroClass || null;
   save.meta.selectedTier = d.meta.selectedTier || null;
   save.meta.heroLevels = {};
@@ -3056,51 +3033,13 @@ function setShopTab(tab) {
   $('shopMeta').style.display = tab === 'meta' ? '' : 'none';
   $('shopBarrack').style.display = tab === 'barrack' ? '' : 'none';
   $('shopHero').style.display = tab === 'hero' ? '' : 'none';
-  $('shopZone').style.display = tab === 'zone' ? '' : 'none';
   const active = ';background:#2a3a5c;border-color:#5b9dff;color:#fff';
   const base = 'flex:1;padding:8px 0;font-size:14px';
   $('shopTabMeta').style.cssText = base + (tab === 'meta' ? active : '');
   $('shopTabBarrack').style.cssText = base + (tab === 'barrack' ? active : '');
   $('shopTabHero').style.cssText = base + (tab === 'hero' ? active : '');
-  $('shopTabZone').style.cssText = base + (tab === 'zone' ? active : '');
   if (tab === 'barrack') renderBarrack();
   if (tab === 'hero') renderHeroMeta();
-  if (tab === 'zone') renderZoneMeta();
-}
-
-function renderZoneMeta() {
-  forceAdminCores();
-  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
-  $('zoneMetaList').innerHTML = ZONE_META.map(m => {
-    const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
-    const z = ZONES.find(z => z.name === m.zone);
-    const color = z ? z.color : '#7fe7ff';
-    const locked = !DEV && m.req && !m.req();
-    const idx = ZONES.findIndex(zz => zz.name === m.zone);
-    const prevZone = idx > 0 ? ZONES[idx - 1] : null;
-    const lockMsg = prevZone ? `${prevZone.name}(웨이브 ${prevZone.to}) 클리어 필요` : '';
-    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
-      <div class="info">
-        <div class="nm" style="color:${locked ? '#555' : color}">${m.name} <span style="color:#7b88a8;font-weight:400">${maxed ? '해금됨' : ''}</span></div>
-        <div class="ds">${locked ? lockMsg : m.desc(lv)}</div>
-      </div>
-      <button data-zm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
-        ${maxed ? '<span class="cost">해금됨</span>'
-                : locked ? '<span class="cost">잠김</span>'
-                : `<span class="cost">${c}</span><span class="unit">코어</span>`}
-      </button>
-    </div>`;
-  }).join('');
-  $('zoneMetaList').querySelectorAll('button[data-zm]').forEach(el => {
-    el.onclick = () => {
-      const m = ZONE_META.find(x => x.id === el.dataset.zm);
-      if (!DEV && m.req && !m.req()) return;
-      const lv = mlv(m.id), c = metaCost(m, lv);
-      if (lv >= m.max || save.cores < c) return;
-      save.cores -= c; save.meta[m.id] = lv + 1;
-      writeSave(); renderZoneMeta();
-    };
-  });
 }
 
 function renderBarrack() {
@@ -3231,7 +3170,6 @@ function renderHeroMeta() {
 $('shopTabMeta').onclick = () => setShopTab('meta');
 $('shopTabBarrack').onclick = () => setShopTab('barrack');
 $('shopTabHero').onclick = () => setShopTab('hero');
-$('shopTabZone').onclick = () => setShopTab('zone');
 
 /* 상점 목록은 처음에 한 번만 만든다.
    매 프레임 innerHTML 을 다시 쓰면 버튼이 눌리는 도중에 교체되어 클릭이 씹힌다. */
@@ -3881,10 +3819,10 @@ $('btnAdminGo').onclick = () => {
   newGame(n); setTab('nexus'); show('game');
 };
 
-// 영구 강화·지역 해금 레벨을 모두 0 으로 되돌린다 (코어·기록은 그대로)
+// 영구 강화 레벨을 모두 0 으로 되돌린다 (코어·기록은 그대로)
 $('btnAdminResetMeta').onclick = () => {
-  if (!confirm('영구 강화와 지역 해금을 모두 초기화할까요?\n(코어와 최고 기록은 그대로 남습니다)')) return;
-  for (const m of [...META, ...BARRACK_META, ...HERO_META, ...ZONE_META]) save.meta[m.id] = 0;
+  if (!confirm('영구 강화를 모두 초기화할까요?\n(코어와 최고 기록은 그대로 남습니다)')) return;
+  for (const m of [...META, ...BARRACK_META, ...HERO_META]) save.meta[m.id] = 0;
   save.meta.heroClass = null;
   save.meta.selectedTier = null;
   save.meta.heroLevels = {};
