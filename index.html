@@ -1048,7 +1048,7 @@ const UP_COST_GROW = 1.15;
 
 /* 드론 기본값과 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다 */
 const DRONE = { dmg: 12, spd: 2.0, orbitR: 250, dmgStep: 2, spdStep: 0.1 };
-const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 8 };
+const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1 };
 
 const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
@@ -1716,7 +1716,7 @@ function spawn(type) {
   if (type === 'boss') {
     const tier = S.wave / bi;
     const hp = Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP) * zm);
-    e = { ...e, hp, dmg: Math.round((25 + (tier - 1) * 6) * zm) };
+    e = { ...e, hp, dmg: Math.round((15 + (tier - 1) * 4) * zm), atkRate: 1.0 };
   } else if (zm > 1) {
     e = { ...e, hp: e.hp * zm, dmg: e.dmg * zm };
   }
@@ -1966,13 +1966,26 @@ function update(dt) {
         e.y += dy / d * step;
       }
     } else if (d <= NEXUS_R + e.def.r) {
-      n.hp -= e.def.dmg;
-      n.hitFlash = 0.25;
-      S.shake = Math.max(S.shake, e.type === 'boss' ? 14 : 6);
-      burst(e.x, e.y, '#ff6b81', 16);
-      addText(CX, CY - 55, '-' + e.def.dmg, '#ff6b81');
-      e.dead = true;
-      if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
+      if (e.type === 'boss') {
+        e.cd = (e.cd || 0) - dt;
+        if (e.cd <= 0) {
+          e.cd = 1 / (e.def.atkRate || 1.0);
+          n.hp -= e.def.dmg;
+          n.hitFlash = 0.25;
+          S.shake = Math.max(S.shake, 8);
+          burst(e.x, e.y, '#ff6b81', 8);
+          addText(CX, CY - 55, '-' + e.def.dmg, '#ff6b81');
+          if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
+        }
+      } else {
+        n.hp -= e.def.dmg;
+        n.hitFlash = 0.25;
+        S.shake = Math.max(S.shake, 6);
+        burst(e.x, e.y, '#ff6b81', 16);
+        addText(CX, CY - 55, '-' + e.def.dmg, '#ff6b81');
+        e.dead = true;
+        if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
+      }
     } else {
       const step = e.spd * e.slowMul * dt;
       e.x += dx / d * step;
