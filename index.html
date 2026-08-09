@@ -2316,8 +2316,10 @@ function update(dt) {
       }
     }
 
-    // 스킬 발동 (자동 또는 수동)
-    const canSkill = cls.skill && hr.level >= cls.skill.unlockLv && hr.skillCd <= 0 && S.enemies.some(e => !e.dead);
+    // 스킬 발동 (자동 또는 수동) — 범위 내 적이 있을 때만
+    const skillRange = cls.id === 'warrior' ? (cls.skill ? cls.skill.radius : cls.range) : cls.range;
+    const enemyInSkillRange = S.enemies.some(e => !e.dead && dist(hr.x, hr.y, e.x, e.y) <= skillRange);
+    const canSkill = cls.skill && hr.level >= cls.skill.unlockLv && hr.skillCd <= 0 && enemyInSkillRange;
     if (canSkill && (S.autoSkill || hr.pendingSkill)) {
       hr.pendingSkill = false;
       const sk = cls.skill;
@@ -2345,9 +2347,9 @@ function update(dt) {
       }
     }
 
-    // CC 스킬 (skill2) 발동
+    // CC 스킬 (skill2) 발동 — 범위 내 적이 있을 때만
     const sk2 = cls.skill2;
-    const canSkill2 = sk2 && hr.level >= sk2.unlockLv && hr.skill2Cd <= 0 && S.enemies.some(e => !e.dead);
+    const canSkill2 = sk2 && hr.level >= sk2.unlockLv && hr.skill2Cd <= 0 && enemyInSkillRange;
     if (canSkill2 && (S.autoSkill || hr.pendingSkill2)) {
       hr.pendingSkill2 = false;
       hr.skill2Cd = sk2.cd;
@@ -2384,7 +2386,7 @@ function update(dt) {
     // 전직 스킬 (skill3) 발동
     const adv = hr.adv;
     const sk3 = adv && adv.skill3;
-    const canSkill3 = sk3 && hr.level >= sk3.unlockLv && hr.skill3Cd <= 0 && S.enemies.some(e => !e.dead);
+    const canSkill3 = sk3 && hr.level >= sk3.unlockLv && hr.skill3Cd <= 0 && enemyInSkillRange;
     if (canSkill3 && (S.autoSkill || hr.pendingSkill3)) {
       hr.pendingSkill3 = false;
       hr.skill3Cd = sk3.cd;
