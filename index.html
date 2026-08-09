@@ -1878,6 +1878,7 @@ function centuryClear(wave) {
   const clearedInRun = Math.max(0, wave - S.startWave);
   const cores = coreReward(clearedInRun);
   save.cores += cores;
+  save.specialCores++;
   save.runs++;
   if (wave > save.best) save.best = wave;
   writeSave();
@@ -1887,7 +1888,8 @@ function centuryClear(wave) {
   $('overTitle').style.color = '#ffd45e';
   $('overMsg').textContent = `${z.name} · 웨이브 ${wave} 돌파 · 최고 기록 ${save.best}`;
   $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
-  $('overBonus').style.display = 'none';
+  $('overBonus').style.display = '';
+  $('overBonus').textContent = `특수 코어 +1 (보유 ${save.specialCores})`;
   $('over').classList.add('on');
   syncUI();
   submitRanking();
