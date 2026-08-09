@@ -99,7 +99,7 @@
   .zone-row.current { border-color: #ffd45e; box-shadow: 0 0 0 1px #ffd45e inset; }
   .zone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .zone-name { font-weight: 700; flex: 1; }
-  .zone-wave { color: #7b88a8; font-size: 11px; white-space: nowrap; }
+  .zone-wave { color: #a0b0cc; font-size: 13px; font-weight: 600; white-space: nowrap; }
   .zone-pick { color: #ffd45e; font-size: 11px; font-weight: 700; white-space: nowrap; }
   #zoneChip {
     flex: 1; display: flex; align-items: center; justify-content: center;
@@ -3882,8 +3882,7 @@ function renderZoneList() {
       .filter(Boolean).join(' ');
     return `<div class="${cls}" data-from="${z.from}">
       <div class="zone-dot" style="background:${z.color}"></div>
-      <span class="zone-name">${reached ? z.name : '???'}</span>
-      <span class="zone-wave">${z.from} ~ ${z.to}</span>
+      <span class="zone-name">${reached ? z.name : '???'} <span class="zone-wave">(${z.from}~${z.to})</span></span>
       ${isCurrent ? '<span class="zone-pick">선택됨</span>' : ''}
     </div>`;
   }).join('');
