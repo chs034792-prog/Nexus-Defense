@@ -187,7 +187,7 @@
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
   #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 6px; align-items: flex-end; }
-  #btnSkill, #btnSkill2, #btnSkill3 {
+  #btnSkill, #btnSkill2, #btnSkill3, #btnSkill4 {
     width: 60px; height: 60px; border-radius: 50%; border: 2px solid #555;
     background: #1c2437; color: #aaa; font-size: 10px; font-weight: 700;
     display: none; cursor: pointer; position: relative; overflow: hidden;
@@ -197,7 +197,8 @@
   #btnSkill.ready { border-color: #66ffaa; color: #66ffaa; }
   #btnSkill2.ready { border-color: #00bfff; color: #00bfff; }
   #btnSkill3.ready { border-color: #ff88ff; color: #ff88ff; }
-  #btnSkill .cd-overlay, #btnSkill2 .cd-overlay, #btnSkill3 .cd-overlay {
+  #btnSkill4.ready { border-color: #ffaa33; color: #ffaa33; }
+  #btnSkill .cd-overlay, #btnSkill2 .cd-overlay, #btnSkill3 .cd-overlay, #btnSkill4 .cd-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,.55); pointer-events: none;
   }
@@ -499,6 +500,7 @@
       <button id="btnSkill"><span id="skillName"></span><div class="cd-overlay" id="skillCdOverlay"></div></button>
       <button id="btnSkill2" style="display:none"><span id="skill2Name"></span><div class="cd-overlay" id="skill2CdOverlay"></div></button>
       <button id="btnSkill3" style="display:none"><span id="skill3Name"></span><div class="cd-overlay" id="skill3CdOverlay"></div></button>
+      <button id="btnSkill4" style="display:none"><span id="skill4Name"></span><div class="cd-overlay" id="skill4CdOverlay"></div></button>
     </div>
   </div>
 
@@ -628,31 +630,37 @@ const HERO_ADV = {
     { id:'swordmaster', name:'검성', color:'#ff4444', accent:'#ff8888',
       desc:'공격력·공속 극대화, 적을 베어가는 순수 딜러',
       bonusDmg:20, bonusRate:0.5,
-      skill3: { name:'검무', desc:'0.5초간 8회 연속 베기, 각 타격 2배 피해', cd:20, hits:8, dmgMul:2, unlockLv:100 } },
+      skill3: { name:'검무', desc:'0.5초간 8회 연속 베기, 각 타격 2배 피해', cd:20, hits:8, dmgMul:2, unlockLv:100 },
+      skill4: { name:'참격', desc:'가장 가까운 적에게 공격력 15배 피해', cd:10, dmgMul:15, unlockLv:150 } },
     { id:'guardian', name:'수호자', color:'#4488ff', accent:'#88bbff',
       desc:'넥서스 보호 특화, 받는 피해 30% 감소 보호막',
       bonusDmg:0, bonusRate:0,
-      skill3: { name:'불굴의 방벽', desc:'5초간 넥서스가 받는 피해 70% 감소', cd:25, shieldDur:5, dmgReduce:0.7, unlockLv:100 } },
+      skill3: { name:'불굴의 방벽', desc:'5초간 넥서스가 받는 피해 70% 감소', cd:25, shieldDur:5, dmgReduce:0.7, unlockLv:100 },
+      skill4: { name:'심판의 일격', desc:'가장 가까운 적에게 공격력 12배 피해 + 3초 스턴', cd:14, dmgMul:12, stunDur:3, unlockLv:150 } },
   ],
   archer: [
     { id:'sharpshooter', name:'명사수', color:'#00ff88', accent:'#88ffbb',
       desc:'단일 대상 치명타 특화, 보스 킬러',
       bonusDmg:5, bonusRate:1.0,
-      skill3: { name:'저격', desc:'HP가 가장 높은 적에게 현재 HP의 8% 피해', cd:12, hpPct:0.08, unlockLv:100 } },
+      skill3: { name:'저격', desc:'HP가 가장 높은 적에게 현재 HP의 8% 피해', cd:12, hpPct:0.08, unlockLv:100 },
+      skill4: { name:'급소 사격', desc:'가장 가까운 적에게 공격력 10배 피해 + 현재 HP 5%', cd:8, dmgMul:10, hpPct:0.05, unlockLv:150 } },
     { id:'stormarcher', name:'폭풍사수', color:'#ffee00', accent:'#fff888',
       desc:'다수 관통·범위 공격 특화, 물량 처리기',
       bonusDmg:0, bonusRate:0.5,
-      skill3: { name:'화살비', desc:'모든 적에게 공격력 3배 피해의 화살비', cd:22, dmgMul:3, unlockLv:100 } },
+      skill3: { name:'화살비', desc:'모든 적에게 공격력 3배 피해의 화살비', cd:22, dmgMul:3, unlockLv:100 },
+      skill4: { name:'번개 화살', desc:'가장 가까운 적에게 공격력 14배 피해', cd:10, dmgMul:14, unlockLv:150 } },
   ],
   mage: [
     { id:'archmage', name:'대마법사', color:'#ff44ff', accent:'#ff88ff',
       desc:'순수 화력 극대화, 폭발 범위·데미지 강화',
       bonusDmg:25, bonusSplash:30,
-      skill3: { name:'메테오', desc:'전체 적에게 공격력 6배 피해 + 3초 화상', cd:24, dmgMul:6, burnDur:3, unlockLv:100 } },
+      skill3: { name:'메테오', desc:'전체 적에게 공격력 6배 피해 + 3초 화상', cd:24, dmgMul:6, burnDur:3, unlockLv:100 },
+      skill4: { name:'소멸의 광선', desc:'가장 가까운 적에게 공격력 18배 피해', cd:12, dmgMul:18, unlockLv:150 } },
     { id:'chronomancer', name:'시간술사', color:'#00ddff', accent:'#88eeff',
       desc:'CC·서포트 특화, 아군 공격속도 2배 버프',
       bonusDmg:0, bonusRate:0,
-      skill3: { name:'시간 가속', desc:'6초간 모든 아군 공격속도 2배', cd:28, buffDur:6, atkMul:2, unlockLv:100 } },
+      skill3: { name:'시간 가속', desc:'6초간 모든 아군 공격속도 2배', cd:28, buffDur:6, atkMul:2, unlockLv:100 },
+      skill4: { name:'시간 붕괴', desc:'가장 가까운 적에게 공격력 13배 피해 + 2초 스턴', cd:11, dmgMul:13, stunDur:2, unlockLv:150 } },
   ],
 };
 
@@ -1525,7 +1533,7 @@ function newGame(startWave) {
       const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
       S.hero = { classId: cls.id, def: cls,
                  homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
-                 xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
+                 xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, skill4Cd: 0, adv: getHeroAdv(cls.id) };
     }
   }
   if (startWave > 100) evolveNexus();
@@ -1583,7 +1591,7 @@ function resumeGame(snap) {
       const py = CY + Math.sin(ang) * CFG.postR * 0.6;
       S.hero = { classId: cls.id, def: cls,
                  homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0,
-                 xp: snap.hero.xp ?? 0, level: snap.hero.level ?? 1, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
+                 xp: snap.hero.xp ?? 0, level: snap.hero.level ?? 1, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, skill4Cd: 0, adv: getHeroAdv(cls.id) };
     }
   }
   S.autoT = AUTO_WAVE_SEC;
@@ -1635,7 +1643,7 @@ function summonHero(cls) {
   const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
   S.hero = { classId: cls.id, def: cls,
              homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
-             xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
+             xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, skill4Cd: 0, adv: getHeroAdv(cls.id) };
   addText(px, py - 24, cls.name + ' 소환!', cls.accent);
   saveRun(); syncUI();
 }
@@ -1675,6 +1683,7 @@ function showAdvancement(classId) {
         <div class="nm" style="color:${a.color}">${a.name}</div>
         <div class="ds">${a.desc}</div>
         <div class="ds" style="color:#7b88a8;margin-top:4px">스킬: ${a.skill3.name} — ${a.skill3.desc} (${a.skill3.cd}초)</div>
+        <div class="ds" style="color:#7b88a8;margin-top:2px">Lv.150: ${a.skill4.name} — ${a.skill4.desc} (${a.skill4.cd}초)</div>
       </div>
     </div>
   `).join('');
@@ -1714,6 +1723,13 @@ function useHeroSkill3() {
   if (!adv || !adv.skill3 || hr.level < adv.skill3.unlockLv || hr.skill3Cd > 0) return;
   if (!S.enemies.some(e => !e.dead)) return;
   hr.pendingSkill3 = true;
+}
+function useHeroSkill4() {
+  if (!S || !S.hero) return;
+  const hr = S.hero, adv = hr.adv;
+  if (!adv || !adv.skill4 || hr.level < adv.skill4.unlockLv || hr.skill4Cd > 0) return;
+  if (!S.enemies.some(e => !e.dead)) return;
+  hr.pendingSkill4 = true;
 }
 
 function hire(def) {
@@ -2268,6 +2284,7 @@ function update(dt) {
     if (hr.skillEffect > 0) hr.skillEffect -= dt;
     if (hr.skill2Cd > 0) hr.skill2Cd -= dt;
     if (hr.skill3Cd > 0) hr.skill3Cd -= dt;
+    if (hr.skill4Cd > 0) hr.skill4Cd -= dt;
     if (S.nexusShield > 0) S.nexusShield -= dt;
     if (S.allyAtkBuff > 0) S.allyAtkBuff -= dt;
 
@@ -2431,6 +2448,24 @@ function update(dt) {
         addText(hr.x, hr.y - 36, sk3.name + '!', '#00ddff');
         burst(hr.x, hr.y, '#00ddff', 20);
       }
+    }
+
+    // 단일 공격 스킬 (skill4) 발동
+    const sk4 = adv && adv.skill4;
+    const canSkill4 = sk4 && hr.level >= sk4.unlockLv && hr.skill4Cd <= 0 && enemyInSkillRange;
+    if (canSkill4 && (S.autoSkill || hr.pendingSkill4)) {
+      hr.pendingSkill4 = false;
+      hr.skill4Cd = sk4.cd;
+      const target = pickTarget(hr.x, hr.y, cls.range) || pickTarget(hr.x, hr.y, skillRange);
+      if (target) {
+        const sk4Dmg = Math.round(hs.dmg * sk4.dmgMul + (sk4.hpPct ? target.hp * sk4.hpPct : 0));
+        damage(target, sk4Dmg, 0, 0);
+        if (sk4.stunDur) target.stunT = sk4.stunDur;
+        burst(target.x, target.y, hColor, 14);
+        addText(target.x, target.y - 20, '-' + sk4Dmg, hColor);
+      }
+      addText(hr.x, hr.y - 36, sk4.name + '!', hColor);
+      burst(hr.x, hr.y, hColor, 16);
     }
 
     // 검성 연속 베기 처리
@@ -3472,7 +3507,7 @@ function renderHeroMeta() {
             <div class="ds" style="color:#7b88a8">스킬: ${sk.name} (Lv.${sk.unlockLv} 해금, ${sk.cd}초 쿨다운)${hl.level > 1 ? ' · 경험치 ' + hl.xp + '/' + heroXpToNext(hl.level) : ''}</div>
             ${cls.passive ? `<div class="ds" style="color:${hl.level >= cls.passive.unlockLv ? '#66ff66' : '#555'}">패시브: ${cls.passive.name} — ${cls.passive.desc} (Lv.${cls.passive.unlockLv} 해금${hl.level >= cls.passive.unlockLv ? ' ✦' : ''})</div>` : ''}
             ${cls.skill2 ? `<div class="ds" style="color:${hl.level >= cls.skill2.unlockLv ? '#00bfff' : '#555'}">CC스킬: ${cls.skill2.name} — ${cls.skill2.desc} (Lv.${cls.skill2.unlockLv} 해금${hl.level >= cls.skill2.unlockLv ? ' ✦' : ''})</div>` : ''}
-            ${(() => { const hadv = getHeroAdv(cls.id); return hadv ? `<div class="ds" style="color:${hadv.color}">전직: ${hadv.name} ✦ · ${hadv.skill3.name} — ${hadv.skill3.desc} (${hadv.skill3.cd}초)</div>` : (hl.level >= 100 ? `<div class="ds" style="color:#ffe066">Lv.100 전직 가능!</div>` : `<div class="ds" style="color:#555">전직: Lv.100 해금</div>`); })()}
+            ${(() => { const hadv = getHeroAdv(cls.id); return hadv ? `<div class="ds" style="color:${hadv.color}">전직: ${hadv.name} ✦ · ${hadv.skill3.name} — ${hadv.skill3.desc} (${hadv.skill3.cd}초)</div>` + (hadv.skill4 ? `<div class="ds" style="color:${hadv.color}">Lv.150: ${hadv.skill4.name} — ${hadv.skill4.desc} (${hadv.skill4.cd}초)</div>` : '') : (hl.level >= 100 ? `<div class="ds" style="color:#ffe066">Lv.100 전직 가능!</div>` : `<div class="ds" style="color:#555">전직: Lv.100 해금</div>`); })()}
           </div>
         </div>
         <button data-hcsel="${cls.id}" ${sel || (!sel && needSpecial && !canSwitch) ? 'disabled' : ''}>${btnText}</button>
@@ -3964,6 +3999,16 @@ function syncUI() {
     const pct3 = ready3 ? 0 : (S.hero.skill3Cd / sk3.cd) * 100;
     $('skill3CdOverlay').style.height = pct3 + '%';
   }
+  const hasSkill4 = S.hero && S.hero.adv && S.hero.adv.skill4 && S.hero.level >= S.hero.adv.skill4.unlockLv;
+  $('btnSkill4').style.display = hasSkill4 ? 'flex' : 'none';
+  if (hasSkill4) {
+    const sk4 = S.hero.adv.skill4;
+    const ready4 = S.hero.skill4Cd <= 0;
+    $('skill4Name').textContent = sk4.name;
+    $('btnSkill4').classList.toggle('ready', ready4);
+    const pct4 = ready4 ? 0 : (S.hero.skill4Cd / sk4.cd) * 100;
+    $('skill4CdOverlay').style.height = pct4 + '%';
+  }
 
   renderHeroShop(); renderTroopShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
@@ -4064,6 +4109,7 @@ $('btnEndRound').onclick = () => {
 $('btnSkill').onclick = () => useHeroSkill();
 $('btnSkill2').onclick = () => useHeroSkill2();
 $('btnSkill3').onclick = () => useHeroSkill3();
+$('btnSkill4').onclick = () => useHeroSkill4();
 $('btnAutoSkill').onclick = () => {
   if (!S) return;
   S.autoSkill = !S.autoSkill;
