@@ -670,12 +670,14 @@ function heroXpToNext(lv) {
   if (lv < 60) return base;
   return Math.round(base * Math.pow(1.04, lv - 59));
 }
+const HERO_MAX_SPD = 600;
+const HERO_MAX_RATE = 12;
 function heroStatScaled(cls, lv, adv) {
   const l = lv - 1;
   return {
     dmg: cls.dmg + (cls.dmgPerLv || 0) * l + (adv ? (adv.bonusDmg || 0) : 0),
-    rate: cls.rate + (cls.ratePerLv || 0) * l + (adv ? (adv.bonusRate || 0) : 0),
-    spd: cls.spd + (cls.spdPerLv || 0) * l,
+    rate: Math.min(cls.rate + (cls.ratePerLv || 0) * l + (adv ? (adv.bonusRate || 0) : 0), HERO_MAX_RATE),
+    spd: Math.min(cls.spd + (cls.spdPerLv || 0) * l, HERO_MAX_SPD),
     maxMana: cls.mana ? (cls.maxMana + (cls.manaPerLv || 0) * l) : 0,
     manaRegen: cls.mana ? (cls.manaRegen + (cls.regenPerLv || 0) * l) : 0,
     splash: (cls.splash || 0) + (adv ? (adv.bonusSplash || 0) : 0),
