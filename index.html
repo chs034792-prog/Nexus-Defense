@@ -3454,7 +3454,7 @@ function forceAdminCores() {
   save.cores = ADMIN_CORES; save.specialCores = 50000;
   for (const c of HERO_CLASSES) {
     if (!save.meta.heroLevels[c.id]) save.meta.heroLevels[c.id] = { xp: 0, level: 1, adv: null };
-    save.meta.heroLevels[c.id].level = 1000;
+    save.meta.heroLevels[c.id].level = 1;
   }
 }
 
