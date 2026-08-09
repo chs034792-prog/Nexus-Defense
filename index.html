@@ -615,10 +615,9 @@ const HERO_CLASSES = [
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
     dmg:60, range:200, rate:0.5, bspd:350, spd:100, splash:50, slow:0.3, slowT:1.5,
     roam:9999, heroClass:true, energyBolt: true,
-    mana: true, maxMana: 100, manaCost: 12, manaRegen: 5,
-    desc:'마나를 소모해 에너지 볼트로 적을 제압하고 감속시킨다',
+    desc:'짧은 쿨타임의 에너지 볼트로 적을 제압하고 감속시킨다',
     summonCost: 0, switchCost: 500,
-    dmgPerLv:5, ratePerLv:0.01, manaPerLv:5, regenPerLv:0.3,
+    dmgPerLv:5, ratePerLv:0.01,
     skill: { name:'매직샷', desc:'거대한 마법 구체를 발사해 주변에 폭발 피해', cd:18, radius:110, dmgMul:5, unlockLv:30 },
     passive: { name:'마력 환류', desc:'적 처치 시 스킬 쿨타임 1초 감소', unlockLv:60 },
     skill2: { name:'시간 정지', desc:'모든 적을 3초간 스턴 (이동·공격 불가)', cd:30, stunDur:3, unlockLv:80 } },
@@ -694,8 +693,6 @@ function heroStatScaled(cls, lv, adv) {
     dmg: cls.dmg + (cls.dmgPerLv || 0) * l + (adv ? (adv.bonusDmg || 0) : 0),
     rate,
     spd,
-    maxMana: cls.mana ? (cls.maxMana + (cls.manaPerLv || 0) * l) : 0,
-    manaRegen: cls.mana ? (cls.manaRegen + (cls.regenPerLv || 0) * l) : 0,
     splash: (cls.splash || 0) + (adv ? (adv.bonusSplash || 0) : 0),
   };
 }
@@ -1411,7 +1408,7 @@ function saveRun() {
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
-    hero: S.hero ? { classId: S.hero.classId, mana: S.hero.mana, homeAng: S.hero.homeAng, xp: S.hero.xp, level: S.hero.level } : null,
+    hero: S.hero ? { classId: S.hero.classId, homeAng: S.hero.homeAng, xp: S.hero.xp, level: S.hero.level } : null,
     dev: DEV,                       // 운영자 모드에서 만든 판임을 표시
   };
   try { localStorage.setItem(RUN_KEY, JSON.stringify(snap)); } catch (e) {}
@@ -1526,7 +1523,7 @@ function newGame(startWave) {
       const px = CX + Math.cos(ang) * CFG.postR * 0.6;
       const py = CY + Math.sin(ang) * CFG.postR * 0.6;
       const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
-      S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
+      S.hero = { classId: cls.id, def: cls,
                  homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
                  xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
     }
@@ -1584,7 +1581,7 @@ function resumeGame(snap) {
       const ang = snap.hero.homeAng ?? 0;
       const px = CX + Math.cos(ang) * CFG.postR * 0.6;
       const py = CY + Math.sin(ang) * CFG.postR * 0.6;
-      S.hero = { classId: cls.id, def: cls, mana: snap.hero.mana ?? cls.maxMana ?? 0,
+      S.hero = { classId: cls.id, def: cls,
                  homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0,
                  xp: snap.hero.xp ?? 0, level: snap.hero.level ?? 1, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
     }
@@ -1636,7 +1633,7 @@ function summonHero(cls) {
   const px = CX + Math.cos(ang) * CFG.postR * 0.6;
   const py = CY + Math.sin(ang) * CFG.postR * 0.6;
   const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
-  S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
+  S.hero = { classId: cls.id, def: cls,
              homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
              xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
   addText(px, py - 24, cls.name + ' 소환!', cls.accent);
@@ -1651,7 +1648,6 @@ function switchHero(cls) {
   S.gold -= cost;
   S.hero.classId = cls.id;
   S.hero.def = cls;
-  S.hero.mana = cls.maxMana || 0;
   S.hero.cd = 0;
   S.hero.skillCd = 0; S.hero.skillEffect = 0;
   addText(S.hero.x, S.hero.y - 24, cls.name + '(으)로 전직!', cls.accent);
@@ -2274,7 +2270,7 @@ function update(dt) {
     if (hr.skill3Cd > 0) hr.skill3Cd -= dt;
     if (S.nexusShield > 0) S.nexusShield -= dt;
     if (S.allyAtkBuff > 0) S.allyAtkBuff -= dt;
-    if (cls.mana && hr.mana < hs.maxMana) hr.mana = Math.min(hs.maxMana, hr.mana + hs.manaRegen * dt);
+
 
     const home = { x: CX + Math.cos(hr.homeAng) * CFG.postR * 0.6,
                    y: CY + Math.sin(hr.homeAng) * CFG.postR * 0.6 };
@@ -2452,12 +2448,10 @@ function update(dt) {
     }
 
     if (inRange && hr.cd <= 0) {
-      const canFire = !cls.mana || hr.mana >= cls.manaCost;
-      if (canFire) {
+      {
         const atkBuff = S.allyAtkBuff > 0 ? (S.allyAtkMul || 1) : 1;
         hr.cd = 1 / (hs.rate * atkBuff);
         hr.recoil = 1;
-        if (cls.mana) hr.mana -= cls.manaCost;
         if (cls.id === 'warrior') {
           damage(inRange, hs.dmg, cls.slow, cls.slowT);
           burst(inRange.x, inRange.y, cls.accent, 8);
@@ -2836,14 +2830,6 @@ function draw() {
     ctx.fillStyle = '#ffe066';
     ctx.fillRect(xbx, xby, xbw * (hr.xp / heroXpToNext(hr.level)), xbh);
 
-    // 마법사 마나바
-    if (cls.mana) {
-      const hs = heroStatScaled(cls, hr.level);
-      const bw = 30, bh = 3, bx = hr.x - bw / 2, by = hr.y + 28;
-      ctx.fillStyle = '#1a1e2e'; ctx.fillRect(bx, by, bw, bh);
-      ctx.fillStyle = '#a855f7';
-      ctx.fillRect(bx, by, bw * (hr.mana / hs.maxMana), bh);
-    }
 
   }
 
@@ -3393,7 +3379,7 @@ function renderHeroMeta() {
           <div class="info" style="margin:0">
             <div class="nm" style="color:${cls.color}">${cls.name}${lvText} ${sel ? '<span style="color:#ffe066">✦ 선택됨</span>' : ''}</div>
             <div class="ds">${cls.desc}</div>
-            <div class="ds" style="color:#7b88a8;margin-top:2px">공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range}${cls.mana ? ' · 마나 ' + hs.maxMana : ''}</div>
+            <div class="ds" style="color:#7b88a8;margin-top:2px">공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range}</div>
             <div class="ds" style="color:#7b88a8">스킬: ${sk.name} (Lv.${sk.unlockLv} 해금, ${sk.cd}초 쿨다운)${hl.level > 1 ? ' · 경험치 ' + hl.xp + '/' + heroXpToNext(hl.level) : ''}</div>
             ${cls.passive ? `<div class="ds" style="color:${hl.level >= cls.passive.unlockLv ? '#66ff66' : '#555'}">패시브: ${cls.passive.name} — ${cls.passive.desc} (Lv.${cls.passive.unlockLv} 해금${hl.level >= cls.passive.unlockLv ? ' ✦' : ''})</div>` : ''}
             ${cls.skill2 ? `<div class="ds" style="color:${hl.level >= cls.skill2.unlockLv ? '#00bfff' : '#555'}">CC스킬: ${cls.skill2.name} — ${cls.skill2.desc} (Lv.${cls.skill2.unlockLv} 해금${hl.level >= cls.skill2.unlockLv ? ' ✦' : ''})</div>` : ''}
@@ -3618,7 +3604,6 @@ function renderHeroShop() {
     $('heroXpBar').style.width = xpPct + '%';
     $('heroXpText').textContent = `경험치 ${S.hero.xp} / ${xpNeed}`;
     let stats = `공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range} · 이동속도 ${Math.floor(hs.spd)}`;
-    if (cls.mana) stats += ` · 마나 ${Math.floor(S.hero.mana)}/${hs.maxMana} · 회복 ${hs.manaRegen.toFixed(1)}/s`;
     $('heroStatsRow').textContent = stats;
     if (cls.skill) {
       skillSec.style.display = '';
