@@ -187,7 +187,7 @@
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
   #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 6px; align-items: flex-end; }
-  #btnSkill, #btnSkill2 {
+  #btnSkill, #btnSkill2, #btnSkill3 {
     width: 60px; height: 60px; border-radius: 50%; border: 2px solid #555;
     background: #1c2437; color: #aaa; font-size: 10px; font-weight: 700;
     display: none; cursor: pointer; position: relative; overflow: hidden;
@@ -196,7 +196,8 @@
   }
   #btnSkill.ready { border-color: #66ffaa; color: #66ffaa; }
   #btnSkill2.ready { border-color: #00bfff; color: #00bfff; }
-  #btnSkill .cd-overlay, #btnSkill2 .cd-overlay {
+  #btnSkill3.ready { border-color: #ff88ff; color: #ff88ff; }
+  #btnSkill .cd-overlay, #btnSkill2 .cd-overlay, #btnSkill3 .cd-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,.55); pointer-events: none;
   }
@@ -483,6 +484,13 @@
       <button id="btnRestart">다시 출격</button>
       <button id="btnToMenu" class="ghost" style="width:180px">메인으로</button>
     </div>
+    <div id="advPopup" style="display:none;position:absolute;inset:0;z-index:100;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center">
+      <div class="box" style="max-width:420px;width:90%;text-align:center;padding:24px">
+        <h2 style="color:#ffe066;margin-bottom:4px" id="advTitle">전직</h2>
+        <p style="color:#a0b0cc;font-size:13px;margin-bottom:16px">전직할 직업을 선택하세요. (영구 적용)</p>
+        <div id="advChoices" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+    </div>
     <div id="pauseEndWrap" style="display:none"><button id="btnEndRound" class="danger">라운드 종료</button></div>
     <div id="waveBtnWrap"><button id="btnWave">웨이브 1 시작</button></div>
     <div id="nexusBtn"><button id="btnNexusInfo" class="ghost">넥서스 정보</button></div>
@@ -490,6 +498,7 @@
       <button id="btnAutoSkill">Auto</button>
       <button id="btnSkill"><span id="skillName"></span><div class="cd-overlay" id="skillCdOverlay"></div></button>
       <button id="btnSkill2" style="display:none"><span id="skill2Name"></span><div class="cd-overlay" id="skill2CdOverlay"></div></button>
+      <button id="btnSkill3" style="display:none"><span id="skill3Name"></span><div class="cd-overlay" id="skill3CdOverlay"></div></button>
     </div>
   </div>
 
@@ -614,21 +623,62 @@ const HERO_CLASSES = [
     passive: { name:'마력 환류', desc:'적 처치 시 스킬 쿨타임 1초 감소', unlockLv:60 },
     skill2: { name:'시간 정지', desc:'모든 적을 3초간 스턴 (이동·공격 불가)', cd:30, stunDur:3, unlockLv:80 } },
 ];
+
+const HERO_ADV = {
+  warrior: [
+    { id:'swordmaster', name:'검성', color:'#ff4444', accent:'#ff8888',
+      desc:'공격력·공속 극대화, 적을 베어가는 순수 딜러',
+      bonusDmg:20, bonusRate:0.5,
+      skill3: { name:'검무', desc:'0.5초간 8회 연속 베기, 각 타격 2배 피해', cd:20, hits:8, dmgMul:2, unlockLv:100 } },
+    { id:'guardian', name:'수호자', color:'#4488ff', accent:'#88bbff',
+      desc:'넥서스 보호 특화, 받는 피해 30% 감소 보호막',
+      bonusDmg:0, bonusRate:0,
+      skill3: { name:'불굴의 방벽', desc:'5초간 넥서스가 받는 피해 70% 감소', cd:25, shieldDur:5, dmgReduce:0.7, unlockLv:100 } },
+  ],
+  archer: [
+    { id:'sharpshooter', name:'명사수', color:'#00ff88', accent:'#88ffbb',
+      desc:'단일 대상 치명타 특화, 보스 킬러',
+      bonusDmg:5, bonusRate:1.0,
+      skill3: { name:'저격', desc:'HP가 가장 높은 적에게 현재 HP의 8% 피해', cd:12, hpPct:0.08, unlockLv:100 } },
+    { id:'stormarcher', name:'폭풍사수', color:'#ffee00', accent:'#fff888',
+      desc:'다수 관통·범위 공격 특화, 물량 처리기',
+      bonusDmg:0, bonusRate:0.5,
+      skill3: { name:'화살비', desc:'모든 적에게 공격력 3배 피해의 화살비', cd:22, dmgMul:3, unlockLv:100 } },
+  ],
+  mage: [
+    { id:'archmage', name:'대마법사', color:'#ff44ff', accent:'#ff88ff',
+      desc:'순수 화력 극대화, 폭발 범위·데미지 강화',
+      bonusDmg:25, bonusSplash:30,
+      skill3: { name:'메테오', desc:'전체 적에게 공격력 6배 피해 + 3초 화상', cd:24, dmgMul:6, burnDur:3, unlockLv:100 } },
+    { id:'chronomancer', name:'시간술사', color:'#00ddff', accent:'#88eeff',
+      desc:'CC·서포트 특화, 아군 공격속도 2배 버프',
+      bonusDmg:0, bonusRate:0,
+      skill3: { name:'시간 가속', desc:'6초간 모든 아군 공격속도 2배', cd:28, buffDur:6, atkMul:2, unlockLv:100 } },
+  ],
+};
+
 const heroClassById = id => HERO_CLASSES.find(c => c.id === id);
+function getHeroAdv(classId) {
+  const hl = save.meta.heroLevels && save.meta.heroLevels[classId];
+  if (!hl || !hl.adv) return null;
+  const advList = HERO_ADV[classId];
+  return advList ? advList.find(a => a.id === hl.adv) : null;
+}
 const HERO_XP_BASE = 5;
 function heroXpToNext(lv) {
   const base = HERO_XP_BASE + lv * 5;
   if (lv < 60) return base;
   return Math.round(base * Math.pow(1.04, lv - 59));
 }
-function heroStatScaled(cls, lv) {
+function heroStatScaled(cls, lv, adv) {
   const l = lv - 1;
   return {
-    dmg: cls.dmg + (cls.dmgPerLv || 0) * l,
-    rate: cls.rate + (cls.ratePerLv || 0) * l,
+    dmg: cls.dmg + (cls.dmgPerLv || 0) * l + (adv ? (adv.bonusDmg || 0) : 0),
+    rate: cls.rate + (cls.ratePerLv || 0) * l + (adv ? (adv.bonusRate || 0) : 0),
     spd: cls.spd + (cls.spdPerLv || 0) * l,
     maxMana: cls.mana ? (cls.maxMana + (cls.manaPerLv || 0) * l) : 0,
     manaRegen: cls.mana ? (cls.manaRegen + (cls.regenPerLv || 0) * l) : 0,
+    splash: (cls.splash || 0) + (adv ? (adv.bonusSplash || 0) : 0),
   };
 }
 
@@ -1308,7 +1358,7 @@ function importSave(code) {
   save.meta.heroLevels = {};
   for (const c of HERO_CLASSES) {
     const src = d.meta.heroLevels && d.meta.heroLevels[c.id];
-    save.meta.heroLevels[c.id] = src ? { xp: +src.xp || 0, level: Math.max(1, +src.level || 1) } : { xp: 0, level: 1 };
+    save.meta.heroLevels[c.id] = src ? { xp: +src.xp || 0, level: Math.max(1, +src.level || 1), adv: src.adv || null } : { xp: 0, level: 1, adv: null };
   }
   // 지상/기갑/공중 일괄 해금 옛 코드 호환 — migrate()가 이 값을 보고 새 단계로 전환해준다
   save.meta.t_ground = +(d.meta.t_ground) || 0;
@@ -1426,7 +1476,7 @@ function newGame(startWave) {
     heroUpLv: 0,                         // 영웅 강화 횟수
     troopUpLv: 0,                        // 병력 강화 횟수 (판 안에서)
     troopDmgAdd: mlv('troopDmg') * MSTEP.troopDmg,
-    nexusEvolved: false,
+    nexusEvolved: false, nexusShield: 0, allyAtkBuff: 0,
     hasMechanic: false,
     drone: null,
     gravWave: null,
@@ -1460,7 +1510,7 @@ function newGame(startWave) {
       const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
       S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
                  homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
-                 xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0 };
+                 xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
     }
   }
   if (startWave > 100) evolveNexus();
@@ -1518,7 +1568,7 @@ function resumeGame(snap) {
       const py = CY + Math.sin(ang) * CFG.postR * 0.6;
       S.hero = { classId: cls.id, def: cls, mana: snap.hero.mana ?? cls.maxMana ?? 0,
                  homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0,
-                 xp: snap.hero.xp ?? 0, level: snap.hero.level ?? 1, skillCd: 0, skillEffect: 0, skill2Cd: 0 };
+                 xp: snap.hero.xp ?? 0, level: snap.hero.level ?? 1, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
     }
   }
   S.autoT = AUTO_WAVE_SEC;
@@ -1570,7 +1620,7 @@ function summonHero(cls) {
   const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
   S.hero = { classId: cls.id, def: cls, mana: cls.maxMana || 0,
              homeAng: ang, x: px, y: py, cd: 0, ang: 0, recoil: 0, spawnT: 0.6,
-             xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0 };
+             xp: hl.xp, level: hl.level, skillCd: 0, skillEffect: 0, skill2Cd: 0, skill3Cd: 0, adv: getHeroAdv(cls.id) };
   addText(px, py - 24, cls.name + ' 소환!', cls.accent);
   saveRun(); syncUI();
 }
@@ -1597,6 +1647,39 @@ function dismissHero() {
   saveRun(); syncUI();
 }
 
+function showAdvancement(classId) {
+  const advList = HERO_ADV[classId];
+  if (!advList) return;
+  paused = true;
+  const popup = $('advPopup');
+  popup.style.display = 'flex';
+  const cls = heroClassById(classId);
+  $('advTitle').textContent = `${cls.name} 전직`;
+  $('advChoices').innerHTML = advList.map(a => `
+    <div class="meta" style="cursor:pointer;border-color:${a.color};text-align:left" data-adv="${a.id}">
+      <div class="info">
+        <div class="nm" style="color:${a.color}">${a.name}</div>
+        <div class="ds">${a.desc}</div>
+        <div class="ds" style="color:#7b88a8;margin-top:4px">스킬: ${a.skill3.name} — ${a.skill3.desc} (${a.skill3.cd}초)</div>
+      </div>
+    </div>
+  `).join('');
+  $('advChoices').querySelectorAll('[data-adv]').forEach(el => {
+    el.onclick = () => {
+      const advId = el.dataset.adv;
+      const adv = advList.find(a => a.id === advId);
+      save.meta.heroLevels[classId].adv = advId;
+      writeSave();
+      S.hero.adv = adv;
+      popup.style.display = 'none';
+      paused = false;
+      addText(S.hero.x, S.hero.y - 50, adv.name + ' 전직!', adv.color);
+      burst(S.hero.x, S.hero.y, adv.color, 30);
+      syncUI();
+    };
+  });
+}
+
 function useHeroSkill() {
   if (!S || !S.hero) return;
   const hr = S.hero, cls = hr.def;
@@ -1610,6 +1693,13 @@ function useHeroSkill2() {
   if (!cls.skill2 || hr.level < cls.skill2.unlockLv || hr.skill2Cd > 0) return;
   if (!S.enemies.some(e => !e.dead)) return;
   hr.pendingSkill2 = true;
+}
+function useHeroSkill3() {
+  if (!S || !S.hero) return;
+  const hr = S.hero, adv = hr.adv;
+  if (!adv || !adv.skill3 || hr.level < adv.skill3.unlockLv || hr.skill3Cd > 0) return;
+  if (!S.enemies.some(e => !e.dead)) return;
+  hr.pendingSkill3 = true;
 }
 
 function hire(def) {
@@ -1905,8 +1995,9 @@ function damage(e, amount, slow, slowT) {
         S.hero.level++;
         addText(S.hero.x, S.hero.y - 30, 'Lv.' + S.hero.level + '!', '#ffe066');
         burst(S.hero.x, S.hero.y, '#ffe066', 16);
+        if (S.hero.level === 100 && !S.hero.adv) showAdvancement(S.hero.def.id);
       }
-      save.meta.heroLevels[S.hero.classId] = { xp: S.hero.xp, level: S.hero.level };
+      save.meta.heroLevels[S.hero.classId] = { xp: S.hero.xp, level: S.hero.level, adv: save.meta.heroLevels[S.hero.classId]?.adv || null };
       const ps = S.hero.def.passive;
       if (ps && S.hero.level >= ps.unlockLv) {
         if (S.hero.def.id === 'warrior') {
@@ -1969,6 +2060,11 @@ function update(dt) {
     if (e.slowT > 0) { e.slowT -= dt; if (e.slowT <= 0) e.slowMul = 1; }
     if (e.stunT > 0) { e.stunT -= dt; if (e.stunT <= 0) e.stunT = 0; }
     if (e.fearT > 0) { e.fearT -= dt; if (e.fearT <= 0) e.fearT = 0; }
+    if (e.burnT > 0) {
+      e.burnT -= dt;
+      e.burnTick = (e.burnTick || 0) - dt;
+      if (e.burnTick <= 0) { e.burnTick = 0.5; damage(e, e.burnDmg || 0, 0, 0); }
+    }
     if (e.hit > 0) e.hit -= dt;
     if (e.stunT > 0) continue;
     const dx = CX - e.x, dy = CY - e.y;
@@ -1997,7 +2093,8 @@ function update(dt) {
         e.cd = (e.cd || 0) - dt;
         if (e.cd <= 0) {
           e.cd = 1 / (e.def.atkRate || 1.0);
-          n.hp -= e.def.dmg;
+          const shieldMul = S.nexusShield > 0 ? (1 - (S.nexusShieldReduce || 0)) : 1;
+          n.hp -= Math.round(e.def.dmg * shieldMul);
           n.hitFlash = 0.25;
           S.shake = Math.max(S.shake, 8);
           burst(e.x, e.y, '#ff6b81', 8);
@@ -2005,11 +2102,13 @@ function update(dt) {
           if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
         }
       } else {
-        n.hp -= e.def.dmg;
+        const shieldMul2 = S.nexusShield > 0 ? (1 - (S.nexusShieldReduce || 0)) : 1;
+        const eDmg = Math.round(e.def.dmg * shieldMul2);
+        n.hp -= eDmg;
         n.hitFlash = 0.25;
         S.shake = Math.max(S.shake, 6);
         burst(e.x, e.y, '#ff6b81', 16);
-        addText(CX, CY - 55, '-' + e.def.dmg, '#ff6b81');
+        addText(CX, CY - 55, '-' + eDmg, '#ff6b81');
         e.dead = true;
         if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
       }
@@ -2143,7 +2242,7 @@ function update(dt) {
   /* 영웅 (단일 영웅 시스템) */
   if (S.hero) {
     const hr = S.hero, cls = hr.def;
-    const hs = heroStatScaled(cls, hr.level);
+    const hs = heroStatScaled(cls, hr.level, hr.adv);
     if (hr.spawnT > 0) hr.spawnT -= dt;
     if (hr.recoil > 0) hr.recoil -= dt * 6;
     if (hr.swordSwing > 0) hr.swordSwing -= dt * 4;
@@ -2152,6 +2251,9 @@ function update(dt) {
     if (hr.skillCd > 0) hr.skillCd -= dt;
     if (hr.skillEffect > 0) hr.skillEffect -= dt;
     if (hr.skill2Cd > 0) hr.skill2Cd -= dt;
+    if (hr.skill3Cd > 0) hr.skill3Cd -= dt;
+    if (S.nexusShield > 0) S.nexusShield -= dt;
+    if (S.allyAtkBuff > 0) S.allyAtkBuff -= dt;
     if (cls.mana && hr.mana < hs.maxMana) hr.mana = Math.min(hs.maxMana, hr.mana + hs.manaRegen * dt);
 
     const home = { x: CX + Math.cos(hr.homeAng) * CFG.postR * 0.6,
@@ -2263,10 +2365,77 @@ function update(dt) {
       }
     }
 
+    // 전직 스킬 (skill3) 발동
+    const adv = hr.adv;
+    const sk3 = adv && adv.skill3;
+    const canSkill3 = sk3 && hr.level >= sk3.unlockLv && hr.skill3Cd <= 0 && S.enemies.some(e => !e.dead);
+    if (canSkill3 && (S.autoSkill || hr.pendingSkill3)) {
+      hr.pendingSkill3 = false;
+      hr.skill3Cd = sk3.cd;
+      if (adv.id === 'swordmaster') {
+        hr.burstSlash = { remaining: sk3.hits, timer: 0, dmg: hs.dmg * sk3.dmgMul };
+        addText(hr.x, hr.y - 36, sk3.name + '!', '#ff4444');
+        burst(hr.x, hr.y, '#ff4444', 20);
+      } else if (adv.id === 'guardian') {
+        S.nexusShield = sk3.shieldDur;
+        S.nexusShieldReduce = sk3.dmgReduce;
+        addText(CX, CY - 60, sk3.name + '!', '#4488ff');
+        burst(CX, CY, '#4488ff', 24);
+      } else if (adv.id === 'sharpshooter') {
+        const target = S.enemies.filter(e => !e.dead).sort((a, b) => b.hp - a.hp)[0];
+        if (target) {
+          const sniperDmg = Math.round(target.hp * sk3.hpPct);
+          damage(target, sniperDmg, 0, 0);
+          burst(target.x, target.y, '#00ff88', 12);
+          addText(target.x, target.y - 20, '-' + sniperDmg, '#00ff88');
+        }
+        addText(hr.x, hr.y - 36, sk3.name + '!', '#00ff88');
+      } else if (adv.id === 'stormarcher') {
+        for (const e of S.enemies) {
+          if (e.dead) continue;
+          damage(e, Math.round(hs.dmg * sk3.dmgMul), 0, 0);
+          burst(e.x, e.y, '#ffee00', 4);
+        }
+        addText(hr.x, hr.y - 36, sk3.name + '!', '#ffee00');
+        burst(hr.x, hr.y, '#ffee00', 20);
+      } else if (adv.id === 'archmage') {
+        for (const e of S.enemies) {
+          if (e.dead) continue;
+          damage(e, Math.round(hs.dmg * sk3.dmgMul), 0, 0);
+          e.burnT = sk3.burnDur; e.burnDmg = Math.round(hs.dmg * 0.5);
+          burst(e.x, e.y, '#ff44ff', 6);
+        }
+        addText(hr.x, hr.y - 36, sk3.name + '!', '#ff44ff');
+        burst(hr.x, hr.y, '#ff44ff', 24);
+      } else if (adv.id === 'chronomancer') {
+        S.allyAtkBuff = sk3.buffDur;
+        S.allyAtkMul = sk3.atkMul;
+        addText(hr.x, hr.y - 36, sk3.name + '!', '#00ddff');
+        burst(hr.x, hr.y, '#00ddff', 20);
+      }
+    }
+
+    // 검성 연속 베기 처리
+    if (hr.burstSlash) {
+      hr.burstSlash.timer -= dt;
+      if (hr.burstSlash.timer <= 0) {
+        const t = pickTarget(hr.x, hr.y, cls.range * 2) || pickTarget(hr.x, hr.y, 9999);
+        if (t) {
+          damage(t, hr.burstSlash.dmg, 0, 0);
+          burst(t.x, t.y, '#ff4444', 6);
+          hr.swordSwing = 1;
+        }
+        hr.burstSlash.remaining--;
+        hr.burstSlash.timer = 0.06;
+        if (hr.burstSlash.remaining <= 0) hr.burstSlash = null;
+      }
+    }
+
     if (inRange && hr.cd <= 0) {
       const canFire = !cls.mana || hr.mana >= cls.manaCost;
       if (canFire) {
-        hr.cd = 1 / hs.rate;
+        const atkBuff = S.allyAtkBuff > 0 ? (S.allyAtkMul || 1) : 1;
+        hr.cd = 1 / (hs.rate * atkBuff);
         hr.recoil = 1;
         if (cls.mana) hr.mana -= cls.manaCost;
         if (cls.id === 'warrior') {
@@ -2733,6 +2902,7 @@ function draw() {
     ctx.fill();
     if (e.stunT > 0) { ctx.strokeStyle = '#00bfff'; ctx.lineWidth = 3; ctx.stroke(); }
     else if (e.fearT > 0) { ctx.strokeStyle = '#9b59b6'; ctx.lineWidth = 3; ctx.stroke(); }
+    else if (e.burnT > 0) { ctx.strokeStyle = '#ff4400'; ctx.lineWidth = 3; ctx.stroke(); }
     else if (e.slowMul < 1) { ctx.strokeStyle = '#4fd8e0'; ctx.lineWidth = 2.5; ctx.stroke(); }
     ctx.restore();
 
@@ -3200,6 +3370,7 @@ function renderHeroMeta() {
             <div class="ds" style="color:#7b88a8">스킬: ${sk.name} (Lv.${sk.unlockLv} 해금, ${sk.cd}초 쿨다운)${hl.level > 1 ? ' · 경험치 ' + hl.xp + '/' + heroXpToNext(hl.level) : ''}</div>
             ${cls.passive ? `<div class="ds" style="color:${hl.level >= cls.passive.unlockLv ? '#66ff66' : '#555'}">패시브: ${cls.passive.name} — ${cls.passive.desc} (Lv.${cls.passive.unlockLv} 해금${hl.level >= cls.passive.unlockLv ? ' ✦' : ''})</div>` : ''}
             ${cls.skill2 ? `<div class="ds" style="color:${hl.level >= cls.skill2.unlockLv ? '#00bfff' : '#555'}">CC스킬: ${cls.skill2.name} — ${cls.skill2.desc} (Lv.${cls.skill2.unlockLv} 해금${hl.level >= cls.skill2.unlockLv ? ' ✦' : ''})</div>` : ''}
+            ${(() => { const hadv = getHeroAdv(cls.id); return hadv ? `<div class="ds" style="color:${hadv.color}">전직: ${hadv.name} ✦ · ${hadv.skill3.name} — ${hadv.skill3.desc} (${hadv.skill3.cd}초)</div>` : (hl.level >= 100 ? `<div class="ds" style="color:#ffe066">Lv.100 전직 가능!</div>` : `<div class="ds" style="color:#555">전직: Lv.100 해금</div>`); })()}
           </div>
         </div>
         <button data-hcsel="${cls.id}" ${sel || (!sel && needSpecial && !canSwitch) ? 'disabled' : ''}>${btnText}</button>
@@ -3292,6 +3463,14 @@ function buildShops() {
           <div class="ds" id="heroSkill2Desc"></div>
         </div>
         <div id="heroSkill2Badge" style="font-size:12px;font-weight:600;white-space:nowrap;padding:0 6px"></div>
+      </div>
+      <div id="heroSkill3Card" class="card" style="margin:4px 0 0;pointer-events:none;display:none">
+        <div class="swatch" id="heroSkill3Swatch"></div>
+        <div>
+          <div class="nm" id="heroSkill3Name"></div>
+          <div class="ds" id="heroSkill3Desc"></div>
+        </div>
+        <div id="heroSkill3Badge" style="font-size:12px;font-weight:600;white-space:nowrap;padding:0 6px"></div>
       </div>
     </div>`
     ;
@@ -3408,7 +3587,7 @@ function renderHeroShop() {
     infoPanel.style.display = '';
     $('heroInfoName').textContent = cls.name;
     $('heroInfoName').style.color = cls.color;
-    $('heroInfoLv').textContent = 'Lv.' + S.hero.level;
+    $('heroInfoLv').textContent = 'Lv.' + S.hero.level + (S.hero.adv ? ' · ' + S.hero.adv.name : '');
     $('heroXpBar').style.width = xpPct + '%';
     $('heroXpText').textContent = `경험치 ${S.hero.xp} / ${xpNeed}`;
     let stats = `공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range} · 이동속도 ${Math.floor(hs.spd)}`;
@@ -3457,6 +3636,20 @@ function renderHeroShop() {
       $('heroSkill2Badge').style.color = s2Ok ? '#66ffaa' : '#ff6b81';
     } else {
       $('heroSkill2Card').style.display = 'none';
+    }
+    if (S.hero.adv && S.hero.adv.skill3) {
+      const s3 = S.hero.adv.skill3;
+      const s3Ok = S.hero.level >= s3.unlockLv;
+      $('heroSkill3Card').style.display = '';
+      $('heroSkill3Swatch').style.background = s3Ok ? S.hero.adv.color : '#3a3f4e';
+      $('heroSkill3Swatch').style.color = s3Ok ? S.hero.adv.color : '#3a3f4e';
+      $('heroSkill3Name').textContent = `[${S.hero.adv.name}] ${s3.name}`;
+      $('heroSkill3Name').style.color = s3Ok ? S.hero.adv.color : '#7b88a8';
+      $('heroSkill3Desc').textContent = s3.desc + ` (${s3.cd}초)`;
+      $('heroSkill3Badge').textContent = s3Ok ? '습득됨' : `Lv.${s3.unlockLv} 해금`;
+      $('heroSkill3Badge').style.color = s3Ok ? '#66ffaa' : '#ff6b81';
+    } else {
+      $('heroSkill3Card').style.display = 'none';
     }
   } else {
     statusEl.textContent = '영구 상점에서 영웅을 선택하면 출격 시 자동 소환됩니다.';
@@ -3660,6 +3853,16 @@ function syncUI() {
     const pct2 = ready2 ? 0 : (S.hero.skill2Cd / sk2.cd) * 100;
     $('skill2CdOverlay').style.height = pct2 + '%';
   }
+  const hasSkill3 = S.hero && S.hero.adv && S.hero.adv.skill3 && S.hero.level >= S.hero.adv.skill3.unlockLv;
+  $('btnSkill3').style.display = hasSkill3 ? 'flex' : 'none';
+  if (hasSkill3) {
+    const sk3 = S.hero.adv.skill3;
+    const ready3 = S.hero.skill3Cd <= 0;
+    $('skill3Name').textContent = sk3.name;
+    $('btnSkill3').classList.toggle('ready', ready3);
+    const pct3 = ready3 ? 0 : (S.hero.skill3Cd / sk3.cd) * 100;
+    $('skill3CdOverlay').style.height = pct3 + '%';
+  }
 
   renderHeroShop(); renderTroopShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
@@ -3759,6 +3962,7 @@ $('btnEndRound').onclick = () => {
 };
 $('btnSkill').onclick = () => useHeroSkill();
 $('btnSkill2').onclick = () => useHeroSkill2();
+$('btnSkill3').onclick = () => useHeroSkill3();
 $('btnAutoSkill').onclick = () => {
   if (!S) return;
   S.autoSkill = !S.autoSkill;
