@@ -2304,6 +2304,7 @@ function update(dt) {
     if (hr.spawnT > 0) hr.spawnT -= dt;
     if (hr.recoil > 0) hr.recoil -= dt * 6;
     if (hr.swordSwing > 0) hr.swordSwing -= dt * 4;
+    if (hr.swordDanceEffect > 0) hr.swordDanceEffect -= dt;
     if (hr.skillSwing > 0) hr.skillSwing -= dt * 1.2;
     hr.cd -= dt;
     if (hr.skillCd > 0) hr.skillCd -= dt;
@@ -2437,6 +2438,7 @@ function update(dt) {
       hr.skill3Cd = sk3.cd;
       if (adv.id === 'swordmaster') {
         hr.burstSlash = { remaining: sk3.hits, timer: 0, dmg: hs.dmg * sk3.dmgMul };
+        hr.swordDanceEffect = 0.6;
         addText(hr.x, hr.y - 36, sk3.name + '!', '#ff4444');
         burst(hr.x, hr.y, '#ff4444', 20);
       } else if (adv.id === 'guardian') {
@@ -2939,6 +2941,55 @@ function draw() {
       ctx.globalAlpha = 1;
     }
     ctx.restore();
+
+    // 검무 전용 이펙트 (검성 3차스킬)
+    if (hr.swordDanceEffect > 0) {
+      const sd = hr.swordDanceEffect;
+      const p = 1 - sd / 0.6;
+      ctx.save();
+      ctx.translate(hr.x, hr.y);
+      // 회전하는 다중 검 잔상 (6개)
+      for (let i = 0; i < 6; i++) {
+        const baseAng = p * Math.PI * 4 + (i / 6) * Math.PI * 2;
+        const swordR = 28 + Math.sin(p * 12 + i) * 8;
+        const alpha = sd / 0.6 * (0.7 - i * 0.05);
+        ctx.save();
+        ctx.rotate(baseAng);
+        ctx.globalAlpha = alpha;
+        // 검 잔상
+        ctx.strokeStyle = '#ff6666'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(swordR + 8, 0); ctx.stroke();
+        ctx.fillStyle = '#ffcccc';
+        ctx.beginPath(); ctx.moveTo(swordR + 8, 0); ctx.lineTo(swordR + 2, -3); ctx.lineTo(swordR + 2, 3); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      // 바깥 원형 검기 (slash arc)
+      const arcR = 40 + p * 15;
+      ctx.globalAlpha = sd / 0.6 * 0.6;
+      ctx.strokeStyle = '#ff4444'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, arcR, p * Math.PI * 6, p * Math.PI * 6 + Math.PI * 1.5); ctx.stroke();
+      ctx.strokeStyle = '#ff8888'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, arcR + 6, p * Math.PI * 6 + Math.PI, p * Math.PI * 6 + Math.PI * 2.2); ctx.stroke();
+      // 중심 붉은 기운
+      const glowR = 50 * (sd / 0.6);
+      const glow = ctx.createRadialGradient(0, 0, 5, 0, 0, glowR);
+      glow.addColorStop(0, 'rgba(255,68,68,0.3)');
+      glow.addColorStop(1, 'rgba(255,68,68,0)');
+      ctx.globalAlpha = sd / 0.6 * 0.5;
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(0, 0, glowR, 0, Math.PI * 2); ctx.fill();
+      // 불꽃 파티클
+      for (let i = 0; i < 10; i++) {
+        const pa = p * Math.PI * 3 + (i / 10) * Math.PI * 2;
+        const pr = 20 + p * 30 + Math.sin(i * 2.5) * 10;
+        const px = Math.cos(pa) * pr, py = Math.sin(pa) * pr;
+        ctx.globalAlpha = sd / 0.6 * 0.8;
+        ctx.fillStyle = i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#ff4444' : '#ff8888';
+        ctx.beginPath(); ctx.arc(px, py, 2 + Math.sin(p * 20 + i) * 1, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
 
     // 전사 검 휘두르기 이펙트
     if (cls.id === 'warrior' && hr.swordSwing > 0) {
