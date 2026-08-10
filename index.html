@@ -4649,20 +4649,33 @@ function getGoogleAuth() {
 function setGoogleAuth(data) { localStorage.setItem(GAUTH_KEY, JSON.stringify(data)); }
 function clearGoogleAuth() { localStorage.removeItem(GAUTH_KEY); }
 
+/* 구글 로그인 이전에 쓰던 임의 player_id 로 남아 있는 기록을 구글 계정 쪽으로
+   옮긴다. 구글 쪽에 이미 행이 있으면 옮기지 않고, 뒤이어 실행되는
+   submitRanking 이 두 기록 중 높은 쪽을 남기도록 맡긴다. */
 async function migratePlayerToGoogle(newPid) {
   const oldPid = localStorage.getItem(PLAYER_KEY);
   if (!oldPid || oldPid === newPid) return;
   try {
-    const res = await fetch(
-      SB_URL + '/rest/v1/rankings?player_id=eq.' + oldPid + '&select=*',
-      { headers: sbHeaders });
-    const rows = res.ok ? await res.json() : [];
-    if (rows.length) {
-      await fetch(SB_URL + '/rest/v1/rankings?player_id=eq.' + oldPid, {
-        method: 'PATCH',
-        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ player_id: newPid }),
-      });
+    const [oldRes, newRes] = await Promise.all([
+      fetch(SB_URL + '/rest/v1/rankings?player_id=eq.' + encodeURIComponent(oldPid) + '&select=id,best_wave,total_cores,total_runs', { headers: sbHeaders }),
+      fetch(SB_URL + '/rest/v1/rankings?player_id=eq.' + encodeURIComponent(newPid) + '&select=id', { headers: sbHeaders }),
+    ]);
+    const oldRows = oldRes.ok ? await oldRes.json() : [];
+    const newRows = newRes.ok ? await newRes.json() : [];
+    if (oldRows.length) {
+      const o = oldRows[0];
+      // 예전 기록이 이 기기 저장분보다 앞서 있으면 그것부터 살려 놓는다
+      save.best = Math.max(save.best, o.best_wave || 0);
+      save.cores = Math.max(save.cores, o.total_cores || 0);
+      save.runs = Math.max(save.runs, o.total_runs || 0);
+      writeSave();
+      if (!newRows.length) {
+        await fetch(SB_URL + '/rest/v1/rankings?id=eq.' + o.id, {
+          method: 'PATCH',
+          headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({ player_id: newPid }),
+        });
+      }
     }
   } catch (e) {}
 }
@@ -4728,29 +4741,42 @@ async function fetchRankings() {
   } catch (e) { return []; }
 }
 
+/* player_id 에 unique 제약이 없어서 upsert(merge-duplicates) 가 매번 새 행을
+   INSERT 해버린다. 기존 행이 있으면 PATCH, 없을 때만 POST 하는 방식으로
+   제약 조건 없이도 한 사람당 한 행만 유지한다. */
 async function submitRanking() {
   const nick = getNick();
   if (!nick) return;
   if (DEV) return;
   const pid = getPlayerId();
+  const q = encodeURIComponent(pid);
   try {
     const existing = await fetch(
-      SB_URL + '/rest/v1/rankings?player_id=eq.' + pid + '&select=best_wave,total_cores,total_runs',
+      SB_URL + '/rest/v1/rankings?player_id=eq.' + q + '&select=id,best_wave,total_cores,total_runs&order=best_wave.desc',
       { headers: sbHeaders });
     const rows = existing.ok ? await existing.json() : [];
     const srv = rows.length ? rows[0] : { best_wave: 0, total_cores: 0, total_runs: 0 };
-    await fetch(SB_URL + '/rest/v1/rankings', {
-      method: 'POST',
-      headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({
-        player_id: pid,
-        name: nick,
-        best_wave: Math.max(save.best, srv.best_wave),
-        total_cores: Math.max(save.cores, srv.total_cores),
-        total_runs: Math.max(save.runs, srv.total_runs),
-        updated_at: new Date().toISOString(),
-      }),
-    });
+    const payload = {
+      player_id: pid,
+      name: nick,
+      best_wave: Math.max(save.best, srv.best_wave || 0),
+      total_cores: Math.max(save.cores, srv.total_cores || 0),
+      total_runs: Math.max(save.runs, srv.total_runs || 0),
+      updated_at: new Date().toISOString(),
+    };
+    if (rows.length) {
+      await fetch(SB_URL + '/rest/v1/rankings?id=eq.' + rows[0].id, {
+        method: 'PATCH',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await fetch(SB_URL + '/rest/v1/rankings', {
+        method: 'POST',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload),
+      });
+    }
   } catch (e) {}
 }
 
