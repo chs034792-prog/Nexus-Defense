@@ -1656,17 +1656,27 @@ function summonHero(cls) {
   saveRun(); syncUI();
 }
 
+const SWITCH_SPECIAL_CORE_COST = 3;
 function switchHero(cls) {
   if (!S.hero) return;
   if (S.hero.classId === cls.id) return;
-  const cost = cls.switchCost;
-  if (S.gold < cost) return;
-  S.gold -= cost;
+  if (save.specialCores < SWITCH_SPECIAL_CORE_COST) return;
+  save.specialCores -= SWITCH_SPECIAL_CORE_COST;
+  const prevId = S.hero.classId;
+  if (!save.meta.heroLevels[prevId]) save.meta.heroLevels[prevId] = { level: 1, xp: 0 };
+  save.meta.heroLevels[prevId].level = S.hero.level;
+  save.meta.heroLevels[prevId].xp = S.hero.xp;
+  writeSave();
+  const hl = save.meta.heroLevels[cls.id];
   S.hero.classId = cls.id;
   S.hero.def = cls;
   S.hero.cd = 0;
   S.hero.skillCd = 0; S.hero.skillEffect = 0;
-  addText(S.hero.x, S.hero.y - 24, cls.name + '(으)로 전직!', cls.accent);
+  S.hero.skill2Cd = 0; S.hero.skill3Cd = 0; S.hero.skill4Cd = 0; S.hero.skill5Cd = 0;
+  S.hero.level = hl ? hl.level : 1;
+  S.hero.xp = hl ? hl.xp : 0;
+  S.hero.adv = getHeroAdv(cls.id);
+  addText(S.hero.x, S.hero.y - 24, cls.name + '(으)로 교체! (특수코어 -' + SWITCH_SPECIAL_CORE_COST + ')', cls.accent);
   saveRun(); syncUI();
 }
 
@@ -3595,15 +3605,15 @@ function renderHeroMeta() {
   } else {
     const cur = save.meta.heroClass || null;
     const needSpecial = !!cur;
-    html += `<p class="hint" style="margin-bottom:12px">${needSpecial ? '영웅을 변경하려면 <span style="color:#f0abfc">특수 코어 1개</span>가 필요합니다.' : '첫 영웅을 선택하세요. 출격 시 자동 소환됩니다.'}</p>`;
+    html += `<p class="hint" style="margin-bottom:12px">${needSpecial ? '영웅을 변경하려면 <span style="color:#f0abfc">특수 코어 ' + SWITCH_SPECIAL_CORE_COST + '개</span>가 필요합니다.' : '첫 영웅을 선택하세요. 출격 시 자동 소환됩니다.'}</p>`;
     html += HERO_CLASSES.map(cls => {
       const sel = cur === cls.id;
       const sk = cls.skill;
       const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
       const hs = heroStatScaled(cls, hl.level);
       const lvText = hl.level > 1 ? ` <span style="color:#ffe066">Lv.${hl.level}</span>` : '';
-      const canSwitch = !needSpecial || save.specialCores >= 1;
-      const btnText = sel ? '선택됨' : needSpecial ? '<span style="color:#f0abfc">1</span> 특수 코어' : '선택';
+      const canSwitch = !needSpecial || save.specialCores >= SWITCH_SPECIAL_CORE_COST;
+      const btnText = sel ? '선택됨' : needSpecial ? '<span style="color:#f0abfc">' + SWITCH_SPECIAL_CORE_COST + '</span> 특수 코어' : '선택';
       return `<div class="meta" style="border-color:${sel ? cls.color : '#2a3048'};opacity:${sel ? 1 : 0.8}">
         <div style="display:flex;align-items:center;gap:10px;flex:1">
           <div style="width:32px;height:32px;border-radius:50%;background:${cls.color};flex-shrink:0"></div>
