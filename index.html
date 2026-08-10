@@ -4611,10 +4611,10 @@ const sbHeaders = {
   'Content-Type': 'application/json',
 };
 
-const PLAYER_KEY = 'nexusdefense.pid';
-const NICK_KEY   = 'nexusdefense.nick';
-const GAUTH_KEY  = 'nexusdefense.gauth';
-const GAME_URL   = 'https://chs034792-prog.github.io/Nexus-Defense/';
+const NICK_KEY       = 'nexusdefense.nick';
+const SESSION_KEY    = 'nexusdefense.session';
+const LEGACY_PID_KEY = 'nexusdefense.pid';   // 익명 Auth 를 붙이기 전에 쓰던 임의 id
+const GAME_URL       = 'https://chs034792-prog.github.io/Nexus-Defense/';
 
 const RANDOM_NICKS = [
   ['용감한','졸린','배고픈','귀여운','씩씩한','수줍은','날쌘','멋진','작은','큰','반짝이는','느긋한','엉뚱한','깜찍한','당당한','소심한'],
@@ -4629,65 +4629,169 @@ function ensureNick() {
   if (!getNick()) { setNick(generateRandomNick()); }
 }
 
-function getPlayerId() {
-  const ga = getGoogleAuth();
-  if (ga) return ga.id;
-  let pid = localStorage.getItem(PLAYER_KEY);
-  if (!pid) {
-    pid = crypto.randomUUID ? crypto.randomUUID()
-        : 'xxxx-xxxx-xxxx'.replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
-    localStorage.setItem(PLAYER_KEY, pid);
-  }
-  return pid;
-}
 function getNick() { return localStorage.getItem(NICK_KEY) || ''; }
 function setNick(n) { localStorage.setItem(NICK_KEY, n); }
 
-function getGoogleAuth() {
-  try { const v = localStorage.getItem(GAUTH_KEY); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+/* ── Supabase 세션 ──────────────────────────────────────────
+   랭킹 행의 주인은 auth.uid() 로 가린다. 로그인하지 않은 사람도 익명 세션을
+   받아 자기 행만 쓸 수 있고, 구글 로그인은 그 자리를 구글 계정으로 바꾼다.
+   anon 키는 페이지 소스에 그대로 노출되므로 쓰기 권한을 여기에 기대면 안 된다. */
+function readSession() {
+  try { const v = localStorage.getItem(SESSION_KEY); return v ? JSON.parse(v) : null; }
+  catch (e) { return null; }
 }
-function setGoogleAuth(data) { localStorage.setItem(GAUTH_KEY, JSON.stringify(data)); }
-function clearGoogleAuth() { localStorage.removeItem(GAUTH_KEY); }
+function writeSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); return s; }
+function clearSession() { localStorage.removeItem(SESSION_KEY); }
 
-/* 구글 로그인 이전에 쓰던 임의 player_id 로 남아 있는 기록을 구글 계정 쪽으로
-   옮긴다. 구글 쪽에 이미 행이 있으면 옮기지 않고, 뒤이어 실행되는
-   submitRanking 이 두 기록 중 높은 쪽을 남기도록 맡긴다. */
-async function migratePlayerToGoogle(newPid) {
-  const oldPid = localStorage.getItem(PLAYER_KEY);
-  if (!oldPid || oldPid === newPid) return;
-  try {
-    const [oldRes, newRes] = await Promise.all([
-      fetch(SB_URL + '/rest/v1/rankings?player_id=eq.' + encodeURIComponent(oldPid) + '&select=id,best_wave,total_cores,total_runs', { headers: sbHeaders }),
-      fetch(SB_URL + '/rest/v1/rankings?player_id=eq.' + encodeURIComponent(newPid) + '&select=id', { headers: sbHeaders }),
-    ]);
-    const oldRows = oldRes.ok ? await oldRes.json() : [];
-    const newRows = newRes.ok ? await newRes.json() : [];
-    if (oldRows.length) {
-      const o = oldRows[0];
-      // 예전 기록이 이 기기 저장분보다 앞서 있으면 그것부터 살려 놓는다
-      save.best = Math.max(save.best, o.best_wave || 0);
-      save.cores = Math.max(save.cores, o.total_cores || 0);
-      save.runs = Math.max(save.runs, o.total_runs || 0);
-      writeSave();
-      if (!newRows.length) {
-        await fetch(SB_URL + '/rest/v1/rankings?id=eq.' + o.id, {
-          method: 'PATCH',
-          headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
-          body: JSON.stringify({ player_id: newPid }),
-        });
+function packSession(raw) {
+  if (!raw || !raw.access_token || !raw.user) return null;
+  const meta = raw.user.user_metadata || {};
+  return {
+    access_token: raw.access_token,
+    refresh_token: raw.refresh_token || '',
+    expires_at: raw.expires_at || (Math.floor(Date.now() / 1000) + (raw.expires_in || 3600)),
+    userId: raw.user.id,
+    provider: (raw.user.app_metadata && raw.user.app_metadata.provider) || 'anonymous',
+    name: meta.full_name || meta.name || '',
+    email: raw.user.email || '',
+  };
+}
+
+async function signInAnonymously() {
+  const res = await fetch(SB_URL + '/auth/v1/signup', {
+    method: 'POST', headers: sbHeaders,
+    body: JSON.stringify({ data: {}, gotrue_meta_security: {} }),
+  });
+  if (!res.ok) return null;
+  return packSession(await res.json());
+}
+
+async function refreshSession(refreshToken) {
+  const res = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST', headers: sbHeaders,
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!res.ok) return null;
+  return packSession(await res.json());
+}
+
+/* 여러 곳에서 동시에 불러도 익명 계정이 여러 개 생기지 않도록
+   진행 중인 요청 하나를 공유한다. */
+let sessionWork = null;
+function ensureSession() {
+  const s = readSession();
+  const now = Math.floor(Date.now() / 1000);
+  if (s && s.expires_at - 60 > now) return Promise.resolve(s);
+  if (sessionWork) return sessionWork;
+  sessionWork = (async () => {
+    try {
+      if (s && s.refresh_token) {
+        const r = await refreshSession(s.refresh_token);
+        if (r) return writeSession(r);
       }
+      const a = await signInAnonymously();
+      return a ? writeSession(a) : null;
+    } catch (e) {
+      return null;
+    } finally {
+      sessionWork = null;
     }
+  })();
+  return sessionWork;
+}
+
+/* 익명 로그인이 꺼져 있으면 세션을 못 받는다. 그때는 예전처럼 anon 키로
+   동작해 랭킹이 멈추지는 않게 한다. */
+async function authHeaders() {
+  const s = await ensureSession();
+  if (!s) return sbHeaders;
+  return {
+    'apikey': SB_KEY,
+    'Authorization': 'Bearer ' + s.access_token,
+    'Content-Type': 'application/json',
+  };
+}
+
+async function getPlayerId() {
+  const s = await ensureSession();
+  if (s) return s.userId;
+  let pid = localStorage.getItem(LEGACY_PID_KEY);
+  if (!pid) {
+    pid = crypto.randomUUID ? crypto.randomUUID()
+        : 'xxxx-xxxx-xxxx'.replace(/x/g, () => ((Math.random() * 16) | 0).toString(16));
+    localStorage.setItem(LEGACY_PID_KEY, pid);
+  }
+  return pid;
+}
+
+const GOOGLE_BTN_HTML = '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#fff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" opacity=".7"/></svg> Google 로그인';
+
+/* 익명 Auth 를 붙이기 전에 쓰던 임의 id 로 만들어 둔 행은 이제 주인이 달라
+   갱신할 수 없다. 성적만 로컬로 끌어온 뒤 지워서 유령 기록을 남기지 않는다.
+   RLS 를 켠 뒤에는 지우기가 거부되지만 그때는 조용히 넘어간다. */
+async function absorbLegacyRow() {
+  const oldPid = localStorage.getItem(LEGACY_PID_KEY);
+  if (!oldPid) return;
+  // 세션을 못 받은 상태면 getPlayerId() 가 바로 이 옛 id 를 돌려준다.
+  // 그대로 두면 자기 행을 지웠다 다시 만드는 꼴이 되므로 손대지 않는다.
+  const s = readSession();
+  if (!s || s.userId === oldPid) return;
+  try {
+    const h = await authHeaders();
+    const res = await fetch(
+      SB_URL + '/rest/v1/rankings?player_id=eq.' + encodeURIComponent(oldPid) + '&select=id,best_wave,total_cores,total_runs',
+      { headers: h });
+    const rows = res.ok ? await res.json() : [];
+    if (rows.length) {
+      const o = rows[0];
+      save.best  = Math.max(save.best,  o.best_wave   || 0);
+      save.cores = Math.max(save.cores, o.total_cores || 0);
+      save.runs  = Math.max(save.runs,  o.total_runs  || 0);
+      writeSave();
+      await fetch(SB_URL + '/rest/v1/rankings?id=eq.' + o.id, {
+        method: 'DELETE', headers: { ...h, 'Prefer': 'return=minimal' },
+      });
+      await submitRanking();
+    }
+    localStorage.removeItem(LEGACY_PID_KEY);
   } catch (e) {}
 }
 
-function googleLogin() {
-  const url = SB_URL + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(GAME_URL);
-  window.location.href = url;
+async function deleteMyRankingRow() {
+  try {
+    const pid = await getPlayerId();
+    const h = await authHeaders();
+    await fetch(SB_URL + '/rest/v1/rankings?player_id=eq.' + encodeURIComponent(pid), {
+      method: 'DELETE', headers: { ...h, 'Prefer': 'return=minimal' },
+    });
+  } catch (e) {}
+}
+
+/* 구글로 로그인하면 세션 주인이 바뀌어 익명 세션으로 만든 행에는 더 이상 손댈
+   수 없다. 유령 기록이 남지 않도록 떠나기 전에 지운다. 성적은 localStorage 의
+   save 에 그대로 있으니 돌아온 직후 구글 계정 이름으로 다시 등록된다. */
+async function googleLogin() {
+  const s = readSession();
+  if (s && s.provider === 'anonymous') await deleteMyRankingRow();
+  window.location.href = SB_URL + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(GAME_URL);
+}
+
+async function googleLogout() {
+  const s = readSession();
+  try {
+    if (s) await fetch(SB_URL + '/auth/v1/logout', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + s.access_token },
+    });
+  } catch (e) {}
+  clearSession();
+  await ensureSession();          // 곧바로 익명 세션으로 되돌아간다
+  updateGoogleUI();
 }
 
 async function handleOAuthCallback() {
   const hash = window.location.hash;
-  if (!hash || !hash.includes('access_token')) return;
+  if (!hash || hash.indexOf('access_token') === -1) return;
   const params = new URLSearchParams(hash.substring(1));
   const accessToken = params.get('access_token');
   if (!accessToken) return;
@@ -4697,39 +4801,44 @@ async function handleOAuthCallback() {
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken }
     });
     if (!res.ok) return;
-    const user = res.json ? await res.json() : null;
+    const user = await res.json();
     if (!user || !user.id) return;
-    const name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
-    const email = user.email || '';
-    const gPid = 'g_' + user.id;
-    await migratePlayerToGoogle(gPid);
-    setGoogleAuth({ id: gPid, name, email, token: accessToken });
-    if (!getNick() && name) setNick(name);
+    const packed = packSession({
+      access_token: accessToken,
+      refresh_token: params.get('refresh_token') || '',
+      expires_at: +params.get('expires_at') || 0,
+      expires_in: +params.get('expires_in') || 3600,
+      user,
+    });
+    if (!packed) return;
+    writeSession(packed);
+    if (packed.name && !getNick()) setNick(packed.name);
     updateGoogleUI();
-    if (typeof updateNickDisplay === 'function') updateNickDisplay();
-    submitRanking();
+    updateNickDisplay();
+    await submitRanking();
+    await absorbLegacyRow();
   } catch (e) {}
 }
 
 function updateGoogleUI() {
-  const ga = getGoogleAuth();
+  const s = readSession();
+  const linked = !!(s && s.provider && s.provider !== 'anonymous');
   const btn = $('btnGoogleLogin');
   const info = $('googleUserInfo');
-  if (ga) {
+  if (!btn || !info) return;
+  if (linked) {
     btn.textContent = '로그아웃';
     btn.style.background = '#30363d';
-    btn.onclick = () => { clearGoogleAuth(); updateGoogleUI(); };
+    btn.onclick = googleLogout;
     info.style.display = '';
-    info.textContent = (ga.name || ga.email) + ' 연동됨';
+    info.textContent = (s.name || s.email) + ' 연동됨';
   } else {
-    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#fff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" opacity=".7"/></svg> Google 로그인';
+    btn.innerHTML = GOOGLE_BTN_HTML;
     btn.style.background = '#4285f4';
     btn.onclick = googleLogin;
     info.style.display = 'none';
   }
 }
-
-handleOAuthCallback();
 
 async function fetchRankings() {
   try {
@@ -4748,14 +4857,14 @@ async function submitRanking() {
   const nick = getNick();
   if (!nick) return;
   if (DEV) return;
-  const pid = getPlayerId();
-  const q = encodeURIComponent(pid);
   try {
+    const pid = await getPlayerId();
+    const h = await authHeaders();
     const existing = await fetch(
-      SB_URL + '/rest/v1/rankings?player_id=eq.' + q + '&select=id,best_wave,total_cores,total_runs&order=best_wave.desc',
-      { headers: sbHeaders });
+      SB_URL + '/rest/v1/rankings?player_id=eq.' + encodeURIComponent(pid) + '&select=id,best_wave,total_cores,total_runs&order=best_wave.desc',
+      { headers: h });
     const rows = existing.ok ? await existing.json() : [];
-    const srv = rows.length ? rows[0] : { best_wave: 0, total_cores: 0, total_runs: 0 };
+    const srv = rows.length ? rows[0] : {};
     const payload = {
       player_id: pid,
       name: nick,
@@ -4767,13 +4876,13 @@ async function submitRanking() {
     if (rows.length) {
       await fetch(SB_URL + '/rest/v1/rankings?id=eq.' + rows[0].id, {
         method: 'PATCH',
-        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        headers: { ...h, 'Prefer': 'return=minimal' },
         body: JSON.stringify(payload),
       });
     } else {
       await fetch(SB_URL + '/rest/v1/rankings', {
         method: 'POST',
-        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        headers: { ...h, 'Prefer': 'return=minimal' },
         body: JSON.stringify(payload),
       });
     }
@@ -4787,7 +4896,7 @@ async function renderRankings() {
     $('rankBody').innerHTML = '<p class="rank-loading">아직 기록이 없습니다</p>';
     return;
   }
-  const pid = getPlayerId();
+  const pid = await getPlayerId();
   $('rankBody').innerHTML = `<table id="rankTable">
     <tr><th class="rank">#</th><th>닉네임</th><th class="wave">웨이브</th><th class="runs">출격</th></tr>
     ${rows.map((r, i) => `<tr class="${r.player_id === pid ? 'me' : ''}">
@@ -4866,6 +4975,14 @@ newGame();
 if (bootRun) { try { localStorage.setItem(RUN_KEY, JSON.stringify(bootRun)); } catch (e) {} }
 show('menu');
 requestAnimationFrame(loop);
+
+/* save 가 준비된 뒤에 세션을 만진다. 구글에서 돌아온 길이면 그 토큰을 세션으로
+   삼고, 아니면 익명 세션을 미리 받아 둔다. */
+if (window.location.hash.indexOf('access_token') !== -1) {
+  handleOAuthCallback();
+} else {
+  ensureSession().then(() => { updateGoogleUI(); return absorbLegacyRow(); });
+}
 </script>
 </body>
 </html>
