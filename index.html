@@ -4621,20 +4621,19 @@ async function submitRanking() {
   const pid = getPlayerId();
   try {
     const existing = await fetch(
-      SB_URL + '/rest/v1/rankings?player_id=eq.' + pid + '&select=best_wave',
+      SB_URL + '/rest/v1/rankings?player_id=eq.' + pid + '&select=best_wave,total_cores,total_runs',
       { headers: sbHeaders });
     const rows = existing.ok ? await existing.json() : [];
-    const serverBest = rows.length ? rows[0].best_wave : 0;
-    const newBest = Math.max(save.best, serverBest);
+    const srv = rows.length ? rows[0] : { best_wave: 0, total_cores: 0, total_runs: 0 };
     await fetch(SB_URL + '/rest/v1/rankings', {
       method: 'POST',
       headers: { ...sbHeaders, 'Prefer': 'resolution=merge-duplicates' },
       body: JSON.stringify({
         player_id: pid,
         name: nick,
-        best_wave: newBest,
-        total_cores: save.cores,
-        total_runs: save.runs,
+        best_wave: Math.max(save.best, srv.best_wave),
+        total_cores: Math.max(save.cores, srv.total_cores),
+        total_runs: Math.max(save.runs, srv.total_runs),
         updated_at: new Date().toISOString(),
       }),
     });
