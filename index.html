@@ -3542,6 +3542,7 @@ function renderMenu() {
   $('mCores').textContent = save.cores;
   $('mSpecial').textContent = save.specialCores;
   $('mRuns').textContent = save.runs;
+  if (typeof updateNickDisplay === 'function') updateNickDisplay();
   const run = readRun();
   const btn = $('btnContinue');
   btn.style.display = run ? '' : 'none';
