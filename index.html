@@ -4644,6 +4644,24 @@ function getGoogleAuth() {
 function setGoogleAuth(data) { localStorage.setItem(GAUTH_KEY, JSON.stringify(data)); }
 function clearGoogleAuth() { localStorage.removeItem(GAUTH_KEY); }
 
+async function migratePlayerToGoogle(newPid) {
+  const oldPid = localStorage.getItem(PLAYER_KEY);
+  if (!oldPid || oldPid === newPid) return;
+  try {
+    const res = await fetch(
+      SB_URL + '/rest/v1/rankings?player_id=eq.' + oldPid + '&select=*',
+      { headers: sbHeaders });
+    const rows = res.ok ? await res.json() : [];
+    if (rows.length) {
+      await fetch(SB_URL + '/rest/v1/rankings?player_id=eq.' + oldPid, {
+        method: 'PATCH',
+        headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ player_id: newPid }),
+      });
+    }
+  } catch (e) {}
+}
+
 function googleLogin() {
   const url = SB_URL + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(GAME_URL);
   window.location.href = url;
@@ -4665,7 +4683,9 @@ async function handleOAuthCallback() {
     if (!user || !user.id) return;
     const name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
     const email = user.email || '';
-    setGoogleAuth({ id: 'g_' + user.id, name, email, token: accessToken });
+    const gPid = 'g_' + user.id;
+    await migratePlayerToGoogle(gPid);
+    setGoogleAuth({ id: gPid, name, email, token: accessToken });
     if (!getNick() && name) setNick(name);
     updateGoogleUI();
     if (typeof updateNickDisplay === 'function') updateNickDisplay();
