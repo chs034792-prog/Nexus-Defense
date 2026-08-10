@@ -4808,13 +4808,15 @@ function startNickEdit() {
   $('nickEditBox').style.display = 'flex';
   $('nickEditInput').focus();
 }
-function confirmNickEdit() {
+async function confirmNickEdit() {
   const v = $('nickEditInput').value.trim();
   if (v) {
     setNick(v);
-    submitRanking();
+    await submitRanking();
+    if ($('rankOverlay').classList.contains('on')) renderRankings();
   }
   updateNickDisplay();
+  $('nickInput').value = getNick();
 }
 $('btnNickEdit').onclick = startNickEdit;
 $('nickDisplay').onclick = startNickEdit;
