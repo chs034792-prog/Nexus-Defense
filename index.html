@@ -387,7 +387,7 @@
     </div>
     <button id="btnContinue" style="display:none">이어하기</button>
     <button id="btnSortie">출격(처음부터시작)</button>
-    <button id="btnShop" class="ghost">상 점</button>
+    <button id="btnShop" class="ghost">코어 상점</button>
     <button id="btnRank" class="ghost" style="border-color:#ffd45e55;color:#ffd45e">랭킹</button>
   </div>
 
@@ -446,7 +446,8 @@
   <div class="cores">보유 코어 <span id="sCores">0</span> · <span style="color:#f0abfc">특수 코어 <span id="sSpecial">0</span></span></div>
 
   <div style="display:flex;gap:6px;margin-bottom:14px;width:100%;max-width:560px">
-    <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">강화</button>
+    <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">일반강화</button>
+    <button id="shopTabSpecial" class="ghost" style="flex:1;padding:8px 0;font-size:14px">특수강화</button>
     <button id="shopTabBarrack" class="ghost" style="flex:1;padding:8px 0;font-size:14px">병영</button>
     <button id="shopTabHero" class="ghost" style="flex:1;padding:8px 0;font-size:14px">영웅</button>
   </div>
@@ -457,6 +458,11 @@
       <div id="nexusInfoStats" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 16px"></div>
     </div>
     <div id="metaList"></div>
+  </div>
+
+  <div id="shopSpecial" style="display:none">
+    <p class="hint" style="margin-bottom:12px">넥서스에 붙는 특수 장비입니다. 해금하면 매 판 시작 시 자동으로 가동됩니다.</p>
+    <div id="specialMetaList" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
   <div id="shopBarrack" style="display:none">
@@ -1245,20 +1251,22 @@ const META = [
     desc: lv => `재생 +${num(lv * MSTEP.mregen)} (현재 ${num(lv * MSTEP.mregen)}/초)` },
   { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
-  { id:'m_grav',  name:'중력파 해금',     max:1, base:3000,
+  /* special: true 인 항목은 상점의 '특수강화' 탭에 모아 보여준다.
+     저장 구조는 그대로라 목록을 나눌 필요 없이 표시할 때만 갈라 쓴다. */
+  { id:'m_grav',  name:'중력파 해금',     max:1, base:3000, special:true,
     desc: lv => lv ? '매 판 시작 시 중력파 자동 활성화' : '게임 시작 시 중력파가 자동으로 가동된다' },
-  { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50,
+  { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50, special:true,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 피해 +${num(lv * MSTEP.gravDmg)} (현재 +${num(lv * MSTEP.gravDmg)})` },
-  { id:'m_gravRng', name:'중력파 범위',   max:Infinity, base:60,
+  { id:'m_gravRng', name:'중력파 범위',   max:Infinity, base:60, special:true,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 +${num(lv * MSTEP.gravRng)})` },
-  { id:'m_drone', name:'드론 해금',       max:1, base:4000,
+  { id:'m_drone', name:'드론 해금',       max:1, base:4000, special:true,
     desc: lv => lv ? '매 판 시작 시 드론 1기 자동 배치' : '작업공 없이 드론 1기로 시작한다' },
-  { id:'m_droneCnt', name:'드론 추가',    max:9, base:80,
+  { id:'m_droneCnt', name:'드론 추가',    max:9, base:80, special:true,
     req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
     desc: lv => `시작 드론 +${lv} (현재 ${1 + lv}기)` },
-  { id:'m_droneDmg', name:'드론 공격력',  max:Infinity, base:60,
+  { id:'m_droneDmg', name:'드론 공격력',  max:Infinity, base:60, special:true,
     req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
     desc: lv => `드론 피해 +${num(lv * MSTEP.droneDmg)} (현재 +${num(lv * MSTEP.droneDmg)})` },
 ];
@@ -3551,11 +3559,10 @@ function renderMenu() {
   renderZoneChip();
 }
 
-function renderMeta() {
-  forceAdminCores();
-  renderNexusInfo();
-  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
-  $('metaList').innerHTML = META.map(m => {
+/* 일반강화와 특수강화는 같은 META 목록을 special 표시로 갈라 쓴다.
+   칸 모양과 구매 처리가 똑같아 그리는 쪽만 공용으로 둔다. */
+function renderMetaList(listId, items, rerender) {
+  $(listId).innerHTML = items.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const locked = m.req && !m.req();
     return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}">
@@ -3570,29 +3577,45 @@ function renderMeta() {
       </button>
     </div>`;
   }).join('');
-  $('metaList').querySelectorAll('button[data-m]').forEach(el => {
+  $(listId).querySelectorAll('button[data-m]').forEach(el => {
     el.onclick = () => {
       const m = META.find(x => x.id === el.dataset.m);
       if (m.req && !m.req()) return;
       const lv = mlv(m.id), c = metaCost(m, lv);
       if (lv >= m.max || save.cores < c) return;
       save.cores -= c; save.meta[m.id] = lv + 1;
-      writeSave(); renderMeta();
+      writeSave(); rerender();
     };
   });
+}
+
+function renderMeta() {
+  forceAdminCores();
+  renderNexusInfo();
+  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
+  renderMetaList('metaList', META.filter(m => !m.special), renderMeta);
+}
+
+function renderSpecialMeta() {
+  forceAdminCores();
+  $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
+  renderMetaList('specialMetaList', META.filter(m => m.special), renderSpecialMeta);
 }
 
 let shopTab = 'meta';
 function setShopTab(tab) {
   shopTab = tab;
   $('shopMeta').style.display = tab === 'meta' ? '' : 'none';
+  $('shopSpecial').style.display = tab === 'special' ? '' : 'none';
   $('shopBarrack').style.display = tab === 'barrack' ? '' : 'none';
   $('shopHero').style.display = tab === 'hero' ? '' : 'none';
   const active = ';background:#2a3a5c;border-color:#5b9dff;color:#fff';
   const base = 'flex:1;padding:8px 0;font-size:14px';
   $('shopTabMeta').style.cssText = base + (tab === 'meta' ? active : '');
+  $('shopTabSpecial').style.cssText = base + (tab === 'special' ? active : '');
   $('shopTabBarrack').style.cssText = base + (tab === 'barrack' ? active : '');
   $('shopTabHero').style.cssText = base + (tab === 'hero' ? active : '');
+  if (tab === 'special') renderSpecialMeta();
   if (tab === 'barrack') renderBarrack();
   if (tab === 'hero') renderHeroMeta();
 }
@@ -3725,6 +3748,7 @@ function renderHeroMeta() {
 }
 
 $('shopTabMeta').onclick = () => setShopTab('meta');
+$('shopTabSpecial').onclick = () => setShopTab('special');
 $('shopTabBarrack').onclick = () => setShopTab('barrack');
 $('shopTabHero').onclick = () => setShopTab('hero');
 
