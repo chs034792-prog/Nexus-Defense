@@ -549,6 +549,13 @@
   <div id="rankBox">
     <h2>랭킹</h2>
     <p class="hint" style="color:#6d7ba0;font-size:12px">최고 웨이브 기준 상위 20명</p>
+    <div id="googleAuthRow" style="margin-bottom:8px;text-align:center">
+      <button id="btnGoogleLogin" style="background:#4285f4;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#fff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" opacity=".7"/></svg>
+        Google 로그인
+      </button>
+      <div id="googleUserInfo" style="display:none;font-size:12px;color:#8b949e;margin-top:4px"></div>
+    </div>
     <div id="nickRow">
       <input id="nickInput" type="text" maxlength="12" placeholder="닉네임 입력 (최대 12자)">
       <button id="btnNickSave">저장</button>
@@ -4591,8 +4598,12 @@ const sbHeaders = {
 
 const PLAYER_KEY = 'nexusdefense.pid';
 const NICK_KEY   = 'nexusdefense.nick';
+const GAUTH_KEY  = 'nexusdefense.gauth';
+const GAME_URL   = 'https://chs034792-prog.github.io/Nexus-Defense/';
 
 function getPlayerId() {
+  const ga = getGoogleAuth();
+  if (ga) return ga.id;
   let pid = localStorage.getItem(PLAYER_KEY);
   if (!pid) {
     pid = crypto.randomUUID ? crypto.randomUUID()
@@ -4603,6 +4614,60 @@ function getPlayerId() {
 }
 function getNick() { return localStorage.getItem(NICK_KEY) || ''; }
 function setNick(n) { localStorage.setItem(NICK_KEY, n); }
+
+function getGoogleAuth() {
+  try { const v = localStorage.getItem(GAUTH_KEY); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+}
+function setGoogleAuth(data) { localStorage.setItem(GAUTH_KEY, JSON.stringify(data)); }
+function clearGoogleAuth() { localStorage.removeItem(GAUTH_KEY); }
+
+function googleLogin() {
+  const url = SB_URL + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(GAME_URL);
+  window.location.href = url;
+}
+
+async function handleOAuthCallback() {
+  const hash = window.location.hash;
+  if (!hash || !hash.includes('access_token')) return;
+  const params = new URLSearchParams(hash.substring(1));
+  const accessToken = params.get('access_token');
+  if (!accessToken) return;
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  try {
+    const res = await fetch(SB_URL + '/auth/v1/user', {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + accessToken }
+    });
+    if (!res.ok) return;
+    const user = res.json ? await res.json() : null;
+    if (!user || !user.id) return;
+    const name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
+    const email = user.email || '';
+    setGoogleAuth({ id: 'g_' + user.id, name, email, token: accessToken });
+    if (name && !getNick()) setNick(name);
+    updateGoogleUI();
+    submitRanking();
+  } catch (e) {}
+}
+
+function updateGoogleUI() {
+  const ga = getGoogleAuth();
+  const btn = $('btnGoogleLogin');
+  const info = $('googleUserInfo');
+  if (ga) {
+    btn.textContent = '로그아웃';
+    btn.style.background = '#30363d';
+    btn.onclick = () => { clearGoogleAuth(); updateGoogleUI(); };
+    info.style.display = '';
+    info.textContent = (ga.name || ga.email) + ' 연동됨';
+  } else {
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#fff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" opacity=".7"/></svg> Google 로그인';
+    btn.style.background = '#4285f4';
+    btn.onclick = googleLogin;
+    info.style.display = 'none';
+  }
+}
+
+handleOAuthCallback();
 
 async function fetchRankings() {
   try {
@@ -4665,11 +4730,13 @@ function escHtml(s) {
 
 function openRank() {
   $('nickInput').value = getNick();
+  updateGoogleUI();
   $('rankOverlay').classList.add('on');
   renderRankings();
 }
 function closeRank() { $('rankOverlay').classList.remove('on'); }
 
+$('btnGoogleLogin').onclick = googleLogin;
 $('btnRank').onclick = openRank;
 $('btnRankClose').onclick = closeRank;
 $('rankOverlay').onclick = e => { if (e.target === $('rankOverlay')) closeRank(); };
