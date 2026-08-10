@@ -1946,7 +1946,10 @@ function endWave() {
   S.gold += bonus;
   addText(CX, CY - 70, '+' + bonus + ' 클리어 보너스', '#ffd45e');
   S.wave++;
-  if (S.wave - 1 > save.best) { save.best = S.wave - 1; writeSave(); submitRanking(); }
+  if (S.wave - 1 > save.best) { save.best = S.wave - 1; submitRanking(); }
+  // 최고 기록을 갱신하지 않는 판이라도 영웅 경험치는 웨이브마다 남긴다.
+  // 판 도중에 강제로 꺼도 다음 출격에서 되돌아가지 않게 하기 위함이다.
+  writeSave();
 
   if (!S.nexusEvolved && S.wave > 100) evolveNexus();
 
@@ -2085,14 +2088,18 @@ function damage(e, amount, slow, slowT) {
       const xpGain = S.wave >= 200 ? Math.floor(S.wave / 100) : 1;
       S.hero.xp += xpGain;
       const need = heroXpToNext(S.hero.level);
+      let leveled = false;
       if (S.hero.xp >= need) {
         S.hero.xp -= need;
         S.hero.level++;
+        leveled = true;
         addText(S.hero.x, S.hero.y - 30, 'Lv.' + S.hero.level + '!', '#ffe066');
         burst(S.hero.x, S.hero.y, '#ffe066', 16);
         if (S.hero.level === 100 && !S.hero.adv) showAdvancement(S.hero.def.id);
       }
       save.meta.heroLevels[S.hero.classId] = { xp: S.hero.xp, level: S.hero.level, adv: save.meta.heroLevels[S.hero.classId]?.adv || null };
+      // 레벨이 오른 순간에만 디스크에 남긴다. 적을 잡을 때마다 쓰면 너무 잦다.
+      if (leveled) writeSave();
       const ps = S.hero.def.passive;
       if (ps && S.hero.level >= ps.unlockLv) {
         if (S.hero.def.id === 'warrior') {
@@ -4608,17 +4615,22 @@ function catchUp(elapsedMs) {
   syncUI();
 }
 
+/* 판 스냅샷과 영구 저장은 보관하는 곳이 달라 둘 다 남겨야 한다.
+   판 스냅샷만 남기면 '이어하기' 로는 살아나도 '처음부터' 출격에서
+   영웅 레벨이 예전 값으로 되돌아간다. */
+function flushAll() { saveRun(); writeSave(); }
+
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     hiddenAt = Date.now();
-    saveRun();          // 인앱 브라우저는 여기서 페이지를 없애버릴 수 있다
+    flushAll();         // 인앱 브라우저는 여기서 페이지를 없애버릴 수 있다
   } else if (hiddenAt) {
     catchUp(Date.now() - hiddenAt);
     hiddenAt = null;
   }
 });
 // 페이지가 실제로 내려갈 때도 한 번 더 남긴다
-addEventListener('pagehide', saveRun);
+addEventListener('pagehide', flushAll);
 
 /* ══════════════════════════════════════════════════════════
    랭킹 시스템 (Supabase)
