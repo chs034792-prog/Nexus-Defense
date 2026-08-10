@@ -360,6 +360,15 @@
 <div id="menu" class="screen on">
   <div class="title">NEXUS DEFENSE</div>
   <div class="sub">DEFEND THE CORE</div>
+  <div id="nickBar" style="display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 0 2px">
+    <span id="nickDisplay" style="font-size:14px;color:#e6edf3;cursor:pointer;border-bottom:1px dashed #4a5568;padding:0 2px"></span>
+    <button id="btnNickEdit" style="background:none;border:none;color:#6d7ba0;font-size:11px;cursor:pointer;padding:2px 4px">✎</button>
+    <div id="nickEditBox" style="display:none;align-items:center;gap:4px">
+      <input id="nickEditInput" type="text" maxlength="12" style="width:120px;padding:4px 8px;border-radius:4px;border:1px solid #30363d;background:#161b22;color:#e6edf3;font-size:13px">
+      <button id="btnNickConfirm" style="padding:4px 10px;border-radius:4px;border:none;background:#3fb950;color:#fff;font-size:12px;cursor:pointer">확인</button>
+      <button id="btnNickCancel" style="padding:4px 8px;border-radius:4px;border:1px solid #30363d;background:none;color:#8b949e;font-size:12px;cursor:pointer">취소</button>
+    </div>
+  </div>
   <div class="records">
     <div class="rec"><div class="v" id="mBest">0</div><div class="k">최고 웨이브</div></div>
     <div class="rec"><div class="v" id="mCores" style="color:#7fe7ff">0</div><div class="k">보유 코어</div></div>
@@ -4601,6 +4610,19 @@ const NICK_KEY   = 'nexusdefense.nick';
 const GAUTH_KEY  = 'nexusdefense.gauth';
 const GAME_URL   = 'https://chs034792-prog.github.io/Nexus-Defense/';
 
+const RANDOM_NICKS = [
+  ['용감한','졸린','배고픈','귀여운','씩씩한','수줍은','날쌘','멋진','작은','큰','반짝이는','느긋한','엉뚱한','깜찍한','당당한','소심한'],
+  ['슬라임','고블린','드래곤','토끼','고양이','강아지','펭귄','다람쥐','햄스터','여우','부엉이','판다','코알라','수달','호랑이','곰돌이']
+];
+function generateRandomNick() {
+  const adj = RANDOM_NICKS[0][Math.floor(Math.random() * RANDOM_NICKS[0].length)];
+  const noun = RANDOM_NICKS[1][Math.floor(Math.random() * RANDOM_NICKS[1].length)];
+  return adj + noun;
+}
+function ensureNick() {
+  if (!getNick()) { setNick(generateRandomNick()); }
+}
+
 function getPlayerId() {
   const ga = getGoogleAuth();
   if (ga) return ga.id;
@@ -4643,8 +4665,9 @@ async function handleOAuthCallback() {
     const name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
     const email = user.email || '';
     setGoogleAuth({ id: 'g_' + user.id, name, email, token: accessToken });
-    if (name && !getNick()) setNick(name);
+    if (name) setNick(name);
     updateGoogleUI();
+    if (typeof updateNickDisplay === 'function') updateNickDisplay();
     submitRanking();
   } catch (e) {}
 }
@@ -4745,9 +4768,41 @@ $('btnNickSave').onclick = () => {
   const v = $('nickInput').value.trim();
   if (!v) return;
   setNick(v);
+  updateNickDisplay();
   submitRanking().then(renderRankings);
 };
 
+// 메인화면 닉네임 표시/수정
+function updateNickDisplay() {
+  ensureNick();
+  $('nickDisplay').textContent = getNick();
+  $('nickDisplay').style.display = '';
+  $('btnNickEdit').style.display = '';
+  $('nickEditBox').style.display = 'none';
+}
+function startNickEdit() {
+  $('nickEditInput').value = getNick();
+  $('nickDisplay').style.display = 'none';
+  $('btnNickEdit').style.display = 'none';
+  $('nickEditBox').style.display = 'flex';
+  $('nickEditInput').focus();
+}
+function confirmNickEdit() {
+  const v = $('nickEditInput').value.trim();
+  if (v) {
+    setNick(v);
+    submitRanking();
+  }
+  updateNickDisplay();
+}
+$('btnNickEdit').onclick = startNickEdit;
+$('nickDisplay').onclick = startNickEdit;
+$('btnNickConfirm').onclick = confirmNickEdit;
+$('btnNickCancel').onclick = updateNickDisplay;
+$('nickEditInput').onkeydown = e => { if (e.key === 'Enter') confirmNickEdit(); if (e.key === 'Escape') updateNickDisplay(); };
+
+ensureNick();
+updateNickDisplay();
 loadSave();
 buildShops();
 // 시작할 때의 newGame() 은 화면을 채우기 위한 빈 판일 뿐이므로,
