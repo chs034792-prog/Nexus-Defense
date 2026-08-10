@@ -1161,8 +1161,11 @@ function buildWave(w) {
 // 강화 비용 증가율 — 한 번 살 때마다 다음 비용이 이 배율만큼 오른다 (1.0 이면 고정)
 const UP_COST_GROW = 1.15;
 
-/* 드론 기본값과 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다 */
-const DRONE = { dmg: 12, spd: 2.0, orbitR: 250, dmgStep: 2, spdStep: 0.1 };
+/* 드론 기본값과 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다.
+   드론은 채굴 담당이다. 적을 처치할 때 보상의 일정 비율을 더 회수한다.
+   피해는 중력파가 맡으므로 드론은 전투에 관여하지 않는다.
+   비율로 두는 이유는 후반 웨이브에서 보상이 커져도 값이 죽지 않게 하기 위함이다. */
+const DRONE = { pct: 6, pctStep: 2, spd: 2.0, orbitR: 250, maxCount: 5 };
 const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1 };
 
 const NEXUS_UPS = [
@@ -1190,23 +1193,24 @@ const NEXUS_UPS = [
     stat: () => `현재 +${Math.round((S.incomeMul - 1) * 100)}%`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.incomeMul += 0.04; } },
-  { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 드론 +1',
+  { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 채굴 드론 +1',
+    stat: () => S.drone && S.drone.count > 0
+                  ? `${S.drone.count}기 · 회수 +${S.drone.count * S.drone.pct}%` : '없음',
     cost: lv => Math.floor(400 * Math.pow(1.35, lv)),
-    get max() { return 10 - (mlv('m_drone') > 0 ? 1 + mlv('m_droneCnt') : 0); },
+    get max() { return DRONE.maxCount - (mlv('m_drone') > 0 ? 1 + mlv('m_droneCnt') : 0); },
     cond: () => mlv('m_drone') > 0,
     apply: s => {
-      if (!s.drone) s.drone = { count:0, dmg:DRONE.dmg, orbitR:DRONE.orbitR,
-                                spd:DRONE.spd, baseAng:0, cds:[] };
-      s.drone.count++; s.drone.cds.push(0);
+      if (!s.drone) s.drone = { count:0, pct:DRONE.pct, orbitR:DRONE.orbitR,
+                                spd:DRONE.spd, baseAng:0 };
+      s.drone.count++;
     } },
-  { id:'droneDmg', name:'드론 공격력',   desc:`드론 충돌 피해 +${DRONE.dmgStep}`,
+  /* id 는 예전 그대로 둔다 — 이미 이 항목을 사서 진행 중인 판이 있어
+     이름을 바꾸면 그 레벨이 통째로 날아간다. */
+  { id:'droneDmg', name:'드론 회수량',   desc:`드론 1기당 골드 회수 +${DRONE.pctStep}%`,
+    stat: () => S.drone && S.drone.count > 0 ? `1기당 +${S.drone.pct}%` : '',
     cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
     cond: () => mlv('m_drone') > 0 && S && S.drone && S.drone.count > 0,
-    apply: s => { s.drone.dmg += DRONE.dmgStep; } },
-  { id:'droneSpd', name:'드론 속도',     desc:`드론 선회 속도 +${DRONE.spdStep}`,
-    cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
-    cond: () => mlv('m_drone') > 0 && S && S.drone && S.drone.count > 0,
-    apply: s => { s.drone.spd += DRONE.spdStep; } },
+    apply: s => { s.drone.pct += DRONE.pctStep; } },
   { id:'grav',     name:'중력파 가동',   desc:'넥서스 주변 범위 내 적에게 초당 피해',
     stat: () => S.gravWave ? `피해 ${S.gravWave.dmg} · 범위 ${S.gravWave.range}` : '미가동',
     cost: lv => Math.floor(300 * Math.pow(1.3, lv)),
@@ -1232,7 +1236,8 @@ const NEXUS_UPS = [
 const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
   troopDmg: 4,
-  gravDmg: 4, gravRng: 10, droneCnt: 1, droneDmg: 3,
+  gravDmg: 4, gravRng: 10, droneCnt: 1,
+  droneDmg: 2,   // 이름은 예전 그대로지만 이제 드론 1기당 골드 회수 % 증가폭이다
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 
@@ -1261,14 +1266,15 @@ const META = [
   { id:'m_gravRng', name:'중력파 범위',   max:Infinity, base:60, special:true,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 +${num(lv * MSTEP.gravRng)})` },
-  { id:'m_drone', name:'드론 해금',       max:1, base:4000, special:true,
-    desc: lv => lv ? '매 판 시작 시 드론 1기 자동 배치' : '작업공 없이 드론 1기로 시작한다' },
-  { id:'m_droneCnt', name:'드론 추가',    max:9, base:80, special:true,
+  { id:'m_drone', name:'채굴 드론 해금',   max:1, base:4000, special:true,
+    desc: lv => lv ? '매 판 시작 시 채굴 드론 1기 자동 배치' : '적 처치 시 골드를 더 회수하는 드론 1기로 시작한다' },
+  { id:'m_droneCnt', name:'드론 추가',    max:DRONE.maxCount - 1, base:80, special:true,
     req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
-    desc: lv => `시작 드론 +${lv} (현재 ${1 + lv}기)` },
-  { id:'m_droneDmg', name:'드론 공격력',  max:Infinity, base:60, special:true,
+    desc: lv => `시작 드론 +${lv} (현재 ${1 + lv}기 / 최대 ${DRONE.maxCount}기)` },
+  /* id 는 예전 그대로 — 이미 산 사람의 레벨이 날아가지 않게 한다 */
+  { id:'m_droneDmg', name:'드론 회수량',  max:Infinity, base:60, special:true,
     req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
-    desc: lv => `드론 피해 +${num(lv * MSTEP.droneDmg)} (현재 +${num(lv * MSTEP.droneDmg)})` },
+    desc: lv => `드론 1기당 골드 회수 +${num(DRONE.pct + lv * MSTEP.droneDmg)}%` },
 ];
 
 /* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
@@ -1546,12 +1552,11 @@ function newGame(startWave) {
     };
   }
   if (mlv('m_drone') > 0) {
-    const cnt = 1 + mlv('m_droneCnt');
     S.drone = {
-      count: cnt,
-      dmg: DRONE.dmg + mlv('m_droneDmg') * MSTEP.droneDmg,
+      count: Math.min(DRONE.maxCount, 1 + mlv('m_droneCnt')),
+      pct: DRONE.pct + mlv('m_droneDmg') * MSTEP.droneDmg,
       orbitR: DRONE.orbitR, spd: DRONE.spd,
-      baseAng: 0, cds: Array(cnt).fill(0),
+      baseAng: 0,
     };
   }
   if (mlv('p_mech') > 0) {
@@ -1596,8 +1601,11 @@ function resumeGame(snap) {
   S.autoSkill = snap.autoSkill ?? true;
   S.drone = snap.drone ?? null;
   if (S.drone) {
-    S.drone.cds = Array(S.drone.count).fill(0);
     S.drone.baseAng = S.drone.baseAng || 0;
+    // 드론이 공격에서 채굴로 바뀌기 전에 저장된 판을 이어받는 경우
+    if (S.drone.pct == null) S.drone.pct = DRONE.pct;
+    S.drone.count = Math.min(DRONE.maxCount, S.drone.count);
+    delete S.drone.dmg; delete S.drone.cds;
   }
   S.gravWave = snap.gravWave ?? null;
   S.dmgMul = snap.dmgMul ?? 1;
@@ -2065,8 +2073,12 @@ function damage(e, amount, slow, slowT) {
   if (slow > 0) { e.slowMul = 1 - slow; e.slowT = Math.max(e.slowT, slowT); }
   if (e.hp <= 0 && !e.dead) {
     e.dead = true;
-    S.gold += e.rew;
+    // 채굴 드론이 있으면 보상의 일정 비율을 더 회수한다
+    const mined = (S.drone && S.drone.count > 0)
+      ? Math.floor(e.rew * S.drone.count * S.drone.pct / 100) : 0;
+    S.gold += e.rew + mined;
     addText(e.x, e.y, '+' + e.rew, '#ffd45e');
+    if (mined > 0) addText(e.x, e.y - 14, '+' + mined + ' 채굴', '#7fe7ff');
     burst(e.x, e.y, e.def.color, e.type === 'boss' ? 34 : 12);
     if (e.type === 'boss') S.shake = 10;
     if (S.hero) {
@@ -2578,28 +2590,9 @@ function update(dt) {
     }
   }
 
-  /* 드론 — 넥서스 주변을 선회하며 부딪히는 적에게 피해 */
-  if (S.drone && S.drone.count > 0) {
-    const dr = S.drone;
-    dr.baseAng += dt * dr.spd;
-    for (let i = 0; i < dr.count; i++) {
-      if (dr.cds[i] > 0) dr.cds[i] -= dt;
-      const ang = dr.baseAng + i * 6.2832 / dr.count;
-      const dx = CX + Math.cos(ang) * dr.orbitR;
-      const dy = CY + Math.sin(ang) * dr.orbitR;
-      if (dr.cds[i] <= 0) {
-        for (const e of S.enemies) {
-          if (e.dead) continue;
-          if (dist(dx, dy, e.x, e.y) <= e.def.r + 8) {
-            damage(e, dr.dmg, 0, 0);
-            burst(dx, dy, '#fbbf24', 6);
-            dr.cds[i] = 0.3;
-            break;
-          }
-        }
-      }
-    }
-  }
+  /* 채굴 드론 — 넥서스 주변을 선회한다. 전투에는 관여하지 않고
+     적을 처치할 때 보상을 더 회수한다(damage() 안에서 처리). */
+  if (S.drone && S.drone.count > 0) S.drone.baseAng += dt * S.drone.spd;
 
   /* 중력파 — 넥서스 주변 범위 내 적에게 초당 피해 */
   if (S.gravWave) {
@@ -3175,10 +3168,17 @@ function draw() {
       ctx.save();
       ctx.translate(dx, dy);
       ctx.rotate(ang + Math.PI / 2);
+      // 채집기 — 육각 본체에 화물칸을 매단 모양(전투 유닛과 구분된다)
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
-      ctx.moveTo(0, -7); ctx.lineTo(5, 5); ctx.lineTo(-5, 5);
+      for (let k = 0; k < 6; k++) {
+        const a = k * Math.PI / 3 - Math.PI / 2;
+        const px = Math.cos(a) * 6, py = Math.sin(a) * 6;
+        k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
       ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#7fe7ff';
+      ctx.fillRect(-2.5, 5, 5, 3);
       ctx.globalAlpha = 0.2;
       ctx.beginPath(); ctx.arc(0, 0, 9, 0, 6.284); ctx.fill();
       ctx.globalAlpha = 1;
@@ -4122,7 +4122,7 @@ function renderSel() {
     $('selBtns').style.display = 'none';
     $('selName').textContent = '넥서스 정보';
     const droneInfo = S.drone && S.drone.count > 0
-      ? `<div class="stat"><span>드론</span><b>${S.drone.count}기 (피해 ${S.drone.dmg})</b></div>` : '';
+      ? `<div class="stat"><span>채굴 드론</span><b>${S.drone.count}기 · 골드 회수 +${S.drone.count * S.drone.pct}%</b></div>` : '';
     const gravInfo = S.gravWave
       ? `<div class="stat"><span>중력파</span><b>피해 ${S.gravWave.dmg}/초 · 범위 ${S.gravWave.range}</b></div>` : '';
     $('selStats').innerHTML = `
@@ -4314,7 +4314,7 @@ $('btnSell').onclick = () => {
   if (h.def.id === 'mechanic') {
     S.hasMechanic = false;
     S.drone = null;
-    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0; S.nexusLv.droneSpd = 0;
+    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0;
   }
   S.heroes = S.heroes.filter(x => x !== h);
   saveRun();
