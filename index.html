@@ -4641,7 +4641,6 @@ function readSession() {
   catch (e) { return null; }
 }
 function writeSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); return s; }
-function clearSession() { localStorage.removeItem(SESSION_KEY); }
 
 function packSession(raw) {
   if (!raw || !raw.access_token || !raw.user) return null;
@@ -4676,12 +4675,15 @@ async function refreshSession(refreshToken) {
 }
 
 /* 여러 곳에서 동시에 불러도 익명 계정이 여러 개 생기지 않도록
-   진행 중인 요청 하나를 공유한다. */
+   진행 중인 요청 하나를 공유한다. 한 번 발급에 실패하면(익명 로그인이 꺼져
+   있는 경우) 요청마다 같은 실패를 반복하지 않도록 이 탭에서는 포기한다. */
 let sessionWork = null;
+let sessionOff = false;
 function ensureSession() {
   const s = readSession();
   const now = Math.floor(Date.now() / 1000);
   if (s && s.expires_at - 60 > now) return Promise.resolve(s);
+  if (sessionOff) return Promise.resolve(null);
   if (sessionWork) return sessionWork;
   sessionWork = (async () => {
     try {
@@ -4690,8 +4692,11 @@ function ensureSession() {
         if (r) return writeSession(r);
       }
       const a = await signInAnonymously();
-      return a ? writeSession(a) : null;
+      if (a) return writeSession(a);
+      sessionOff = true;
+      return null;
     } catch (e) {
+      sessionOff = true;
       return null;
     } finally {
       sessionWork = null;
@@ -4725,6 +4730,83 @@ async function getPlayerId() {
 }
 
 const GOOGLE_BTN_HTML = '<svg width="16" height="16" viewBox="0 0 48 48"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#fff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" opacity=".7"/></svg> Google 로그인';
+
+function isLinked() {
+  const s = readSession();
+  return !!(s && s.provider && s.provider !== 'anonymous');
+}
+
+/* ── 클라우드 세이브 ────────────────────────────────────────
+   구글로 연동하면 진행도를 계정에 얹어 다른 기기에서도 이어서 할 수 있게 한다.
+   백업 코드와 똑같은 문자열을 그대로 쓴다. */
+async function cloudPull() {
+  if (!isLinked()) return null;
+  try {
+    const pid = await getPlayerId();
+    const h = await authHeaders();
+    const res = await fetch(
+      SB_URL + '/rest/v1/cloud_saves?player_id=eq.' + encodeURIComponent(pid) + '&select=data,best,runs',
+      { headers: h });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows.length ? rows[0] : null;
+  } catch (e) { return null; }
+}
+
+async function cloudPush() {
+  if (!isLinked() || DEV) return;
+  try {
+    const pid = await getPlayerId();
+    const h = await authHeaders();
+    const payload = {
+      player_id: pid,
+      data: exportSave(),
+      best: save.best,
+      runs: save.runs,
+      updated_at: new Date().toISOString(),
+    };
+    const res = await fetch(
+      SB_URL + '/rest/v1/cloud_saves?player_id=eq.' + encodeURIComponent(pid) + '&select=player_id',
+      { headers: h });
+    const rows = res.ok ? await res.json() : [];
+    if (rows.length) {
+      await fetch(SB_URL + '/rest/v1/cloud_saves?player_id=eq.' + encodeURIComponent(pid), {
+        method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload),
+      });
+    } else {
+      await fetch(SB_URL + '/rest/v1/cloud_saves', {
+        method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload),
+      });
+    }
+  } catch (e) {}
+}
+
+/* 연동 직후 한 번 맞춘다. 계정 쪽이 앞서 있으면 끌어오고, 아니면 이 기기 것을
+   올린다. 이 기기에도 쌓아둔 기록이 있는데 덮어쓰게 되는 경우에만 물어본다. */
+async function syncCloudSave() {
+  if (!isLinked()) return;
+  const row = await cloudPull();
+  if (!row || !row.data) { await cloudPush(); return; }
+  const cBest = +row.best || 0, cRuns = +row.runs || 0;
+  const ahead = cRuns > save.runs || (cRuns === save.runs && cBest > save.best);
+  if (!ahead) { await cloudPush(); return; }
+  if ((save.runs > 0 || save.best > 0) && !confirm(
+        '계정에 저장된 진행도가 있습니다.\n\n' +
+        '계정 : 최고 ' + cBest + '웨이브 · 출격 ' + cRuns + '회\n' +
+        '이 기기 : 최고 ' + save.best + '웨이브 · 출격 ' + save.runs + '회\n\n' +
+        '계정 진행도를 불러올까요?\n이 기기의 기록은 덮어써집니다.')) {
+    await cloudPush();
+    return;
+  }
+  try {
+    importSave(row.data);
+    clearRun();                  // 다른 기기에서 진행 중이던 판과 섞이지 않게 한다
+    renderMenu();
+    alert('계정 진행도를 불러왔습니다.\n최고 웨이브 ' + save.best + ' · 코어 ' + save.cores);
+  } catch (e) {}
+}
 
 /* 익명 Auth 를 붙이기 전에 쓰던 임의 id 로 만들어 둔 행은 이제 주인이 달라
    갱신할 수 없다. 성적만 로컬로 끌어온 뒤 지워서 유령 기록을 남기지 않는다.
@@ -4776,19 +4858,6 @@ async function googleLogin() {
   window.location.href = SB_URL + '/auth/v1/authorize?provider=google&redirect_to=' + encodeURIComponent(GAME_URL);
 }
 
-async function googleLogout() {
-  const s = readSession();
-  try {
-    if (s) await fetch(SB_URL + '/auth/v1/logout', {
-      method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + s.access_token },
-    });
-  } catch (e) {}
-  clearSession();
-  await ensureSession();          // 곧바로 익명 세션으로 되돌아간다
-  updateGoogleUI();
-}
-
 async function handleOAuthCallback() {
   const hash = window.location.hash;
   if (!hash || hash.indexOf('access_token') === -1) return;
@@ -4815,24 +4884,26 @@ async function handleOAuthCallback() {
     if (packed.name && !getNick()) setNick(packed.name);
     updateGoogleUI();
     updateNickDisplay();
-    await submitRanking();
     await absorbLegacyRow();
+    await syncCloudSave();       // 계정에 쌓아둔 진행도가 있으면 이어받는다
+    updateNickDisplay();
+    await submitRanking();
   } catch (e) {}
 }
 
+/* 한 번 연동하면 그대로 둔다 — 로그아웃 버튼은 두지 않고 연동 상태만 보여준다. */
 function updateGoogleUI() {
   const s = readSession();
-  const linked = !!(s && s.provider && s.provider !== 'anonymous');
   const btn = $('btnGoogleLogin');
   const info = $('googleUserInfo');
   if (!btn || !info) return;
-  if (linked) {
-    btn.textContent = '로그아웃';
-    btn.style.background = '#30363d';
-    btn.onclick = googleLogout;
+  if (isLinked()) {
+    btn.style.display = 'none';
     info.style.display = '';
-    info.textContent = (s.name || s.email) + ' 연동됨';
+    info.innerHTML = '<span style="color:#3fb950">✓</span> ' +
+                     escHtml(s.name || s.email) + ' 계정으로 진행도가 저장됩니다';
   } else {
+    btn.style.display = '';
     btn.innerHTML = GOOGLE_BTN_HTML;
     btn.style.background = '#4285f4';
     btn.onclick = googleLogin;
@@ -4886,6 +4957,7 @@ async function submitRanking() {
         body: JSON.stringify(payload),
       });
     }
+    await cloudPush();           // 연동된 계정이면 진행도도 같이 올린다
   } catch (e) {}
 }
 
@@ -4981,7 +5053,9 @@ requestAnimationFrame(loop);
 if (window.location.hash.indexOf('access_token') !== -1) {
   handleOAuthCallback();
 } else {
-  ensureSession().then(() => { updateGoogleUI(); return absorbLegacyRow(); });
+  ensureSession()
+    .then(() => { updateGoogleUI(); return absorbLegacyRow(); })
+    .then(syncCloudSave);        // 다른 기기에서 더 진행했으면 여기서 이어받는다
 }
 </script>
 </body>
