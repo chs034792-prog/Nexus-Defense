@@ -793,7 +793,7 @@ const GROUND_UNITS = [
   { id:'mechanic', name:'작업공', cost:400, color:'#fbbf24', accent:'#fde68a',
     dmg:0, range:0, rate:0, bspd:0, spd:100, splash:0, slow:0, slowT:0,
     hold:true, unique:true, noCombat:true,
-    desc:'넥서스에 드론 시스템을 설치한다 (1기 한정)' },
+    desc:'넥서스를 수리하는 작업공 (특수강화로 배치)' },
 ];
 
 // 기갑 병과 — 느리고 묵직, 광역·관통 특화.
@@ -888,9 +888,7 @@ const defById = id => ALL_DEFS.find(d => d.id === id);
 /* ── 병력 진행 시스템 ─────────────────────────────────
    영구 상점에서 코어로 단계를 하나씩 순서대로 해금한다. 각 단계는
    같은 계열의 유닛 2~3종을 한꺼번에 열어주고, 다음 단계를 사면
-   그 단계의 유닛들로 교체된다(더 강한 이름으로 업그레이드).
-   작업공은 전투 유닛이 아니라 드론 시스템용이라 이 진행과 별개로 취급한다. */
-const mechanicDef = GROUND_UNITS.find(d => d.id === 'mechanic');
+   그 단계의 유닛들로 교체된다(더 강한 이름으로 업그레이드). */
 const gu = id => GROUND_UNITS.find(d => d.id === id);
 const mu = id => MECH_UNITS.find(d => d.id === id);
 const au = id => AIR_UNITS.find(d => d.id === id);
@@ -1221,11 +1219,8 @@ function buildWave(w) {
 // 강화 비용 증가율 — 한 번 살 때마다 다음 비용이 이 배율만큼 오른다 (1.0 이면 고정)
 const UP_COST_GROW = 1.15;
 
-/* 드론 기본값과 레벨당 증가폭 — 설명 문구와 실제 적용이 어긋나지 않게 한곳에 모아둔다.
-   드론은 채굴 담당이다. 적을 처치할 때 보상의 일정 비율을 더 회수한다.
-   피해는 중력파가 맡으므로 드론은 전투에 관여하지 않는다.
-   비율로 두는 이유는 후반 웨이브에서 보상이 커져도 값이 죽지 않게 하기 위함이다. */
-const DRONE = { pct: 6, pctStep: 2, spd: 2.0, orbitR: 250, maxCount: 5 };
+// 작업공 수리 — 넥서스에 붙는 초당 체력 재생. 해금(Lv1) 시 base, 레벨마다 step 증가.
+const REPAIR = { base: 5, step: 3 };
 /* 중력파 범위 상한 — 필드가 960×720 이라 중심에서 위아래 끝까지가 360 이다.
    상한을 두지 않으면 넥서스에 앉아서 화면 전체를 훑게 되므로 350 에서 멈춘다. */
 const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1, maxRange: 350 };
@@ -1258,24 +1253,6 @@ const NEXUS_UPS = [
     stat: () => `현재 +${Math.round((S.incomeMul - 1) * 100)}%`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.incomeMul += 0.04; } },
-  { id:'drone',    name:'드론 추가',     desc:'넥서스 주변을 순찰하는 채굴 드론 +1',
-    stat: () => S.drone && S.drone.count > 0
-                  ? `${S.drone.count}기 · 회수 +${S.drone.count * S.drone.pct}%` : '없음',
-    cost: lv => Math.floor(400 * Math.pow(1.35, lv)),
-    get max() { return DRONE.maxCount - (mlv('m_drone') > 0 ? 1 + mlv('m_droneCnt') : 0); },
-    cond: () => mlv('m_drone') > 0,
-    apply: s => {
-      if (!s.drone) s.drone = { count:0, pct:DRONE.pct, orbitR:DRONE.orbitR,
-                                spd:DRONE.spd, baseAng:0 };
-      s.drone.count++;
-    } },
-  /* id 는 예전 그대로 둔다 — 이미 이 항목을 사서 진행 중인 판이 있어
-     이름을 바꾸면 그 레벨이 통째로 날아간다. */
-  { id:'droneDmg', name:'드론 회수량',   desc:`드론 1기당 골드 회수 +${DRONE.pctStep}%`,
-    stat: () => S.drone && S.drone.count > 0 ? `1기당 +${S.drone.pct}%` : '',
-    cost: lv => Math.floor(60 * Math.pow(UP_COST_GROW, lv)),
-    cond: () => mlv('m_drone') > 0 && S && S.drone && S.drone.count > 0,
-    apply: s => { s.drone.pct += DRONE.pctStep; } },
   { id:'grav',     name:'중력파 가동',   desc:'넥서스 주변 범위 내 적에게 초당 피해',
     stat: () => S.gravWave ? `피해 ${S.gravWave.dmg} · 범위 ${S.gravWave.range}` : '미가동',
     cost: lv => Math.floor(300 * Math.pow(1.3, lv)),
@@ -1301,13 +1278,15 @@ const NEXUS_UPS = [
 const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
   troopDmg: 4,
-  gravDmg: 4, gravRng: 5, droneCnt: 1,
-  droneDmg: 2,   // 이름은 예전 그대로지만 이제 드론 1기당 골드 회수 % 증가폭이다
+  gravDmg: 4, gravRng: 5,
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 
 // 영구 강화 레벨로 정해지는 중력파 시작 범위 — 상한을 넘지 않는다
 const gravRangeFor = lv => Math.min(GRAV.maxRange, GRAV.range + lv * MSTEP.gravRng);
+
+// 작업공 배치 레벨(p_mech)로 정해지는 넥서스 초당 수리량 — Lv0 이면 0
+const repairAmt = lv => lv > 0 ? REPAIR.base + (lv - 1) * REPAIR.step : 0;
 
 const META = [
   { id:'fund',  name:'초기 자금',       max:Infinity, base:30,
@@ -1326,6 +1305,12 @@ const META = [
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
   /* special: true 인 항목은 상점의 '특수강화' 탭에 모아 보여준다.
      저장 구조는 그대로라 목록을 나눌 필요 없이 표시할 때만 갈라 쓴다. */
+  /* 작업공 배치 — 넥서스 자동 수리. id 는 병영에 있던 p_mech 를 그대로 써서
+     이미 사둔 사람의 레벨을 보존한다. 초당 수리량 = REPAIR.base + (레벨-1)*step. */
+  { id:'p_mech', name:'작업공 배치 — 넥서스 자동 수리', max:Infinity, base:2000, special:true,
+    desc: lv => lv
+      ? `매 판 시작 시 작업공 배치 · 넥서스 초당 수리 +${repairAmt(lv)} (인구 미차감)`
+      : `작업공을 배치해 넥서스를 초당 ${REPAIR.base} 수리한다 (인구 차지 안 함)` },
   { id:'m_grav',  name:'중력파 해금',     max:1, base:3000, special:true,
     desc: lv => lv ? '매 판 시작 시 중력파 자동 활성화' : '게임 시작 시 중력파가 자동으로 가동된다' },
   { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50, special:true,
@@ -1336,15 +1321,6 @@ const META = [
     max: Math.floor((GRAV.maxRange - GRAV.range) / MSTEP.gravRng), base:60, special:true,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 ${gravRangeFor(lv)} / 최대 ${GRAV.maxRange})` },
-  { id:'m_drone', name:'채굴 드론 해금',   max:1, base:4000, special:true,
-    desc: lv => lv ? '매 판 시작 시 채굴 드론 1기 자동 배치' : '적 처치 시 골드를 더 회수하는 드론 1기로 시작한다' },
-  { id:'m_droneCnt', name:'드론 추가',    max:DRONE.maxCount - 1, base:80, special:true,
-    req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
-    desc: lv => `시작 드론 +${lv} (현재 ${1 + lv}기 / 최대 ${DRONE.maxCount}기)` },
-  /* id 는 예전 그대로 — 이미 산 사람의 레벨이 날아가지 않게 한다 */
-  { id:'m_droneDmg', name:'드론 회수량',  max:Infinity, base:60, special:true,
-    req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
-    desc: lv => `드론 1기당 골드 회수 +${num(DRONE.pct + lv * MSTEP.droneDmg)}%` },
   /* 넥서스 개조 — 한 항목으로 해금과 표적 수를 겸한다. Lv1=2표적 … Lv4=5표적.
      동시 표적 수 = 1 + 레벨(NEXUS_MOD_MAX 로 상한). */
   { id:'m_nexusMod', name:'넥서스 개조 — 다중 포탑', max: NEXUS_MOD_MAX, base:2000, special:true,
@@ -1355,8 +1331,6 @@ const META = [
 
 /* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
 const BARRACK_META = [
-  { id:'p_mech',   name:'작업공 영구 배치', max:1, base:2000,
-    desc: lv => lv ? '매 판 시작 시 작업공 자동 배치 (인구 미차감)' : '게임 시작 시 작업공이 자동으로 배치된다 (인구 차지 안 함)' },
   { id:'tier_g1', name:'지상병력 I — 검사·저격수·버퍼', max:1, base:1500,
     desc: lv => lv ? '보유 — 선택 시 검사·저격수·버퍼를 고용' : '게임 내에서 검사·저격수·버퍼를 고용할 수 있게 된다' },
   { id:'tier_g2', name:'지상병력 II — 전사·레인저·술사', max:1, base:4500,
@@ -1524,7 +1498,7 @@ function saveRun() {
   const snap = {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired,
     groundShop: S.groundShop, mechShop: S.mechShop, airShop: S.airShop,
-    lockedTier: S.lockedTier, nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, drone: S.drone, gravWave: S.gravWave, autoSkill: S.autoSkill,
+    lockedTier: S.lockedTier, nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
     troopUpLv: S.troopUpLv, troopDmgAdd: S.troopDmgAdd,
@@ -1595,7 +1569,7 @@ function newGame(startWave) {
              dmg: CFG.nexusDmg + mlv('power') * MSTEP.power + (boost ? boost.dmg : 0),
              range: CFG.nexusRange + mlv('rng') * MSTEP.rng + (boost ? boost.range : 0),
              rate: CFG.nexusRate + mlv('spd') * MSTEP.spd + (boost ? boost.rate : 0),
-             regen: mlv('mregen') * MSTEP.mregen + (boost ? boost.regen : 0),
+             regen: mlv('mregen') * MSTEP.mregen + repairAmt(mlv('p_mech')) + (boost ? boost.regen : 0),
              cd: 0, hitFlash: 0, ang: 0 },
     nexusLv: Object.fromEntries(NEXUS_UPS.map(u => [u.id, 0])),
     heroes: [], enemies: [], bullets: [], eBullets: [], bombs: [], parts: [], texts: [],
@@ -1616,7 +1590,6 @@ function newGame(startWave) {
     troopDmgAdd: mlv('troopDmg') * MSTEP.troopDmg,
     nexusEvolved: false, nexusShield: 0, allyAtkBuff: 0,
     hasMechanic: false,
-    drone: null,
     gravWave: null,
     hero: null,
   };
@@ -1627,16 +1600,8 @@ function newGame(startWave) {
       ang: 0,
     };
   }
-  if (mlv('m_drone') > 0) {
-    S.drone = {
-      count: Math.min(DRONE.maxCount, 1 + mlv('m_droneCnt')),
-      pct: DRONE.pct + mlv('m_droneDmg') * MSTEP.droneDmg,
-      orbitR: DRONE.orbitR, spd: DRONE.spd,
-      baseAng: 0,
-    };
-  }
   if (mlv('p_mech') > 0) {
-    S.hasMechanic = true;
+    S.hasMechanic = true;      // 좌상단 작업공 표시 + 넥서스 수리(regen 에 이미 반영)
   }
   if (mlv('t_hero') > 0 && save.meta.heroClass) {
     const cls = heroClassById(save.meta.heroClass);
@@ -1675,14 +1640,6 @@ function resumeGame(snap) {
   S.nexusEvolved = snap.nexusEvolved ?? false;
   S.hasMechanic = snap.hasMechanic ?? false;
   S.autoSkill = snap.autoSkill ?? true;
-  S.drone = snap.drone ?? null;
-  if (S.drone) {
-    S.drone.baseAng = S.drone.baseAng || 0;
-    // 드론이 공격에서 채굴로 바뀌기 전에 저장된 판을 이어받는 경우
-    if (S.drone.pct == null) S.drone.pct = DRONE.pct;
-    S.drone.count = Math.min(DRONE.maxCount, S.drone.count);
-    delete S.drone.dmg; delete S.drone.cds;
-  }
   S.gravWave = snap.gravWave ?? null;
   // 상한을 두기 전에 저장된 판은 범위가 더 넓을 수 있다
   if (S.gravWave) S.gravWave.range = Math.min(GRAV.maxRange, S.gravWave.range);
@@ -2149,12 +2106,8 @@ function damage(e, amount, slow, slowT) {
   if (slow > 0) { e.slowMul = 1 - slow; e.slowT = Math.max(e.slowT, slowT); }
   if (e.hp <= 0 && !e.dead) {
     e.dead = true;
-    // 채굴 드론이 있으면 보상의 일정 비율을 더 회수한다
-    const mined = (S.drone && S.drone.count > 0)
-      ? Math.floor(e.rew * S.drone.count * S.drone.pct / 100) : 0;
-    S.gold += e.rew + mined;
+    S.gold += e.rew;
     addText(e.x, e.y, '+' + e.rew, '#ffd45e');
-    if (mined > 0) addText(e.x, e.y - 14, '+' + mined + ' 채굴', '#7fe7ff');
     burst(e.x, e.y, e.def.color, e.type === 'boss' ? 34 : 12);
     if (e.type === 'boss') S.shake = 10;
     if (S.hero) {
@@ -2687,9 +2640,6 @@ function update(dt) {
     }
   }
 
-  /* 채굴 드론 — 넥서스 주변을 선회한다. 전투에는 관여하지 않고
-     적을 처치할 때 보상을 더 회수한다(damage() 안에서 처리). */
-  if (S.drone && S.drone.count > 0) S.drone.baseAng += dt * S.drone.spd;
 
   /* 중력파 — 넥서스 주변 범위 내 적에게 초당 피해 */
   if (S.gravWave) {
@@ -3249,39 +3199,6 @@ function draw() {
     ctx.beginPath(); ctx.arc(h.x, h.y, h.def.auraRange, 0, 6.284); ctx.stroke();
   }
   ctx.setLineDash([]);
-
-  /* 드론 */
-  if (S.drone && S.drone.count > 0) {
-    const dr = S.drone;
-    // 궤도 점선
-    ctx.strokeStyle = 'rgba(251,191,36,.12)';
-    ctx.setLineDash([4, 8]);
-    ctx.beginPath(); ctx.arc(CX, CY, dr.orbitR, 0, 6.284); ctx.stroke();
-    ctx.setLineDash([]);
-    for (let i = 0; i < dr.count; i++) {
-      const ang = (dr.baseAng || 0) + i * 6.2832 / dr.count;
-      const dx = CX + Math.cos(ang) * dr.orbitR;
-      const dy = CY + Math.sin(ang) * dr.orbitR;
-      ctx.save();
-      ctx.translate(dx, dy);
-      ctx.rotate(ang + Math.PI / 2);
-      // 채집기 — 육각 본체에 화물칸을 매단 모양(전투 유닛과 구분된다)
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      for (let k = 0; k < 6; k++) {
-        const a = k * Math.PI / 3 - Math.PI / 2;
-        const px = Math.cos(a) * 6, py = Math.sin(a) * 6;
-        k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-      }
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#7fe7ff';
-      ctx.fillRect(-2.5, 5, 5, 3);
-      ctx.globalAlpha = 0.2;
-      ctx.beginPath(); ctx.arc(0, 0, 9, 0, 6.284); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
-  }
 
   /* 중력파 */
   if (S.gravWave) {
@@ -3921,15 +3838,7 @@ function buildShops() {
 
   // 병력 상점 — 영구 상점에서 순서대로 해금한 단계의 유닛들만 고용할 수 있다
   const troopCards = TROOP_TIERS.flatMap(t => t.units.map(d => ({ tier: t.tier, d })));
-  $('troopShop').innerHTML = `<div class="card" data-g="${mechanicDef.id}">
-      <div class="swatch" style="background:${mechanicDef.color};color:${mechanicDef.color}"></div>
-      <div>
-        <div class="nm">${mechanicDef.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${mechanicDef.desc}</div>
-      </div>
-      <button class="buy"></button>
-    </div>`
-    + troopCards.map(({ tier, d }) => `
+  $('troopShop').innerHTML = troopCards.map(({ tier, d }) => `
     <div class="card" data-troop="${d.id}" style="display:none">
       <div class="swatch" style="background:${d.color};color:${d.color}"></div>
       <div>
@@ -3951,14 +3860,6 @@ function buildShops() {
         <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
         <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
       </div><button class="buy"></button></div>`;
-
-  {
-    const card = $('troopShop').querySelector(`.card[data-g="${mechanicDef.id}"]`);
-    const btn = card.querySelector('button');
-    card.onclick = () => hireGround(mechanicDef);
-    btn.onclick = ev => { ev.stopPropagation(); hireGround(mechanicDef); };
-    els.mechanic = { d: mechanicDef, card, btn, cnt: card.querySelector('.cnt') };
-  }
 
   els.troop = troopCards.map(({ tier, d }) => {
     const card = $('troopShop').querySelector(`.card[data-troop="${d.id}"]`);
@@ -4118,23 +4019,7 @@ function buyNexusUp(id) {
 }
 
 function renderTroopShop() {
-  // 작업공 — 영구 배치(p_mech)가 있으면 인게임에서 구매할 필요 없음
-  {
-    const e = els.mechanic;
-    if (mlv('p_mech') > 0) {
-      e.card.style.display = 'none';
-    } else {
-      e.card.style.display = '';
-      const c = groundCost(e.d), owned = ownedCount(e.d.id);
-      const blocked = !mlv('tier_g1') || popFull() || (e.d.unique && owned > 0);
-      const off = blocked || S.gold < c;
-      e.cnt.textContent = owned ? '×' + owned : '';
-      e.btn.textContent = popFull() ? '인구 초과' : owned > 0 ? '보유중' : c + 'G';
-      e.btn.disabled = off;
-      e.card.classList.toggle('poor', off);
-    }
-  }
-
+  // 작업공은 특수강화(p_mech)로만 배치한다 — 병영 개별 고용은 없앴다
   // 현재 해금된 단계의 병력 카드들(계열당 2~3종)만 보여준다
   const cur = gameTier();
   for (const e of els.troop) {
@@ -4217,8 +4102,8 @@ function renderSel() {
     const n = S.nexus;
     $('selBtns').style.display = 'none';
     $('selName').textContent = '넥서스 정보';
-    const droneInfo = S.drone && S.drone.count > 0
-      ? `<div class="stat"><span>채굴 드론</span><b>${S.drone.count}기 · 골드 회수 +${S.drone.count * S.drone.pct}%</b></div>` : '';
+    const repairInfo = S.hasMechanic
+      ? `<div class="stat"><span>작업공 수리</span><b>넥서스 초당 +${repairAmt(mlv('p_mech'))} 수리</b></div>` : '';
     const gravInfo = S.gravWave
       ? `<div class="stat"><span>중력파</span><b>피해 ${S.gravWave.dmg}/초 · 범위 ${S.gravWave.range}</b></div>` : '';
     const modInfo = mlv('m_nexusMod') > 0
@@ -4232,7 +4117,7 @@ function renderSel() {
       <div class="stat"><span>체력재생</span><b>${n.regen.toFixed(1)}/초</b></div>
       <div class="stat"><span>골드 배율</span><b>×${S.goldMul.toFixed(2)}</b></div>
       <div class="stat"><span>수입 배율</span><b>×${S.incomeMul.toFixed(2)}</b></div>
-      ${droneInfo}${gravInfo}${modInfo}`;
+      ${repairInfo}${gravInfo}${modInfo}`;
     return;
   }
 
@@ -4409,11 +4294,7 @@ $('btnSell').onclick = () => {
   const h = sel.h;
   if (h.permaMech) { alert('영구 배치된 작업공은 해고할 수 없습니다.'); return; }
   S.gold += Math.floor(h.invested * CFG.sellRatio);
-  if (h.def.id === 'mechanic') {
-    S.hasMechanic = false;
-    S.drone = null;
-    S.nexusLv.drone = 0; S.nexusLv.droneDmg = 0;
-  }
+  if (h.def.id === 'mechanic') S.hasMechanic = false;
   S.heroes = S.heroes.filter(x => x !== h);
   saveRun();
   closeSel();
