@@ -467,7 +467,7 @@
   </div>
 
   <div id="shopBarrack" style="display:none">
-    <p class="hint" style="margin-bottom:12px">단계를 해금하고 유닛을 코어로 사서 모으면, 매 판 시작 시 인구 상한까지 자동 배치됩니다.</p>
+    <p class="hint" style="margin-bottom:12px">유닛을 코어로 사서 모으면, 매 판 시작 시 인구 상한까지 자동 배치됩니다.</p>
     <div id="barrackMetaList" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
@@ -1324,38 +1324,12 @@ const META = [
       : `넥서스를 개조해 여러 적을 동시에 조준한다 (해금 시 2표적, 최대 ${1 + NEXUS_MOD_MAX}표적)` },
 ];
 
-/* ── 병영 상점: 단계 해금 + 병력 최대 배치(인구) ─────────── */
+/* ── 병영 상점: 병력 최대 배치(인구) + 병력 공격력 강화 ───────────
+   단계 해금·지상/기갑/공중 구분은 없앴다. 모든 병력을 병영에서 바로 코어로 산다. */
 const BARRACK_META = [
   { id:'m_pop', name:'병력 최대 배치 (인구)', max: TROOP_POP.max - TROOP_POP.base, base:1200,
     desc: lv => `병력을 ${maxPopFor(lv)}기까지 배치 (기본 ${TROOP_POP.base} · 최대 ${TROOP_POP.max})` },
-  { id:'tier_g1', name:'지상병력 I — 검사·저격수·버퍼', max:1, base:1500,
-    desc: lv => lv ? '해금됨 — 병영에서 검사·저격수·버퍼를 코어로 구매' : '검사·저격수·버퍼를 해금한다' },
-  { id:'tier_g2', name:'지상병력 II — 전사·레인저·술사', max:1, base:4500,
-    req: () => mlv('tier_g1') > 0 && save.best >= 100, lockMsg: '지상병력 I 보유 + 100웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서전사·레인저·술사를 코어로 구매' : '전사·레인저·술사를 해금한다' },
-  { id:'tier_g3', name:'지상병력 III — 팔라딘·보우마스터·주술사', max:1, base:10000,
-    req: () => mlv('tier_g2') > 0 && save.best >= 200, lockMsg: '지상병력 II 보유 + 200웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서팔라딘·보우마스터·주술사를 코어로 구매' : '팔라딘·보우마스터·주술사를 해금한다' },
-  { id:'tier_m1', name:'기갑병력 I — 전차·레일건·자주포', max:1, base:22000,
-    req: () => mlv('tier_g3') > 0 && save.best >= 300, lockMsg: '지상병력 III 보유 + 300웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서전차·레일건·자주포를 코어로 구매' : '전차·레일건·자주포를 해금한다' },
-  { id:'tier_m2', name:'기갑병력 II — 강습전차·이온레일건·열압자주포', max:1, base:42000,
-    req: () => mlv('tier_m1') > 0 && save.best >= 400, lockMsg: '기갑병력 I 보유 + 400웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서강습전차·이온레일건·열압자주포를 코어로 구매' : '강습전차·이온레일건·열압자주포를 해금한다' },
-  { id:'tier_m3', name:'기갑병력 III — 드레드노트·플라즈마레일건·궤도자주포', max:1, base:75000,
-    req: () => mlv('tier_m2') > 0 && save.best >= 500, lockMsg: '기갑병력 II 보유 + 500웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서드레드노트·플라즈마레일건·궤도자주포를 코어로 구매' : '드레드노트·플라즈마레일건·궤도자주포를 해금한다' },
-  { id:'tier_a1', name:'공중병력 I — 전투기·정찰기·요격기', max:1, base:130000,
-    req: () => mlv('tier_m3') > 0 && save.best >= 600, lockMsg: '기갑병력 III 보유 + 600웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서전투기·정찰기·요격기를 코어로 구매' : '전투기·정찰기·요격기를 해금한다' },
-  { id:'tier_a2', name:'공중병력 II — 스텔스기·폭격기·미사일기', max:1, base:200000,
-    req: () => mlv('tier_a1') > 0 && save.best >= 700, lockMsg: '공중병력 I 보유 + 700웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서스텔스기·폭격기·미사일기를 코어로 구매' : '스텔스기·폭격기·미사일기를 해금한다' },
-  { id:'tier_a3', name:'공중병력 III — 에이스기·전략폭격기·궤도타격기', max:1, base:300000,
-    req: () => mlv('tier_a2') > 0 && save.best >= 800, lockMsg: '공중병력 II 보유 + 800웨이브 필요',
-    desc: lv => lv ? '해금됨 — 병영에서에이스기·전략폭격기·궤도타격기를 코어로 구매' : '에이스기·전략폭격기·궤도타격기를 해금한다' },
   { id:'troopDmg', name:'병력 영구 강화', max:Infinity, base:70,
-    req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
     desc: lv => `병력 공격력 +${num(lv * MSTEP.troopDmg)} (현재 +${num(lv * MSTEP.troopDmg)})` },
 ];
 
@@ -3584,7 +3558,7 @@ function renderBarrack() {
   const total = troopTotalOwned();
   const troopDmgBonus = mlv('troopDmg') * MSTEP.troopDmg;
 
-  // 1) 인구 상한 + 단계 해금 항목
+  // 1) 인구 상한 + 병력 공격력 강화
   let html = BARRACK_META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const inf = !Number.isFinite(m.max);
@@ -3606,15 +3580,11 @@ function renderBarrack() {
   // 2) 배치 요약
   html += `<p class="hint" style="margin:12px 0 4px;color:${total >= cap ? '#ffb454' : '#6d7ba0'}">보유 병력 <b style="color:#e6ecff">${total}</b> / 최대 배치 <b style="color:#e6ecff">${cap}</b> — 매 판 시작 시 자동 배치됩니다.</p>`;
 
-  // 3) 해금된 단계의 유닛 구매 카드
-  const unlockedTiers = TROOP_TIERS.filter(t => mlv(t.tier) > 0);
-  if (!unlockedTiers.length) {
-    html += `<p class="hint" style="color:#6d7ba0">위에서 병력 단계를 해금하면 유닛을 코어로 살 수 있습니다.</p>`;
-  } else {
+  // 3) 유닛 구매 카드 — 단계·구분 없이 모든 병력을 한 목록으로
+  {
     const capFull = total >= cap;
-    for (const t of unlockedTiers) {
-      html += `<div class="ds" style="color:#8ea0c8;margin:10px 0 2px;font-weight:700">${t.name}</div>`;
-      html += t.units.map(u => {
+    const allUnits = TROOP_TIERS.flatMap(t => t.units);
+    html += allUnits.map(u => {
         const owned = troopOwned(u.id), cost = troopCoreCost(u.id);
         const off = capFull || save.cores < cost;
         return `<div class="meta">
@@ -3628,12 +3598,11 @@ function renderBarrack() {
           </button>
         </div>`;
       }).join('');
-    }
   }
 
   $('barrackMetaList').innerHTML = html;
 
-  // 인구 상한 · 단계 해금
+  // 인구 상한 · 병력 강화
   $('barrackMetaList').querySelectorAll('button[data-bm]').forEach(el => {
     el.onclick = () => {
       const m = BARRACK_META.find(x => x.id === el.dataset.bm);
