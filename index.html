@@ -4433,7 +4433,10 @@ const runInProgress = () => screen === 'game' && S && S.phase !== 'over';
    현재 웨이브를 저장해두고, 메인의 '이어하기'로 그 웨이브의 준비
    단계부터 다시 시작할 수 있다. 코어는 게임 오버 때만 지급된다. */
 function leaveToMenu() {
-  if (runInProgress()) saveRun();
+  // 판 스냅샷만 남기면 '이어하기' 로는 살아나도, 마지막 레벨업 이후 쌓인
+  // 영웅 경험치가 영구 저장(heroLevels)에 닿지 못해 '처음부터' 출격이나
+  // 앱 재시작 뒤 되돌아간다. 나갈 때 영구 저장까지 함께 남긴다.
+  if (runInProgress()) { saveRun(); writeSave(); }
   goMenu();
 }
 
@@ -4598,9 +4601,10 @@ $('btnRestart').onclick = () => { newGame(getSelectedZoneFrom()); setTab('nexus'
 $('btnToMenu').onclick = goMenu;
 $('uiBack').onclick = leaveToMenu;
 
-// 폰 뒤로가기로 메인 화면에 돌아온다 — 판은 저장만 하고 끝내지 않는다
+// 폰 뒤로가기로 메인 화면에 돌아온다 — 판은 저장만 하고 끝내지 않는다.
+// 여기로 직접 나가는 경우에도 영웅 경험치가 영구 저장에 남도록 writeSave 를 함께 부른다.
 addEventListener('popstate', () => {
-  if (!leavingToMenu && runInProgress()) saveRun();
+  if (!leavingToMenu && runInProgress()) { saveRun(); writeSave(); }
   leavingToMenu = false;
   navDepth = Math.max(0, navDepth - 1);
   if (screen === 'menu') return;
