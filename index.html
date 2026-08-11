@@ -617,7 +617,7 @@ const maxPopFor = lv => Math.min(TROOP_POP.max, TROOP_POP.base + lv);
 
 /* 병력 코어 구매 — 유닛을 한 기씩 코어로 산다. 단계가 높을수록 base 가 크고,
    같은 유닛을 또 사면 (보유수+1) 배로 오른다. 인덱스는 TROOP_TIERS 순서. */
-const TROOP_CORE_BASE = [60, 140, 320, 700, 1400, 2800, 5400, 10000, 18000];
+const TROOP_CORE_BASE = [600, 1400, 3200, 7000, 14000, 28000, 54000, 100000, 180000];
 function troopTierIndex(unitId) {
   return TROOP_TIERS.findIndex(t => t.units.some(u => u.id === unitId));
 }
@@ -3602,7 +3602,7 @@ function renderBarrack() {
 
   // 2) 출정 요약
   const deployed = troopTotalDeploy();
-  html += `<p class="hint" style="margin:12px 0 4px;color:${deployed >= cap ? '#ffb454' : '#6d7ba0'}">출정 병력 <b style="color:#e6ecff">${deployed}</b> / 최대 배치 <b style="color:#e6ecff">${cap}</b> — −/+ 로 이번 판에 내보낼 구성을 정합니다.</p>`;
+  html += `<p class="hint" style="margin:12px 0 4px;color:${deployed >= cap ? '#ffb454' : '#6d7ba0'}">선택한 병력 <b style="color:#e6ecff">${deployed}</b> / 최대 배치 <b style="color:#e6ecff">${cap}</b> — 각 유닛 <b>선택/보유</b> 중 −/+ 로 출정 수를 정합니다.</p>`;
 
   // 3) 유닛 카드 — 구입(+코어)은 보유를 늘리고, −/+ 는 출정 수를 조절한다
   {
@@ -3615,7 +3615,7 @@ function renderBarrack() {
         return `<div class="meta">
           <div class="info">
             <div class="nm"><span style="color:${u.color}">${u.name}</span>
-              <span style="color:#7b88a8;font-weight:400">보유 ${owned} · 출정 <b style="color:#7fe7ff">${dep}</b></span></div>
+              <span style="color:#7b88a8;font-weight:400">선택 <b style="color:#7fe7ff">${dep}</b>/${owned}</span></div>
             <div class="ds">공격력 ${u.dmg + troopDmgBonus} · 공속 ${u.rate} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}</div>
           </div>
           <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
