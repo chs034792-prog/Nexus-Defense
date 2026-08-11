@@ -1230,6 +1230,9 @@ const DRONE = { pct: 6, pctStep: 2, spd: 2.0, orbitR: 250, maxCount: 5 };
    상한을 두지 않으면 넥서스에 앉아서 화면 전체를 훑게 되므로 350 에서 멈춘다. */
 const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1, maxRange: 350 };
 
+// 넥서스 개조(다중 포탑) 최대 레벨 — 동시 표적 수는 1 + 레벨, 최대 5표적
+const NEXUS_MOD_MAX = 4;
+
 const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
     stat: () => `현재 ${S.nexus.dmg}`,
@@ -1342,6 +1345,12 @@ const META = [
   { id:'m_droneDmg', name:'드론 회수량',  max:Infinity, base:60, special:true,
     req: () => mlv('m_drone') > 0, lockMsg: '드론 해금 필요',
     desc: lv => `드론 1기당 골드 회수 +${num(DRONE.pct + lv * MSTEP.droneDmg)}%` },
+  /* 넥서스 개조 — 한 항목으로 해금과 표적 수를 겸한다. Lv1=2표적 … Lv4=5표적.
+     동시 표적 수 = 1 + 레벨(NEXUS_MOD_MAX 로 상한). */
+  { id:'m_nexusMod', name:'넥서스 개조 — 다중 포탑', max: NEXUS_MOD_MAX, base:2000, special:true,
+    desc: lv => lv
+      ? `넥서스가 동시에 ${1 + lv}표적을 사격 (최대 ${1 + NEXUS_MOD_MAX}표적)`
+      : `넥서스를 개조해 여러 적을 동시에 조준한다 (해금 시 2표적, 최대 ${1 + NEXUS_MOD_MAX}표적)` },
 ];
 
 /* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
@@ -2190,6 +2199,19 @@ function pickTarget(x, y, range) {
   return best;
 }
 
+// 넥서스에 가장 가까운 적 n 명 (다중 포탑 개조용). n<=1 이면 pickTarget 과 같다.
+function pickTargets(x, y, range, n) {
+  if (n <= 1) { const t = pickTarget(x, y, range); return t ? [t] : []; }
+  const cand = [];
+  for (const e of S.enemies) {
+    if (e.dead) continue;
+    if (dist(x, y, e.x, e.y) > range + e.def.r) continue;
+    cand.push(e);
+  }
+  cand.sort((a, b) => dist(a.x, a.y, CX, CY) - dist(b.x, b.y, CX, CY));
+  return cand.slice(0, n);
+}
+
 function fire(from, target, dmg, bspd, splash, slow, slowT, color, opts) {
   const b = { x: from.x, y: from.y, target, dmg, spd: bspd, splash, slow, slowT, color, life: 3 };
   if (opts) {
@@ -2306,11 +2328,15 @@ function update(dt) {
   }
   S.eBullets = S.eBullets.filter(b => !b.gone);
 
-  /* 넥서스 사격 */
+  /* 넥서스 사격 — 개조(다중 포탑) 레벨만큼 여러 적을 동시에 조준한다 */
   n.cd -= dt;
   if (n.cd <= 0) {
-    const t = pickTarget(CX, CY, n.range);
-    if (t) { n.cd = 1 / n.rate; fire({ x: CX, y: CY }, t, n.dmg, 560, 0, 0, 0, S.nexusEvolved ? '#ffb347' : '#7fe7ff'); }
+    const targets = pickTargets(CX, CY, n.range, 1 + mlv('m_nexusMod'));
+    if (targets.length) {
+      n.cd = 1 / n.rate;
+      const color = S.nexusEvolved ? '#ffb347' : '#7fe7ff';
+      for (const t of targets) fire({ x: CX, y: CY }, t, n.dmg, 560, 0, 0, 0, color);
+    }
   }
 
   /* 영웅 — 이동 후 사격.
@@ -4195,6 +4221,8 @@ function renderSel() {
       ? `<div class="stat"><span>채굴 드론</span><b>${S.drone.count}기 · 골드 회수 +${S.drone.count * S.drone.pct}%</b></div>` : '';
     const gravInfo = S.gravWave
       ? `<div class="stat"><span>중력파</span><b>피해 ${S.gravWave.dmg}/초 · 범위 ${S.gravWave.range}</b></div>` : '';
+    const modInfo = mlv('m_nexusMod') > 0
+      ? `<div class="stat"><span>다중 포탑</span><b>동시 ${1 + mlv('m_nexusMod')}표적 사격</b></div>` : '';
     $('selStats').innerHTML = `
       <div class="stat"><span>체력</span><b>${Math.ceil(n.hp)} / ${n.maxHp}</b></div>
       <div class="stat"><span>공격력</span><b>${n.dmg}</b></div>
@@ -4204,7 +4232,7 @@ function renderSel() {
       <div class="stat"><span>체력재생</span><b>${n.regen.toFixed(1)}/초</b></div>
       <div class="stat"><span>골드 배율</span><b>×${S.goldMul.toFixed(2)}</b></div>
       <div class="stat"><span>수입 배율</span><b>×${S.incomeMul.toFixed(2)}</b></div>
-      ${droneInfo}${gravInfo}`;
+      ${droneInfo}${gravInfo}${modInfo}`;
     return;
   }
 
