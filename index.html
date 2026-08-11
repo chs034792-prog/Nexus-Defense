@@ -81,11 +81,18 @@
   .meta button .unit { font-size: 10px; font-weight: 600; opacity: .7; letter-spacing: .06em; }
   #shopScreen .back { width: 200px; margin-top: 24px; }
 
-  #zoneBox {
-    width: 100%; max-width: 380px; margin-top: 14px;
-    background: #141926; border: 1px solid #232b41; border-radius: 8px; padding: 13px 15px;
+  /* 지역 정보 — 메인 아래로 늘어나면 목록이 길어 화면을 밀어내므로 별도 창으로 띄운다 */
+  #zoneOverlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 12px;
   }
-  #zoneBox h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  #zoneOverlay.on { display: flex; }
+  #zoneBox {
+    width: 100%; max-width: 380px; max-height: 92vh; overflow-y: auto;
+    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 16px 14px;
+  }
+  #zoneBox h3 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 2px; }
+  #zoneBox .hint { text-align: center; margin-bottom: 10px; font-size: 11px; }
   .zone-row {
     display: flex; align-items: center; gap: 10px;
     padding: 7px 10px; border-radius: 6px; background: #1a2133; border: 1px solid #263050;
@@ -413,12 +420,6 @@
     <p id="couponMsg" class="hint" style="margin-top:8px;min-height:18px"></p>
   </div>
 
-  <div id="zoneBox" style="display:none">
-    <h3>지역 정보</h3>
-    <p class="hint">웨이브가 진행될수록 새로운 지역이 열립니다. 해금한 지역을 누르면 출격 시작 지점으로 고를 수 있습니다.</p>
-    <div id="zoneList" style="margin-top:9px;display:flex;flex-direction:column;gap:4px"></div>
-  </div>
-
   <div id="adminBox" style="display:none">
     <h3 style="color:#ff8a8a">운영자 모드 (?dev=1)</h3>
     <p class="hint">코어가 무제한이고, 원하는 웨이브로 바로 출격할 수 있습니다.</p>
@@ -562,6 +563,16 @@
 </div>
 
 </div>
+</div>
+
+<!-- ── 지역 정보 오버레이 ─────────────────────── -->
+<div id="zoneOverlay">
+  <div id="zoneBox">
+    <h3>지역 정보</h3>
+    <p class="hint" style="color:#6d7ba0">웨이브가 진행될수록 새로운 지역이 열립니다.<br>해금한 지역을 누르면 출격 시작 지점으로 고를 수 있습니다.</p>
+    <div id="zoneList" style="margin-top:9px;display:flex;flex-direction:column;gap:4px"></div>
+    <button class="ghost" id="btnZoneClose" style="width:100%;margin-top:14px">닫기</button>
+  </div>
 </div>
 
 <!-- ── 랭킹 오버레이 ──────────────────────────── -->
@@ -1216,8 +1227,8 @@ const UP_COST_GROW = 1.15;
    비율로 두는 이유는 후반 웨이브에서 보상이 커져도 값이 죽지 않게 하기 위함이다. */
 const DRONE = { pct: 6, pctStep: 2, spd: 2.0, orbitR: 250, maxCount: 5 };
 /* 중력파 범위 상한 — 필드가 960×720 이라 중심에서 위아래 끝까지가 360 이다.
-   상한을 두지 않으면 넥서스에 앉아서 화면 전체를 훑게 되므로 300 에서 멈춘다. */
-const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1, maxRange: 300 };
+   상한을 두지 않으면 넥서스에 앉아서 화면 전체를 훑게 되므로 350 에서 멈춘다. */
+const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1, maxRange: 350 };
 
 const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
@@ -4470,7 +4481,6 @@ $('btnShop').onclick = () => show('shop');
 $('btnShopBack').onclick = goMenu;
 
 $('btnBackup').onclick = () => {
-  $('zoneBox').style.display = 'none';
   $('couponBox').style.display = 'none';
   const box = $('backupBox');
   const open = box.style.display === 'none';
@@ -4479,7 +4489,6 @@ $('btnBackup').onclick = () => {
 };
 
 $('btnCoupon').onclick = () => {
-  $('zoneBox').style.display = 'none';
   $('backupBox').style.display = 'none';
   const box = $('couponBox');
   const open = box.style.display === 'none';
@@ -4523,18 +4532,17 @@ function renderZoneList() {
   $('zoneList').querySelectorAll('.zone-row.selectable').forEach(el => {
     el.onclick = () => {
       setSelectedZone(+el.dataset.from);
-      $('zoneBox').style.display = 'none';   // 고르면 바로 창을 닫는다
+      closeZones();                          // 고르면 바로 창을 닫는다
     };
   });
 }
 
-$('btnZones').onclick = () => {
-  $('backupBox').style.display = 'none';
-  const box = $('zoneBox');
-  const open = box.style.display === 'none';
-  box.style.display = open ? '' : 'none';
-  if (open) renderZoneList();
-};
+function openZones() { renderZoneList(); $('zoneOverlay').classList.add('on'); }
+function closeZones() { $('zoneOverlay').classList.remove('on'); }
+
+$('btnZones').onclick = openZones;
+$('btnZoneClose').onclick = closeZones;
+$('zoneOverlay').onclick = e => { if (e.target === $('zoneOverlay')) closeZones(); };
 
 // ?dev=1 일 때만 메인에 운영자 패널을 늘 펼쳐 둔다
 if (DEV) $('adminBox').style.display = '';
