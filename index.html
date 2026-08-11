@@ -467,7 +467,7 @@
   </div>
 
   <div id="shopBarrack" style="display:none">
-    <p class="hint" style="margin-bottom:12px">병과를 해금하고, 보유 중인 단계 중 하나를 선택하여 출격합니다.</p>
+    <p class="hint" style="margin-bottom:12px">단계를 해금하고 유닛을 코어로 사서 모으면, 매 판 시작 시 인구 상한까지 자동 배치됩니다.</p>
     <div id="barrackMetaList" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
@@ -532,11 +532,9 @@
       <div class="tabs">
         <div class="tab on" data-tab="nexus">넥서스</div>
         <div class="tab" data-tab="hero" style="display:none">영웅</div>
-        <div class="tab" data-tab="troops" style="display:none">병력</div>
       </div>
       <div id="nexusShop"></div>
       <div id="heroShop" style="display:none"></div>
-      <div id="troopShop" style="display:none"></div>
     </div>
 
     <div class="box">
@@ -610,24 +608,35 @@ const CFG = {
   heroUnique: false,     // true 로 두면 영웅을 종류당 1기만 고용
   heroCostGrow: 1.55,    // 같은 영웅을 또 고용할 때 비용 증가율
   postR: 112,            // 넥서스 주변 대기 반경
-  basePop: 1,            // 처음에 둘 수 있는 영웅 수
 };
 
-/* 최대 인구 늘리기 — 넥서스 탭에서 산다. 한 번 사면 1명씩 늘어 1 → 2 → 3 으로 간다.
-   비용은 150, 350, 750, 1350, 2150 ... 처럼 계단폭이 200씩 커지는 곡선이다:
-   popCost(lv) = 150 + 100 x lv x (lv+1) */
-const POP_UP = { step: 1, max: 25 };
-const popCost = lv => 150 + 100 * lv * (lv + 1);
+/* 병력 배치 상한(인구) — 코어 영구 강화 m_pop 으로 늘린다. 매 판 시작 시 코어로 사둔
+   병력이 이 상한까지 자동 배치된다. 기본 5, 레벨당 +1, 최대 30. */
+const TROOP_POP = { base: 5, max: 30 };
+const maxPopFor = lv => Math.min(TROOP_POP.max, TROOP_POP.base + lv);
+
+/* 병력 코어 구매 — 유닛을 한 기씩 코어로 산다. 단계가 높을수록 base 가 크고,
+   같은 유닛을 또 사면 (보유수+1) 배로 오른다. 인덱스는 TROOP_TIERS 순서. */
+const TROOP_CORE_BASE = [60, 140, 320, 700, 1400, 2800, 5400, 10000, 18000];
+function troopTierIndex(unitId) {
+  return TROOP_TIERS.findIndex(t => t.units.some(u => u.id === unitId));
+}
+function troopDefById(unitId) {
+  for (const t of TROOP_TIERS) { const u = t.units.find(x => x.id === unitId); if (u) return u; }
+  return null;
+}
+const troopOwned = id => (save.meta.troops && save.meta.troops[id]) || 0;
+const troopTotalOwned = () => Object.values(save.meta.troops || {}).reduce((a, b) => a + b, 0);
+function troopCoreCost(unitId) {
+  const ti = troopTierIndex(unitId);
+  const base = TROOP_CORE_BASE[ti] || TROOP_CORE_BASE[TROOP_CORE_BASE.length - 1];
+  return base * (troopOwned(unitId) + 1);
+}
 
 // 영웅 강화 — 가진 영웅 전부의 공격력이 한꺼번에 오른다.
 // step 은 배수가 아니라 더하는 값이라 100 → 105 → 110 처럼 일정하게 오른다.
 const HERO_UP = { base: 60, grow: 1.18, step: 0.05 };
 const heroUpCost = lv => Math.floor(HERO_UP.base * Math.pow(HERO_UP.grow, lv));
-
-// 병력 강화 — 비용은 60, 120, 180 ... 선형 증가. 살 때마다 공격력 +2(고정값).
-// 지상/기갑/공중 구분 없이 지금 해금된 병력 전체에 적용된다.
-const TROOP_UP = { base: 60, step: 2 };
-const troopUpCost = lv => TROOP_UP.base * (lv + 1);
 
 // 영웅 — 단 1기만 소환, 직업 전환 가능. 인구를 차지하지 않는다.
 const HEROES = [];
@@ -903,20 +912,6 @@ const TROOP_TIERS = [
   { tier: 'tier_a2', name: '공중병력 II',  units: [au('stealthFighter'), au('bomber'), au('missileInterceptor')] },
   { tier: 'tier_a3', name: '공중병력 III', units: [au('aceStriker'), au('strategicBomber'), au('orbitalStriker')] },
 ];
-function currentTier() {
-  const id = save.meta.selectedTier;
-  if (!id) return null;
-  const t = TROOP_TIERS.find(x => x.tier === id);
-  return (t && mlv(id) > 0) ? t : null;
-}
-function gameTier() {
-  if (!S || !S.lockedTier) return currentTier();
-  const t = TROOP_TIERS.find(x => x.tier === S.lockedTier);
-  return (t && mlv(t.tier) > 0) ? t : null;
-}
-function troopCategory(def) {
-  return def.mech ? 'mech' : def.air ? 'air' : 'ground';
-}
 const isTroop = def => !isHeroClass(def) && !def.noCombat;
 
 const ZONE_ENEMIES = {
@@ -1329,34 +1324,36 @@ const META = [
       : `넥서스를 개조해 여러 적을 동시에 조준한다 (해금 시 2표적, 최대 ${1 + NEXUS_MOD_MAX}표적)` },
 ];
 
-/* ── 병영 상점: 병과 해금 + 영구 배치 ─────────── */
+/* ── 병영 상점: 단계 해금 + 병력 최대 배치(인구) ─────────── */
 const BARRACK_META = [
+  { id:'m_pop', name:'병력 최대 배치 (인구)', max: TROOP_POP.max - TROOP_POP.base, base:1200,
+    desc: lv => `병력을 ${maxPopFor(lv)}기까지 배치 (기본 ${TROOP_POP.base} · 최대 ${TROOP_POP.max})` },
   { id:'tier_g1', name:'지상병력 I — 검사·저격수·버퍼', max:1, base:1500,
-    desc: lv => lv ? '보유 — 선택 시 검사·저격수·버퍼를 고용' : '게임 내에서 검사·저격수·버퍼를 고용할 수 있게 된다' },
+    desc: lv => lv ? '해금됨 — 병영에서 검사·저격수·버퍼를 코어로 구매' : '검사·저격수·버퍼를 해금한다' },
   { id:'tier_g2', name:'지상병력 II — 전사·레인저·술사', max:1, base:4500,
     req: () => mlv('tier_g1') > 0 && save.best >= 100, lockMsg: '지상병력 I 보유 + 100웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 전사·레인저·술사를 고용' : '전사·레인저·술사를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서전사·레인저·술사를 코어로 구매' : '전사·레인저·술사를 해금한다' },
   { id:'tier_g3', name:'지상병력 III — 팔라딘·보우마스터·주술사', max:1, base:10000,
     req: () => mlv('tier_g2') > 0 && save.best >= 200, lockMsg: '지상병력 II 보유 + 200웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 팔라딘·보우마스터·주술사를 고용' : '팔라딘·보우마스터·주술사를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서팔라딘·보우마스터·주술사를 코어로 구매' : '팔라딘·보우마스터·주술사를 해금한다' },
   { id:'tier_m1', name:'기갑병력 I — 전차·레일건·자주포', max:1, base:22000,
     req: () => mlv('tier_g3') > 0 && save.best >= 300, lockMsg: '지상병력 III 보유 + 300웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 전차·레일건·자주포를 고용' : '전차·레일건·자주포를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서전차·레일건·자주포를 코어로 구매' : '전차·레일건·자주포를 해금한다' },
   { id:'tier_m2', name:'기갑병력 II — 강습전차·이온레일건·열압자주포', max:1, base:42000,
     req: () => mlv('tier_m1') > 0 && save.best >= 400, lockMsg: '기갑병력 I 보유 + 400웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 강습전차·이온레일건·열압자주포를 고용' : '강습전차·이온레일건·열압자주포를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서강습전차·이온레일건·열압자주포를 코어로 구매' : '강습전차·이온레일건·열압자주포를 해금한다' },
   { id:'tier_m3', name:'기갑병력 III — 드레드노트·플라즈마레일건·궤도자주포', max:1, base:75000,
     req: () => mlv('tier_m2') > 0 && save.best >= 500, lockMsg: '기갑병력 II 보유 + 500웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 드레드노트·플라즈마레일건·궤도자주포를 고용' : '드레드노트·플라즈마레일건·궤도자주포를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서드레드노트·플라즈마레일건·궤도자주포를 코어로 구매' : '드레드노트·플라즈마레일건·궤도자주포를 해금한다' },
   { id:'tier_a1', name:'공중병력 I — 전투기·정찰기·요격기', max:1, base:130000,
     req: () => mlv('tier_m3') > 0 && save.best >= 600, lockMsg: '기갑병력 III 보유 + 600웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 전투기·정찰기·요격기를 고용' : '전투기·정찰기·요격기를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서전투기·정찰기·요격기를 코어로 구매' : '전투기·정찰기·요격기를 해금한다' },
   { id:'tier_a2', name:'공중병력 II — 스텔스기·폭격기·미사일기', max:1, base:200000,
     req: () => mlv('tier_a1') > 0 && save.best >= 700, lockMsg: '공중병력 I 보유 + 700웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 스텔스기·폭격기·미사일기를 고용' : '스텔스기·폭격기·미사일기를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서스텔스기·폭격기·미사일기를 코어로 구매' : '스텔스기·폭격기·미사일기를 해금한다' },
   { id:'tier_a3', name:'공중병력 III — 에이스기·전략폭격기·궤도타격기', max:1, base:300000,
     req: () => mlv('tier_a2') > 0 && save.best >= 800, lockMsg: '공중병력 II 보유 + 800웨이브 필요',
-    desc: lv => lv ? '보유 — 선택 시 에이스기·전략폭격기·궤도타격기를 고용' : '에이스기·전략폭격기·궤도타격기를 해금한다' },
+    desc: lv => lv ? '해금됨 — 병영에서에이스기·전략폭격기·궤도타격기를 코어로 구매' : '에이스기·전략폭격기·궤도타격기를 해금한다' },
   { id:'troopDmg', name:'병력 영구 강화', max:Infinity, base:70,
     req: () => mlv('tier_g1') > 0, lockMsg: '지상병력 I 필요',
     desc: lv => `병력 공격력 +${num(lv * MSTEP.troopDmg)} (현재 +${num(lv * MSTEP.troopDmg)})` },
@@ -1392,11 +1389,6 @@ function migrate() {
     if (save.meta.t_mech > 0) { save.meta.tier_m1 = 1; save.meta.tier_m2 = 1; save.meta.tier_m3 = 1; }
     if (save.meta.t_air > 0) { save.meta.tier_a1 = 1; }
   }
-  if ((save.mig || 0) < 3) {
-    let best = null;
-    for (const t of TROOP_TIERS) if (save.meta[t.tier] > 0) best = t.tier;
-    if (best) save.meta.selectedTier = best;
-  }
   save.mig = MIGRATION;
 }
 
@@ -1408,7 +1400,11 @@ function loadSave() {
   for (const c of HERO_CLASSES) {
     if (!save.meta.heroLevels[c.id]) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   }
-  if (save.meta.selectedTier && !TROOP_TIERS.some(t => t.tier === save.meta.selectedTier)) save.meta.selectedTier = null;
+  // 코어로 사둔 병력 보유 수 { 유닛id: 수 } — 해금 안 된 단계 유닛은 걸러낸다
+  if (!save.meta.troops || typeof save.meta.troops !== 'object') save.meta.troops = {};
+  for (const id of Object.keys(save.meta.troops)) {
+    if (!troopDefById(id) || !(save.meta.troops[id] > 0)) delete save.meta.troops[id];
+  }
   if (!Array.isArray(save.coupons)) save.coupons = [];
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
   if (old > save.best) save.best = old;
@@ -1466,7 +1462,13 @@ function importSave(code) {
   save.meta = {};
   for (const m of [...META, ...BARRACK_META, ...HERO_META]) save.meta[m.id] = Math.max(0, +d.meta[m.id] || 0);
   save.meta.heroClass = d.meta.heroClass || null;
-  save.meta.selectedTier = d.meta.selectedTier || null;
+  // 코어로 사둔 병력 보유 수 복원 — 유효한 유닛·양수만 남긴다
+  save.meta.troops = {};
+  if (d.meta.troops && typeof d.meta.troops === 'object') {
+    for (const [id, n] of Object.entries(d.meta.troops)) {
+      if (troopDefById(id) && +n > 0) save.meta.troops[id] = Math.floor(+n);
+    }
+  }
   save.meta.heroLevels = {};
   for (const c of HERO_CLASSES) {
     const src = d.meta.heroLevels && d.meta.heroLevels[c.id];
@@ -1497,14 +1499,12 @@ function saveRun() {
   const n = S.nexus;
   const snap = {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired,
-    groundShop: S.groundShop, mechShop: S.mechShop, airShop: S.airShop,
-    lockedTier: S.lockedTier, nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, gravWave: S.gravWave, autoSkill: S.autoSkill,
+    nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
-    popLv: S.popLv, maxPop: S.maxPop, heroUpLv: S.heroUpLv,
-    troopUpLv: S.troopUpLv, troopDmgAdd: S.troopDmgAdd,
+    maxPop: S.maxPop, heroUpLv: S.heroUpLv, troopDmgAdd: S.troopDmgAdd,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
-    heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng })),
+    heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng, fromCore: h.fromCore })),
     hero: S.hero ? { classId: S.hero.classId, homeAng: S.hero.homeAng, xp: S.hero.xp, level: S.hero.level } : null,
     dev: DEV,                       // 운영자 모드에서 만든 판임을 표시
   };
@@ -1579,14 +1579,8 @@ function newGame(startWave) {
     goldMul: 1 + mlv('minc') * MSTEP.minc / 100,  // 처치 보상과 클리어 보너스 양쪽에 걸린다
     incomeMul: 1,
     autoSkill: true,                       // 스킬 자동 발동
-    lockedTier: save.meta.selectedTier || null,
-    groundShop: !!(currentTier() && currentTier().tier.startsWith('tier_g')),
-    mechShop: !!(currentTier() && currentTier().tier.startsWith('tier_m')),
-    airShop: !!(currentTier() && currentTier().tier.startsWith('tier_a')),
-    popLv: 0,                            // 최대 인구 강화 횟수
-    maxPop: CFG.basePop,
+    maxPop: maxPopFor(mlv('m_pop')),     // 병력 배치 상한 (코어 영구 강화)
     heroUpLv: 0,                         // 영웅 강화 횟수
-    troopUpLv: 0,                        // 병력 강화 횟수 (판 안에서)
     troopDmgAdd: mlv('troopDmg') * MSTEP.troopDmg,
     nexusEvolved: false, nexusShield: 0, allyAtkBuff: 0,
     hasMechanic: false,
@@ -1602,6 +1596,12 @@ function newGame(startWave) {
   }
   if (mlv('p_mech') > 0) {
     S.hasMechanic = true;      // 좌상단 작업공 표시 + 넥서스 수리(regen 에 이미 반영)
+  }
+  // 코어로 사둔 병력을 인구 상한까지 자동 배치한다
+  for (const [id, cnt] of Object.entries(save.meta.troops)) {
+    const def = troopDefById(id);
+    if (!def) continue;
+    for (let i = 0; i < cnt && S.heroes.length < S.maxPop; i++) placeTroop(def);
   }
   if (mlv('t_hero') > 0 && save.meta.heroClass) {
     const cls = heroClassById(save.meta.heroClass);
@@ -1632,11 +1632,6 @@ function resumeGame(snap) {
   S.startWave = snap.startWave ?? 1;
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
-  S.lockedTier = snap.lockedTier || save.meta.selectedTier || null;
-  const gt = gameTier();
-  S.groundShop = !!(gt && gt.tier.startsWith('tier_g'));
-  S.mechShop = !!(gt && gt.tier.startsWith('tier_m'));
-  S.airShop = !!(gt && gt.tier.startsWith('tier_a'));
   S.nexusEvolved = snap.nexusEvolved ?? false;
   S.hasMechanic = snap.hasMechanic ?? false;
   S.autoSkill = snap.autoSkill ?? true;
@@ -1646,17 +1641,15 @@ function resumeGame(snap) {
   S.dmgMul = snap.dmgMul ?? 1;
   S.goldMul = snap.goldMul ?? 1;
   S.incomeMul = snap.incomeMul ?? 1;
-  S.popLv = snap.popLv ?? 0;
-  S.maxPop = Math.min(POP_UP.max, snap.maxPop ?? (CFG.basePop + S.popLv * POP_UP.step));
+  S.maxPop = snap.maxPop ?? maxPopFor(mlv('m_pop'));
   S.heroUpLv = snap.heroUpLv ?? 0;
-  S.troopUpLv = snap.troopUpLv ?? 0;
-  S.troopDmgAdd = snap.troopDmgAdd ?? (mlv('troopDmg') * MSTEP.troopDmg + S.troopUpLv * TROOP_UP.step);
+  S.troopDmgAdd = snap.troopDmgAdd ?? (mlv('troopDmg') * MSTEP.troopDmg);
   Object.assign(S.nexus, snap.nexus);
   Object.assign(S.nexusLv, snap.nexusLv);
   S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
     const def = defById(h.id);
     const post = { x: CX + Math.cos(h.homeAng) * CFG.postR, y: CY + Math.sin(h.homeAng) * CFG.postR };
-    return { def, invested: h.invested, homeAng: h.homeAng,
+    return { def, invested: h.invested, homeAng: h.homeAng, fromCore: h.fromCore,
              x: post.x, y: post.y, cd: 0, ang: 0, recoil: 0, spawnT: 0 };
   });
   if (snap.hero) {
@@ -1843,67 +1836,17 @@ function hire(def) {
   syncUI();
 }
 
-// 지상 유닛은 고용할 때마다 기준가만큼씩 선형으로 오른다 (500 -> 1000 -> 1500 ...)
-const groundCost = def => def.cost * (ownedCount(def.id) + 1);
-const groundBlocked = def => !S.groundShop || popFull() ||
-                             (def.unique && ownedCount(def.id) > 0);
-
-function hireGround(def) {
-  const cost = groundCost(def);
-  const blocked = def.noCombat
-    ? (!mlv('tier_g1') || popFull() || (def.unique && ownedCount(def.id) > 0))
-    : groundBlocked(def);
-  if (S.gold < cost || blocked) return;
-  S.gold -= cost;
+/* 코어로 사둔 병력을 판 시작 시 배치한다 — hire() 의 push 형태를 그대로 쓰되
+   골드 차감 없이 대기 자리에만 세운다(invested 0, 해고 불가). */
+function placeTroop(def) {
   const ang = S.hired * GOLDEN;
   const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
   S.heroes.push({
-    def, invested: cost, homeAng: ang,
+    def, invested: 0, homeAng: ang, fromCore: true,
     x: post.x, y: post.y, cd: 0, ang: 0,
     recoil: 0, spawnT: 0.6,
   });
   S.hired++;
-  if (def.id === 'mechanic') S.hasMechanic = true;
-  addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
-  saveRun(); syncUI();
-}
-
-const mechCost = def => def.cost * (ownedCount(def.id) + 1);
-const mechBlocked = def => !S.mechShop || popFull();
-
-function hireMech(def) {
-  const cost = mechCost(def);
-  if (S.gold < cost || mechBlocked(def)) return;
-  S.gold -= cost;
-  const ang = S.hired * GOLDEN;
-  const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
-  S.heroes.push({
-    def, invested: cost, homeAng: ang,
-    x: post.x, y: post.y, cd: 0, ang: 0,
-    recoil: 0, spawnT: 0.6,
-  });
-  S.hired++;
-  addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
-  saveRun(); syncUI();
-}
-
-const airCost = def => def.cost * (ownedCount(def.id) + 1);
-const airBlocked = def => !S.airShop || popFull();
-
-function hireAir(def) {
-  const cost = airCost(def);
-  if (S.gold < cost || airBlocked(def)) return;
-  S.gold -= cost;
-  const ang = S.hired * GOLDEN;
-  const post = { x: CX + Math.cos(ang) * CFG.postR, y: CY + Math.sin(ang) * CFG.postR };
-  S.heroes.push({
-    def, invested: cost, homeAng: ang,
-    x: post.x, y: post.y, cd: 0, ang: 0,
-    recoil: 0, spawnT: 0.6,
-  });
-  S.hired++;
-  addText(post.x, post.y - 24, def.name + ' 배치', def.accent);
-  saveRun(); syncUI();
 }
 
 const homePos = h => ({ x: CX + Math.cos(h.homeAng) * CFG.postR,
@@ -3637,36 +3580,60 @@ function renderBarrack() {
   forceAdminCores();
   $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
 
-  const selId = save.meta.selectedTier || null;
+  const cap = maxPopFor(mlv('m_pop'));
+  const total = troopTotalOwned();
+  const troopDmgBonus = mlv('troopDmg') * MSTEP.troopDmg;
 
+  // 1) 인구 상한 + 단계 해금 항목
   let html = BARRACK_META.map(m => {
     const lv = mlv(m.id), maxed = lv >= m.max, c = metaCost(m, lv);
     const inf = !Number.isFinite(m.max);
     const locked = m.req && !m.req();
-    const isTier = TROOP_TIERS.some(t => t.tier === m.id);
-    const isSelected = isTier && selId === m.id;
-    const lvText = locked ? '' : inf ? `Lv.${lv}` : (maxed ? (isSelected ? '선택됨' : '') : '');
-    return `<div class="meta ${maxed ? 'max' : ''} ${locked ? 'locked' : ''}" ${isSelected ? 'style="border-color:#ffe066;background:rgba(255,224,102,0.08)"' : ''}>
+    const lvText = locked ? '' : (inf ? `Lv.${lv}` : (maxed ? '해금됨' : ''));
+    return `<div class="meta ${maxed && !inf ? 'max' : ''} ${locked ? 'locked' : ''}">
       <div class="info">
-        <div class="nm">${m.name} <span style="color:${isSelected ? '#ffe066' : '#7b88a8'};font-weight:400">${lvText}</span></div>
+        <div class="nm">${m.name} <span style="color:#7b88a8;font-weight:400">${lvText}</span></div>
         <div class="ds">${locked ? (m.lockMsg || '조건 미충족') : `${m.desc(lv)}${inf && !maxed ? ` → ${m.desc(lv + 1)}` : ''}`}</div>
       </div>
-      ${isTier && maxed
-        ? `<button data-tiersel="${m.id}" style="${isSelected
-            ? 'background:#ffe066;color:#1a1f2e;font-weight:700;border-color:#ffe066'
-            : 'background:#1e3a5f;color:#7fc8ff;border-color:#3a7bd5'}">
-            <span class="cost">${isSelected ? '✦ 선택됨' : '선택'}</span>
-          </button>`
-        : `<button data-bm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
-            ${locked ? '<span class="cost">잠김</span>'
-                     : `<span class="cost">${c}</span><span class="unit">코어</span>`}
-          </button>`
-      }
+      <button data-bm="${m.id}" ${maxed || locked || save.cores < c ? 'disabled' : ''}>
+        ${maxed ? '<span class="cost">보유</span>'
+                : locked ? '<span class="cost">잠김</span>'
+                : `<span class="cost">${c}</span><span class="unit">코어</span>`}
+      </button>
     </div>`;
   }).join('');
 
+  // 2) 배치 요약
+  html += `<p class="hint" style="margin:12px 0 4px;color:${total >= cap ? '#ffb454' : '#6d7ba0'}">보유 병력 <b style="color:#e6ecff">${total}</b> / 최대 배치 <b style="color:#e6ecff">${cap}</b> — 매 판 시작 시 자동 배치됩니다.</p>`;
+
+  // 3) 해금된 단계의 유닛 구매 카드
+  const unlockedTiers = TROOP_TIERS.filter(t => mlv(t.tier) > 0);
+  if (!unlockedTiers.length) {
+    html += `<p class="hint" style="color:#6d7ba0">위에서 병력 단계를 해금하면 유닛을 코어로 살 수 있습니다.</p>`;
+  } else {
+    const capFull = total >= cap;
+    for (const t of unlockedTiers) {
+      html += `<div class="ds" style="color:#8ea0c8;margin:10px 0 2px;font-weight:700">${t.name}</div>`;
+      html += t.units.map(u => {
+        const owned = troopOwned(u.id), cost = troopCoreCost(u.id);
+        const off = capFull || save.cores < cost;
+        return `<div class="meta">
+          <div class="info">
+            <div class="nm"><span style="color:${u.color}">${u.name}</span> <span style="color:#7b88a8;font-weight:400">${owned ? '×' + owned : ''}</span></div>
+            <div class="ds">공격력 ${u.dmg + troopDmgBonus} · 공속 ${u.rate} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}</div>
+          </div>
+          <button data-buytroop="${u.id}" ${off ? 'disabled' : ''}>
+            ${capFull ? '<span class="cost">배치 초과</span>'
+                      : `<span class="cost">${cost}</span><span class="unit">코어</span>`}
+          </button>
+        </div>`;
+      }).join('');
+    }
+  }
+
   $('barrackMetaList').innerHTML = html;
 
+  // 인구 상한 · 단계 해금
   $('barrackMetaList').querySelectorAll('button[data-bm]').forEach(el => {
     el.onclick = () => {
       const m = BARRACK_META.find(x => x.id === el.dataset.bm);
@@ -3674,15 +3641,19 @@ function renderBarrack() {
       const lv = mlv(m.id), c = metaCost(m, lv);
       if (lv >= m.max || save.cores < c) return;
       save.cores -= c; save.meta[m.id] = lv + 1;
-      const isTier = TROOP_TIERS.some(t => t.tier === m.id);
-      if (isTier && !save.meta.selectedTier) save.meta.selectedTier = m.id;
       writeSave(); renderBarrack();
     };
   });
 
-  $('barrackMetaList').querySelectorAll('button[data-tiersel]').forEach(el => {
+  // 유닛 보유 수 구매
+  $('barrackMetaList').querySelectorAll('button[data-buytroop]').forEach(el => {
     el.onclick = () => {
-      save.meta.selectedTier = el.dataset.tiersel;
+      const id = el.dataset.buytroop;
+      if (troopTotalOwned() >= maxPopFor(mlv('m_pop'))) return;
+      const cost = troopCoreCost(id);
+      if (save.cores < cost) return;
+      save.cores -= cost;
+      save.meta.troops[id] = troopOwned(id) + 1;
       writeSave(); renderBarrack();
     };
   });
@@ -3836,72 +3807,7 @@ function buildShops() {
     </div>`
     ;
 
-  // 병력 상점 — 영구 상점에서 순서대로 해금한 단계의 유닛들만 고용할 수 있다
-  const troopCards = TROOP_TIERS.flatMap(t => t.units.map(d => ({ tier: t.tier, d })));
-  $('troopShop').innerHTML = troopCards.map(({ tier, d }) => `
-    <div class="card" data-troop="${d.id}" style="display:none">
-      <div class="swatch" style="background:${d.color};color:${d.color}"></div>
-      <div>
-        <div class="nm">${d.name} <span class="cnt" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">${d.desc}</div>
-        <div class="ds stat" style="color:#7b88a8;font-size:11px"></div>
-      </div>
-      <button class="buy"></button>
-    </div>`).join('')
-    + `<div class="card" id="troopUpCard" style="display:none">
-      <div class="swatch" style="background:#4ade80;color:#4ade80"></div>
-      <div>
-        <div class="nm">병력 강화 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">지금 해금된 모든 병력의 공격력 +${TROOP_UP.step}</div>
-      </div>
-      <button class="buy"></button>
-    </div>`
-    + `<div class="card popCard"><div>
-        <div class="nm">최대 인구 증가 <span class="lv" style="color:#7b88a8;font-weight:400"></span></div>
-        <div class="ds">유닛을 ${POP_UP.step}기 더 둘 수 있다</div>
-      </div><button class="buy"></button></div>`;
-
-  els.troop = troopCards.map(({ tier, d }) => {
-    const card = $('troopShop').querySelector(`.card[data-troop="${d.id}"]`);
-    const btn = card.querySelector('button');
-    const hireFn = d.mech ? hireMech : d.air ? hireAir : hireGround;
-    card.onclick = () => hireFn(d);
-    btn.onclick = ev => { ev.stopPropagation(); hireFn(d); };
-    return { tier, d, card, btn, cnt: card.querySelector('.cnt'), stat: card.querySelector('.stat') };
-  });
-
-  const tupCard = $('troopUpCard');
-  els.troopUp = { card: tupCard, btn: tupCard.querySelector('button'), lv: tupCard.querySelector('.lv') };
-  tupCard.onclick = buyTroopUp;
-  els.troopUp.btn.onclick = ev => { ev.stopPropagation(); buyTroopUp(); };
-
-  els.pop = [...document.querySelectorAll('.popCard')].map(card => {
-    const btn = card.querySelector('button');
-    card.onclick = buyPop;
-    btn.onclick = ev => { ev.stopPropagation(); buyPop(); };
-    return { card, btn, lv: card.querySelector('.lv') };
-  });
-}
-
-function buyPop() {
-  if (S.maxPop >= POP_UP.max) return;
-  const c = popCost(S.popLv);
-  if (S.gold < c) return;
-  S.gold -= c; S.popLv++; S.maxPop = Math.min(POP_UP.max, S.maxPop + POP_UP.step);
-  addText(CX, CY - 88, '최대 인구 ' + S.maxPop, '#ffd45e');
-  saveRun();
-  syncUI();
-}
-
-// 지상/기갑/공중 구분 없이 지금 해금된 모든 병력에 함께 적용된다
-function buyTroopUp() {
-  if (!gameTier()) return;
-  const c = troopUpCost(S.troopUpLv);
-  if (S.gold < c) return;
-  S.gold -= c; S.troopUpLv++; S.troopDmgAdd += TROOP_UP.step;
-  addText(CX, CY - 88, `병력 공격력 +${S.troopDmgAdd}`, '#4ade80');
-  saveRun();
-  syncUI();
+  // 병력은 이제 메인 병영에서 코어로 사서 자동 배치된다 — 인게임 병력 탭 없음
 }
 
 function buyHeroUp() {
@@ -4018,41 +3924,6 @@ function buyNexusUp(id) {
   syncUI();
 }
 
-function renderTroopShop() {
-  // 작업공은 특수강화(p_mech)로만 배치한다 — 병영 개별 고용은 없앴다
-  // 현재 해금된 단계의 병력 카드들(계열당 2~3종)만 보여준다
-  const cur = gameTier();
-  for (const e of els.troop) {
-    const active = !!cur && cur.tier === e.tier;
-    e.card.style.display = active ? '' : 'none';
-    if (!active) continue;
-    const cat = troopCategory(e.d);
-    const cost = cat === 'mech' ? mechCost(e.d) : cat === 'air' ? airCost(e.d) : groundCost(e.d);
-    const owned = ownedCount(e.d.id);
-    const blocked = cat === 'mech' ? mechBlocked(e.d) : cat === 'air' ? airBlocked(e.d) : groundBlocked(e.d);
-    const off = blocked || S.gold < cost;
-    e.cnt.textContent = owned ? '×' + owned : '';
-    e.btn.textContent = popFull() ? '인구 초과' : cost + 'G';
-    e.btn.disabled = off;
-    e.card.classList.toggle('poor', off);
-    const dmg = e.d.dmg + S.troopDmgAdd;
-    e.stat.textContent = `공격력 ${dmg} · 공속 ${e.d.rate} · 사거리 ${e.d.range}${e.d.splash ? ' · 폭발 ' + e.d.splash : ''}`;
-  }
-
-  // 병력 강화 — 지상/기갑/공중 구분 없이 단일 강화
-  if (cur) {
-    const c = troopUpCost(S.troopUpLv);
-    const off = S.gold < c;
-    els.troopUp.card.style.display = '';
-    els.troopUp.lv.textContent = `(+${S.troopDmgAdd})`;
-    els.troopUp.btn.textContent = c + 'G';
-    els.troopUp.btn.disabled = off;
-    els.troopUp.card.classList.toggle('poor', off);
-  } else {
-    els.troopUp.card.style.display = 'none';
-  }
-}
-
 function renderNexusShop() {
   for (const e of els.nexus) {
     const lv = S.nexusLv[e.u.id], c = e.u.cost(lv);
@@ -4066,14 +3937,6 @@ function renderNexusShop() {
     e.btn.disabled = off;
     e.card.classList.toggle('poor', off);
     if (e.u.stat) e.ds.textContent = e.u.desc + ' (' + e.u.stat() + ')';
-  }
-
-  const pc = popCost(S.popLv), popMaxed = S.maxPop >= POP_UP.max, popOff = popMaxed || S.gold < pc;
-  for (const p of els.pop) {
-    p.lv.textContent = `(현재 ${S.maxPop}/${POP_UP.max})`;
-    p.btn.textContent = popMaxed ? '최대' : pc + 'G';
-    p.btn.disabled = popOff;
-    p.card.classList.toggle('poor', popOff);
   }
 }
 
@@ -4214,32 +4077,30 @@ function syncUI() {
     $('skill5CdOverlay').style.height = pct5 + '%';
   }
 
-  renderHeroShop(); renderTroopShop(); renderNexusShop(); renderSel(); syncTechTabs();
+  renderHeroShop(); renderNexusShop(); renderSel(); syncTechTabs();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
 const heroTabLocked = () => !(mlv('t_hero') > 0);
-const SHOP_PANELS = ['nexus', 'hero', 'troops'];
-const TECH_TABS = { hero: 't_hero', troops: 'tier_g1' };
+const SHOP_PANELS = ['nexus', 'hero'];    // 병력은 인게임 탭에서 제거 — 넥서스·영웅만
+const TECH_TABS = { hero: 't_hero' };
 
 document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
     const t = el.dataset.tab;
     if (t === 'hero' && heroTabLocked()) return;
-    if (t === 'troops' && !gameTier()) return;
-    if (t !== 'troops' && TECH_TABS[t] && !mlv(TECH_TABS[t])) return;
+    if (TECH_TABS[t] && !mlv(TECH_TABS[t])) return;
     setTab(t);
   };
 });
 function setTab(name) {
   if (name === 'hero' && heroTabLocked()) name = 'nexus';
-  if (name === 'troops' && !gameTier()) name = 'nexus';
-  if (name !== 'troops' && TECH_TABS[name] && !mlv(TECH_TABS[name])) name = 'nexus';
+  if (TECH_TABS[name] && !mlv(TECH_TABS[name])) name = 'nexus';
   tab = name;
   document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
   for (const p of SHOP_PANELS) {
-    const el = $(p === 'nexus' ? 'nexusShop' : p === 'hero' ? 'heroShop' : p === 'troops' ? 'troopShop' : p + 'Shop');
+    const el = $(p === 'nexus' ? 'nexusShop' : p === 'hero' ? 'heroShop' : p + 'Shop');
     if (el) el.style.display = tab === p ? '' : 'none';
   }
 }
@@ -4248,12 +4109,7 @@ function setTab(name) {
 function syncTechTabs() {
   for (const [tabName, metaId] of Object.entries(TECH_TABS)) {
     const el = document.querySelector(`.tabs .tab[data-tab="${tabName}"]`);
-    if (!el) continue;
-    if (tabName === 'troops') {
-      el.style.display = gameTier() ? '' : 'none';
-    } else {
-      el.style.display = mlv(metaId) > 0 ? '' : 'none';
-    }
+    if (el) el.style.display = mlv(metaId) > 0 ? '' : 'none';
   }
 }
 
@@ -4471,7 +4327,7 @@ $('btnAdminResetMeta').onclick = () => {
   if (!confirm('영구 강화를 모두 초기화할까요?\n(코어와 최고 기록은 그대로 남습니다)')) return;
   for (const m of [...META, ...BARRACK_META, ...HERO_META]) save.meta[m.id] = 0;
   save.meta.heroClass = null;
-  save.meta.selectedTier = null;
+  save.meta.troops = {};
   save.meta.heroLevels = {};
   for (const c of HERO_CLASSES) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   writeSave();
