@@ -612,7 +612,7 @@ const CFG = {
 
 /* 병력 배치 상한(인구) — 코어 영구 강화 m_pop 으로 늘린다. 매 판 시작 시 코어로 사둔
    병력이 이 상한까지 자동 배치된다. 기본 5, 레벨당 +1, 최대 30. */
-const TROOP_POP = { base: 5, max: 30 };
+const TROOP_POP = { base: 5, max: 20 };
 const maxPopFor = lv => Math.min(TROOP_POP.max, TROOP_POP.base + lv);
 
 /* 병력 코어 구매 — 유닛을 한 기씩 코어로 산다. 단계가 높을수록 base 가 크고,
