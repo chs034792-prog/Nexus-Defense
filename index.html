@@ -3609,11 +3609,10 @@ function renderNexusInfo() {
 
 function forceAdminCores() {
   if (!DEV) return;
+  // 운영자 모드는 코어만 무제한으로 채운다.
+  // 예전엔 여기서 영웅 레벨을 1로 되돌렸는데, 메인 화면을 그릴 때마다 불려서
+  // 레벨을 올려도 메인에 다녀오면 1로 리셋되는 버그가 됐다. 레벨은 건드리지 않는다.
   save.cores = ADMIN_CORES; save.specialCores = 50000;
-  for (const c of HERO_CLASSES) {
-    if (!save.meta.heroLevels[c.id]) save.meta.heroLevels[c.id] = { xp: 0, level: 1, adv: null };
-    save.meta.heroLevels[c.id].level = 1;
-  }
 }
 
 function renderMenu() {
