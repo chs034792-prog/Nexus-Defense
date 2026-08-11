@@ -467,7 +467,7 @@
   </div>
 
   <div id="shopBarrack" style="display:none">
-    <p class="hint" style="margin-bottom:12px">유닛을 코어로 사서 모으면, 매 판 시작 시 인구 상한까지 자동 배치됩니다.</p>
+    <p class="hint" style="margin-bottom:12px">유닛을 코어로 구입해 보유하고, −/+ 로 이번 판에 내보낼 출정 병력을 정합니다. 출정 병력이 매 판 시작 시 배치됩니다.</p>
     <div id="barrackMetaList" style="width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px"></div>
   </div>
 
@@ -625,16 +625,21 @@ function troopDefById(unitId) {
   for (const t of TROOP_TIERS) { const u = t.units.find(x => x.id === unitId); if (u) return u; }
   return null;
 }
+// 보유 = 코어로 산 총량, 출정 = 그중 이번 판에 실제 배치할 수 (0 ~ 보유, 총합 ≤ 인구 상한)
 const troopOwned = id => (save.meta.troops && save.meta.troops[id]) || 0;
 const troopTotalOwned = () => Object.values(save.meta.troops || {}).reduce((a, b) => a + b, 0);
+const troopDeploy = id => (save.meta.deploy && save.meta.deploy[id]) || 0;
+const troopTotalDeploy = () => Object.values(save.meta.deploy || {}).reduce((a, b) => a + b, 0);
 function troopCoreBase(unitId) {
   const ti = troopTierIndex(unitId);
   return TROOP_CORE_BASE[ti] || TROOP_CORE_BASE[TROOP_CORE_BASE.length - 1];
 }
 // 다음 한 기 구입가 = base × (보유수+1)
 function troopCoreCost(unitId) { return troopCoreBase(unitId) * (troopOwned(unitId) + 1); }
-// 한 기 빼기 환불가 = 마지막에 낸 값 = base × 현재 보유수 (전액 환불)
-function troopRefund(unitId) { return troopCoreBase(unitId) * troopOwned(unitId); }
+function setTroopDeploy(id, n) {
+  if (!save.meta.deploy) save.meta.deploy = {};
+  if (n > 0) save.meta.deploy[id] = n; else delete save.meta.deploy[id];
+}
 
 // 영웅 강화 — 가진 영웅 전부의 공격력이 한꺼번에 오른다.
 // step 은 배수가 아니라 더하는 값이라 100 → 105 → 110 처럼 일정하게 오른다.
@@ -1377,10 +1382,17 @@ function loadSave() {
   for (const c of HERO_CLASSES) {
     if (!save.meta.heroLevels[c.id]) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   }
-  // 코어로 사둔 병력 보유 수 { 유닛id: 수 } — 해금 안 된 단계 유닛은 걸러낸다
+  // 코어로 사둔 병력 보유 수 { 유닛id: 수 } — 없는 유닛은 걸러낸다
   if (!save.meta.troops || typeof save.meta.troops !== 'object') save.meta.troops = {};
   for (const id of Object.keys(save.meta.troops)) {
     if (!troopDefById(id) || !(save.meta.troops[id] > 0)) delete save.meta.troops[id];
+  }
+  // 출정 구성 { 유닛id: 배치수 } — 보유 수를 넘지 않게 맞춘다
+  if (!save.meta.deploy || typeof save.meta.deploy !== 'object') save.meta.deploy = {};
+  for (const id of Object.keys(save.meta.deploy)) {
+    const owned = troopOwned(id);
+    if (!owned || !(save.meta.deploy[id] > 0)) delete save.meta.deploy[id];
+    else save.meta.deploy[id] = Math.min(save.meta.deploy[id], owned);
   }
   if (!Array.isArray(save.coupons)) save.coupons = [];
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
@@ -1444,6 +1456,14 @@ function importSave(code) {
   if (d.meta.troops && typeof d.meta.troops === 'object') {
     for (const [id, n] of Object.entries(d.meta.troops)) {
       if (troopDefById(id) && +n > 0) save.meta.troops[id] = Math.floor(+n);
+    }
+  }
+  // 출정 구성 복원 — 보유 수를 넘지 않게 자른다
+  save.meta.deploy = {};
+  if (d.meta.deploy && typeof d.meta.deploy === 'object') {
+    for (const [id, n] of Object.entries(d.meta.deploy)) {
+      const owned = save.meta.troops[id] || 0;
+      if (owned && +n > 0) save.meta.deploy[id] = Math.min(Math.floor(+n), owned);
     }
   }
   save.meta.heroLevels = {};
@@ -1574,11 +1594,12 @@ function newGame(startWave) {
   if (mlv('p_mech') > 0) {
     S.hasMechanic = true;      // 좌상단 작업공 표시 + 넥서스 수리(regen 에 이미 반영)
   }
-  // 코어로 사둔 병력을 인구 상한까지 자동 배치한다
-  for (const [id, cnt] of Object.entries(save.meta.troops)) {
+  // 출정 구성(save.meta.deploy)에 담긴 병력을 인구 상한까지 배치한다
+  for (const [id, cnt] of Object.entries(save.meta.deploy)) {
     const def = troopDefById(id);
     if (!def) continue;
-    for (let i = 0; i < cnt && S.heroes.length < S.maxPop; i++) placeTroop(def);
+    const n = Math.min(cnt, troopOwned(id));   // 보유 수를 넘지 않는다
+    for (let i = 0; i < n && S.heroes.length < S.maxPop; i++) placeTroop(def);
   }
   if (mlv('t_hero') > 0 && save.meta.heroClass) {
     const cls = heroClassById(save.meta.heroClass);
@@ -3558,7 +3579,6 @@ function renderBarrack() {
   $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
 
   const cap = maxPopFor(mlv('m_pop'));
-  const total = troopTotalOwned();
   const troopDmgBonus = mlv('troopDmg') * MSTEP.troopDmg;
 
   // 1) 인구 상한 + 병력 공격력 강화
@@ -3580,27 +3600,31 @@ function renderBarrack() {
     </div>`;
   }).join('');
 
-  // 2) 배치 요약
-  html += `<p class="hint" style="margin:12px 0 4px;color:${total >= cap ? '#ffb454' : '#6d7ba0'}">보유 병력 <b style="color:#e6ecff">${total}</b> / 최대 배치 <b style="color:#e6ecff">${cap}</b> — 매 판 시작 시 자동 배치됩니다.</p>`;
+  // 2) 출정 요약
+  const deployed = troopTotalDeploy();
+  html += `<p class="hint" style="margin:12px 0 4px;color:${deployed >= cap ? '#ffb454' : '#6d7ba0'}">출정 병력 <b style="color:#e6ecff">${deployed}</b> / 최대 배치 <b style="color:#e6ecff">${cap}</b> — −/+ 로 이번 판에 내보낼 구성을 정합니다.</p>`;
 
-  // 3) 유닛 구매 카드 — 단계·구분 없이 모든 병력을 한 목록으로
+  // 3) 유닛 카드 — 구입(+코어)은 보유를 늘리고, −/+ 는 출정 수를 조절한다
   {
-    const capFull = total >= cap;
     const allUnits = TROOP_TIERS.flatMap(t => t.units);
     html += allUnits.map(u => {
-        const owned = troopOwned(u.id), cost = troopCoreCost(u.id);
-        const buyOff = capFull || save.cores < cost;
+        const owned = troopOwned(u.id), dep = troopDeploy(u.id), cost = troopCoreCost(u.id);
+        const buyOff = save.cores < cost;
+        const upOff = dep >= owned || deployed >= cap;   // 보유 초과·인구 초과 불가
+        const downOff = dep <= 0;
         return `<div class="meta">
           <div class="info">
-            <div class="nm"><span style="color:${u.color}">${u.name}</span> <span style="color:#7b88a8;font-weight:400">${owned ? '×' + owned : ''}</span></div>
+            <div class="nm"><span style="color:${u.color}">${u.name}</span>
+              <span style="color:#7b88a8;font-weight:400">보유 ${owned} · 출정 <b style="color:#7fe7ff">${dep}</b></span></div>
             <div class="ds">공격력 ${u.dmg + troopDmgBonus} · 공속 ${u.rate} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}</div>
           </div>
-          <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
-            <button data-selltroop="${u.id}" ${owned ? '' : 'disabled'}
-              style="min-width:34px;padding:6px 0;font-size:16px;font-weight:700">−</button>
-            <button data-buytroop="${u.id}" ${buyOff ? 'disabled' : ''}>
-              ${capFull ? '<span class="cost">배치 초과</span>'
-                        : `<span class="cost">+${cost}</span><span class="unit">코어</span>`}
+          <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+            <button data-depdown="${u.id}" ${downOff ? 'disabled' : ''} title="출정 −1"
+              style="min-width:30px;padding:6px 0;font-size:16px;font-weight:700">−</button>
+            <button data-depup="${u.id}" ${upOff ? 'disabled' : ''} title="출정 +1"
+              style="min-width:30px;padding:6px 0;font-size:16px;font-weight:700">+</button>
+            <button data-buytroop="${u.id}" ${buyOff ? 'disabled' : ''} title="병력 구입 (보유 +1)">
+              <span class="cost">${cost}</span><span class="unit">코어</span>
             </button>
           </div>
         </div>`;
@@ -3621,28 +3645,36 @@ function renderBarrack() {
     };
   });
 
-  // 유닛 한 기 구매 (+)
+  // 병력 구입 — 보유 +1, 인구에 여유가 있으면 출정도 자동으로 +1
   $('barrackMetaList').querySelectorAll('button[data-buytroop]').forEach(el => {
     el.onclick = () => {
       const id = el.dataset.buytroop;
-      if (troopTotalOwned() >= maxPopFor(mlv('m_pop'))) return;
       const cost = troopCoreCost(id);
       if (save.cores < cost) return;
       save.cores -= cost;
       save.meta.troops[id] = troopOwned(id) + 1;
+      if (troopTotalDeploy() < maxPopFor(mlv('m_pop'))) setTroopDeploy(id, troopDeploy(id) + 1);
       writeSave(); renderBarrack();
     };
   });
 
-  // 유닛 한 기 빼기 (−) — 마지막 구입가를 전액 환불한다
-  $('barrackMetaList').querySelectorAll('button[data-selltroop]').forEach(el => {
+  // 출정 +1 — 보유 안에서, 인구 상한까지
+  $('barrackMetaList').querySelectorAll('button[data-depup]').forEach(el => {
     el.onclick = () => {
-      const id = el.dataset.selltroop;
-      const owned = troopOwned(id);
-      if (owned <= 0) return;
-      save.cores += troopRefund(id);
-      if (owned - 1 <= 0) delete save.meta.troops[id];
-      else save.meta.troops[id] = owned - 1;
+      const id = el.dataset.depup;
+      if (troopDeploy(id) >= troopOwned(id)) return;
+      if (troopTotalDeploy() >= maxPopFor(mlv('m_pop'))) return;
+      setTroopDeploy(id, troopDeploy(id) + 1);
+      writeSave(); renderBarrack();
+    };
+  });
+
+  // 출정 −1
+  $('barrackMetaList').querySelectorAll('button[data-depdown]').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.depdown;
+      if (troopDeploy(id) <= 0) return;
+      setTroopDeploy(id, troopDeploy(id) - 1);
       writeSave(); renderBarrack();
     };
   });
@@ -4317,6 +4349,7 @@ $('btnAdminResetMeta').onclick = () => {
   for (const m of [...META, ...BARRACK_META, ...HERO_META]) save.meta[m.id] = 0;
   save.meta.heroClass = null;
   save.meta.troops = {};
+  save.meta.deploy = {};
   save.meta.heroLevels = {};
   for (const c of HERO_CLASSES) save.meta.heroLevels[c.id] = { xp: 0, level: 1 };
   writeSave();
