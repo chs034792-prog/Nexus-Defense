@@ -1140,9 +1140,50 @@ const hpGrowthWave = w => {
   return w - z.from + 101;
 };
 
-// 산~태양 지역별 난이도 배율 — 산을 1로 놓고 지역마다 2배씩 올라간다.
-const ZONE_SCALE = { 산:1, 사막:2, 바다:4, 도시:8, 하늘:16, 지구:32, 달:64, 행성:128, 태양:256 };
+/* 산 이후 지역별 난이도 배율 — 산을 1로 놓고 지역마다 2배씩 올라간다.
+   태양까지만 적어두면 은하부터 배율이 1로 뚝 떨어져, 태양 보스보다 은하 보스가
+   4000배 약해지는 절벽이 생긴다. 마지막 지역까지 빠짐없이 채워 둔다. */
+const ZONE_SCALE = {
+  산:1, 사막:2, 바다:4, 도시:8, 하늘:16, 지구:32, 달:64, 행성:128, 태양:256,
+  은하:512, 성운:1024, 블랙홀:2048, '차원의 틈':4096, '혼돈의 바다':8192, '종말의 끝':16384,
+};
 const zoneScale = w => ZONE_SCALE[currentZone(w).name] || 1;
+
+// 티어가 10종인 지역(초원·숲)은 10웨이브마다, 그 뒤 지역은 20웨이브마다 보스가 나온다
+const bossInterval = w => (zoneTiers(w).length >= 10 ? 10 : 20);
+const isBossWave = w => w % bossInterval(w) === 0;
+
+// 1~100 웨이브 적 약화 — 체력과 공격력에 함께 걸린다
+const earlyMul = w => (w <= 50 ? 0.85 : w <= 100 ? 0.65 : 1);
+
+/* ── 보스 체력 ──────────────────────────────────────────────
+   보스 티어는 지역 안에서의 진행도라 지역이 바뀌면 1로 되돌아간다. 그런데
+   지역 안에서 오르는 폭(최대 31배)이 지역이 바뀔 때의 배율 상승(2~4배)보다
+   훨씬 커서, 지역 경계마다 보스가 오히려 약해졌다.
+   웨이브 순서대로 훑으며 직전 보스보다 낮아지는 구간만 끌어올린다. 이미
+   올라가고 있는 구간은 건드리지 않아 지역 마지막 보스 체력은 그대로다. */
+const BOSS_STEP = 1.05;          // 끌어올릴 때 최소한 이만큼은 세지게 한다
+
+function bossBaseHp(w) {
+  const z = currentZone(w);
+  const tier = (w - z.from + 1) / bossInterval(w);
+  return Math.round(BOSS_HP_BASE * Math.pow(tier, BOSS_HP_EXP)
+       * Math.pow(2, ZONES.indexOf(z)) * zoneScale(w)) * earlyMul(w) * hardMul(w);
+}
+
+const bossHpCache = new Map();
+let bossHpDone = 0, bossHpRun = 0;
+function bossHpAt(w) {
+  if (!bossHpCache.has(w)) {
+    for (let v = bossHpDone + 1; v <= w; v++) {
+      if (!isBossWave(v)) continue;
+      bossHpRun = Math.max(bossBaseHp(v), bossHpRun * BOSS_STEP);
+      bossHpCache.set(v, Math.round(bossHpRun));
+    }
+    bossHpDone = Math.max(bossHpDone, w);
+  }
+  return bossHpCache.get(w) ?? Math.round(bossBaseHp(w));
+}
 
 function buildWave(w) {
   const list = [];
@@ -1152,9 +1193,7 @@ function buildWave(w) {
   for (let i = 0; i < n; i++) {
     list.push(types[i % types.length]);
   }
-  const tiers = zoneTiers(w);
-  const bossInterval = tiers.length >= 10 ? 10 : 20;
-  if (w % bossInterval === 0) list.push('boss');
+  if (isBossWave(w)) list.push('boss');
   return list;
 }
 
@@ -1893,32 +1932,29 @@ function spawn(type) {
   if (!e) e = ze.t1;
   const a = Math.random() * Math.PI * 2;
   const d = 560;
-  const bi = zoneTiers(S.wave).length >= 10 ? 10 : 20;
+  const bi = bossInterval(S.wave);
   const baseRew = type === 'boss' ? (S.wave / bi) * 50 : e.rew;
   const zm = zoneScale(S.wave);
   if (type === 'boss') {
     const z = currentZone(S.wave);
-    const relWave = S.wave - z.from + 1;
-    const zoneTier = relWave / bi;
-    const zoneIdx = ZONES.indexOf(z);
-    const zoneBoost = Math.pow(2, zoneIdx);
-    const hp = Math.round(BOSS_HP_BASE * Math.pow(zoneTier, BOSS_HP_EXP) * zoneBoost * zm);
-    e = { ...e, hp, dmg: Math.round((15 + (zoneTier - 1) * 4) * zoneBoost * zm), atkRate: 1.0 };
+    const zoneTier = (S.wave - z.from + 1) / bi;
+    const zoneBoost = Math.pow(2, ZONES.indexOf(z));
+    e = { ...e, dmg: Math.round((15 + (zoneTier - 1) * 4) * zoneBoost * zm), atkRate: 1.0 };
   } else if (zm > 1) {
     e = { ...e, hp: e.hp * zm, dmg: e.dmg * zm };
   }
   // 1~50 웨이브 적 약화 (15%), 51~100 웨이브 적 약화 (35%)
-  if (S.wave <= 50) {
-    e = { ...e, hp: e.hp * 0.85, dmg: e.dmg * 0.85 };
-  } else if (S.wave <= 100) {
-    e = { ...e, hp: e.hp * 0.65, dmg: e.dmg * 0.65 };
-  }
+  const em = earlyMul(S.wave);
+  if (em < 1) e = { ...e, hp: e.hp * em, dmg: e.dmg * em };
   const hard = hardMul(S.wave);
   if (hard > 1) e = { ...e, dmg: e.dmg * hard };
   // 웨이브가 오를수록 적 체력을 지수적으로 올린다. 이게 없으면 스폰 간격이
   // 하한(0.24초)에 닿는 웨이브 97 이후로 난이도가 완전히 고정되어,
-  // 영구 강화가 쌓이는 순간 판이 끝나지 않는다. (보스는 자체 공식으로 이미 커진다)
-  const hp = (type === 'boss' ? e.hp : e.hp * Math.pow(ENEMY_HP_GROW, hpGrowthWave(S.wave))) * hard;
+  // 영구 강화가 쌓이는 순간 판이 끝나지 않는다.
+  // 보스 체력은 약화·난이도 배율까지 반영된 값을 bossHpAt() 이 그대로 돌려준다.
+  const hp = type === 'boss'
+    ? bossHpAt(S.wave)
+    : e.hp * Math.pow(ENEMY_HP_GROW, hpGrowthWave(S.wave)) * hard;
   S.enemies.push({
     type, def: e, x: CX + Math.cos(a) * d, y: CY + Math.sin(a) * d,
     hp, maxHp: hp, spd: e.spd,
