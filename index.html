@@ -1215,7 +1215,9 @@ const UP_COST_GROW = 1.15;
    피해는 중력파가 맡으므로 드론은 전투에 관여하지 않는다.
    비율로 두는 이유는 후반 웨이브에서 보상이 커져도 값이 죽지 않게 하기 위함이다. */
 const DRONE = { pct: 6, pctStep: 2, spd: 2.0, orbitR: 250, maxCount: 5 };
-const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1 };
+/* 중력파 범위 상한 — 필드가 960×720 이라 중심에서 위아래 끝까지가 360 이다.
+   상한을 두지 않으면 넥서스에 앉아서 화면 전체를 훑게 되므로 300 에서 멈춘다. */
+const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1, maxRange: 300 };
 
 const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
@@ -1271,11 +1273,11 @@ const NEXUS_UPS = [
     cost: lv => Math.floor(80 * Math.pow(UP_COST_GROW, lv)),
     cond: () => mlv('m_grav') > 0 && S && S.gravWave,
     apply: s => { s.gravWave.dmg += GRAV.dmgStep; } },
-  { id:'gravRng',  name:'중력파 범위',   desc:`중력파 범위 +${GRAV.rangeStep}`,
-    stat: () => S.gravWave ? `현재 ${S.gravWave.range}` : '',
+  { id:'gravRng',  name:'중력파 범위',   desc:`중력파 범위 +${GRAV.rangeStep} (최대 ${GRAV.maxRange})`,
+    stat: () => S.gravWave ? `현재 ${S.gravWave.range} / ${GRAV.maxRange}` : '',
     cost: lv => Math.floor(80 * Math.pow(UP_COST_GROW, lv)),
-    cond: () => mlv('m_grav') > 0 && S && S.gravWave,
-    apply: s => { s.gravWave.range += GRAV.rangeStep; } },
+    cond: () => mlv('m_grav') > 0 && S && S.gravWave && S.gravWave.range < GRAV.maxRange,
+    apply: s => { s.gravWave.range = Math.min(GRAV.maxRange, s.gravWave.range + GRAV.rangeStep); } },
 ];
 
 /* ── 메인 상점: 판이 끝나도 유지되는 영구 강화 ─────────── */
@@ -1285,10 +1287,13 @@ const NEXUS_UPS = [
 const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
   troopDmg: 4,
-  gravDmg: 4, gravRng: 10, droneCnt: 1,
+  gravDmg: 4, gravRng: 5, droneCnt: 1,
   droneDmg: 2,   // 이름은 예전 그대로지만 이제 드론 1기당 골드 회수 % 증가폭이다
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
+
+// 영구 강화 레벨로 정해지는 중력파 시작 범위 — 상한을 넘지 않는다
+const gravRangeFor = lv => Math.min(GRAV.maxRange, GRAV.range + lv * MSTEP.gravRng);
 
 const META = [
   { id:'fund',  name:'초기 자금',       max:Infinity, base:30,
@@ -1312,9 +1317,11 @@ const META = [
   { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50, special:true,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 피해 +${num(lv * MSTEP.gravDmg)} (현재 +${num(lv * MSTEP.gravDmg)})` },
-  { id:'m_gravRng', name:'중력파 범위',   max:Infinity, base:60, special:true,
+  // 상한(GRAV.maxRange)에 정확히 닿는 레벨에서 멈춘다
+  { id:'m_gravRng', name:'중력파 범위',
+    max: Math.floor((GRAV.maxRange - GRAV.range) / MSTEP.gravRng), base:60, special:true,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
-    desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 +${num(lv * MSTEP.gravRng)})` },
+    desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 ${gravRangeFor(lv)} / 최대 ${GRAV.maxRange})` },
   { id:'m_drone', name:'채굴 드론 해금',   max:1, base:4000, special:true,
     desc: lv => lv ? '매 판 시작 시 채굴 드론 1기 자동 배치' : '적 처치 시 골드를 더 회수하는 드론 1기로 시작한다' },
   { id:'m_droneCnt', name:'드론 추가',    max:DRONE.maxCount - 1, base:80, special:true,
@@ -1596,7 +1603,7 @@ function newGame(startWave) {
   if (mlv('m_grav') > 0) {
     S.gravWave = {
       dmg: GRAV.dmg + mlv('m_gravDmg') * MSTEP.gravDmg,
-      range: GRAV.range + mlv('m_gravRng') * MSTEP.gravRng,
+      range: gravRangeFor(mlv('m_gravRng')),
       ang: 0,
     };
   }
@@ -1657,6 +1664,8 @@ function resumeGame(snap) {
     delete S.drone.dmg; delete S.drone.cds;
   }
   S.gravWave = snap.gravWave ?? null;
+  // 상한을 두기 전에 저장된 판은 범위가 더 넓을 수 있다
+  if (S.gravWave) S.gravWave.range = Math.min(GRAV.maxRange, S.gravWave.range);
   S.dmgMul = snap.dmgMul ?? 1;
   S.goldMul = snap.goldMul ?? 1;
   S.incomeMul = snap.incomeMul ?? 1;
