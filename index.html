@@ -627,11 +627,14 @@ function troopDefById(unitId) {
 }
 const troopOwned = id => (save.meta.troops && save.meta.troops[id]) || 0;
 const troopTotalOwned = () => Object.values(save.meta.troops || {}).reduce((a, b) => a + b, 0);
-function troopCoreCost(unitId) {
+function troopCoreBase(unitId) {
   const ti = troopTierIndex(unitId);
-  const base = TROOP_CORE_BASE[ti] || TROOP_CORE_BASE[TROOP_CORE_BASE.length - 1];
-  return base * (troopOwned(unitId) + 1);
+  return TROOP_CORE_BASE[ti] || TROOP_CORE_BASE[TROOP_CORE_BASE.length - 1];
 }
+// 다음 한 기 구입가 = base × (보유수+1)
+function troopCoreCost(unitId) { return troopCoreBase(unitId) * (troopOwned(unitId) + 1); }
+// 한 기 빼기 환불가 = 마지막에 낸 값 = base × 현재 보유수 (전액 환불)
+function troopRefund(unitId) { return troopCoreBase(unitId) * troopOwned(unitId); }
 
 // 영웅 강화 — 가진 영웅 전부의 공격력이 한꺼번에 오른다.
 // step 은 배수가 아니라 더하는 값이라 100 → 105 → 110 처럼 일정하게 오른다.
@@ -3586,16 +3589,20 @@ function renderBarrack() {
     const allUnits = TROOP_TIERS.flatMap(t => t.units);
     html += allUnits.map(u => {
         const owned = troopOwned(u.id), cost = troopCoreCost(u.id);
-        const off = capFull || save.cores < cost;
+        const buyOff = capFull || save.cores < cost;
         return `<div class="meta">
           <div class="info">
             <div class="nm"><span style="color:${u.color}">${u.name}</span> <span style="color:#7b88a8;font-weight:400">${owned ? '×' + owned : ''}</span></div>
             <div class="ds">공격력 ${u.dmg + troopDmgBonus} · 공속 ${u.rate} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}</div>
           </div>
-          <button data-buytroop="${u.id}" ${off ? 'disabled' : ''}>
-            ${capFull ? '<span class="cost">배치 초과</span>'
-                      : `<span class="cost">${cost}</span><span class="unit">코어</span>`}
-          </button>
+          <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+            <button data-selltroop="${u.id}" ${owned ? '' : 'disabled'}
+              style="min-width:34px;padding:6px 0;font-size:16px;font-weight:700">−</button>
+            <button data-buytroop="${u.id}" ${buyOff ? 'disabled' : ''}>
+              ${capFull ? '<span class="cost">배치 초과</span>'
+                        : `<span class="cost">+${cost}</span><span class="unit">코어</span>`}
+            </button>
+          </div>
         </div>`;
       }).join('');
   }
@@ -3614,7 +3621,7 @@ function renderBarrack() {
     };
   });
 
-  // 유닛 보유 수 구매
+  // 유닛 한 기 구매 (+)
   $('barrackMetaList').querySelectorAll('button[data-buytroop]').forEach(el => {
     el.onclick = () => {
       const id = el.dataset.buytroop;
@@ -3623,6 +3630,19 @@ function renderBarrack() {
       if (save.cores < cost) return;
       save.cores -= cost;
       save.meta.troops[id] = troopOwned(id) + 1;
+      writeSave(); renderBarrack();
+    };
+  });
+
+  // 유닛 한 기 빼기 (−) — 마지막 구입가를 전액 환불한다
+  $('barrackMetaList').querySelectorAll('button[data-selltroop]').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.selltroop;
+      const owned = troopOwned(id);
+      if (owned <= 0) return;
+      save.cores += troopRefund(id);
+      if (owned - 1 <= 0) delete save.meta.troops[id];
+      else save.meta.troops[id] = owned - 1;
       writeSave(); renderBarrack();
     };
   });
