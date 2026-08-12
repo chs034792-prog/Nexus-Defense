@@ -617,7 +617,7 @@ const maxPopFor = lv => Math.min(TROOP_POP.max, TROOP_POP.base + lv);
 
 /* 병력 코어 구매 — 유닛을 한 기씩 코어로 산다. 값은 TROOP_TIERS 순서의 단계별 고정가.
    지상 I·II·III → 기갑 I·II·III → 공중 I·II·III */
-const TROOP_CORE_BASE = [600, 3000, 8500, 7000, 14000, 28000, 54000, 100000, 180000];
+const TROOP_CORE_BASE = [600, 3000, 8500, 14000, 14000, 28000, 54000, 100000, 180000];
 function troopTierIndex(unitId) {
   return TROOP_TIERS.findIndex(t => t.units.some(u => u.id === unitId));
 }
@@ -818,17 +818,17 @@ const GROUND_UNITS = [
 const MECH_UNITS = [
   // 기갑병력 I
   { id:'tank', name:'전차', cost:480, color:'#78909c', accent:'#b0bec5',
-    dmg:16, range:150, rate:0.6, bspd:360, spd:55, splash:60, slow:0, slowT:0,
-    roam:200, mech:true,
+    dmg:500, range:150, rate:0.6, bspd:360, spd:55, splash:60, slow:0, slowT:0,
+    roam:200, mech:true, dmgStep:25,
     desc:'광역 포격으로 뭉친 적을 쓸어낸다' },
   { id:'railgun', name:'레일건', cost:600, color:'#00bcd4', accent:'#80deea',
-    dmg:28, range:280, rate:0.5, bspd:1200, spd:0, splash:0, slow:0.3, slowT:1.5,
-    hold:true, mech:true, pierce:3,
+    dmg:400, range:280, rate:1.0, bspd:1200, spd:0, splash:0, slow:0.3, slowT:1.5,
+    hold:true, mech:true, pierce:3, dmgStep:20,
     desc:'관통탄이 적을 꿰뚫어 최대 3체 적중' },
   { id:'artillery', name:'자주포', cost:720, color:'#ef6c00', accent:'#ffcc80',
-    dmg:48, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
-    hold:true, mech:true,
-    desc:'초장거리 포격, 넓은 폭발 반경' },
+    dmg:250, range:320, rate:0.25, bspd:500, spd:0, splash:90, slow:0, slowT:0,
+    hold:true, mech:true, dmgStep:10, multi:3,
+    desc:'초장거리 포격, 한 번에 최대 3곳을 동시 포격' },
   // 기갑병력 II
   { id:'assaultTank', name:'강습전차', cost:1280, color:'#78909c', accent:'#b0bec5',
     dmg:38, range:170, rate:0.65, bspd:400, spd:65, splash:70, slow:0, slowT:0,
@@ -2331,8 +2331,14 @@ function update(dt) {
         if (h.def.air) opts.air = true;
         if (h.def.pierce) { opts.pierce = h.def.pierce; }
         if (h.def.stunChance) { opts.stunChance = h.def.stunChance; opts.stunDur = h.def.stunDur; }
-        fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent,
-             Object.keys(opts).length ? opts : undefined);
+        const o = Object.keys(opts).length ? opts : undefined;
+        // multi 가 있으면 한 번에 여러 적을 동시에 노린다 (자주포 등)
+        const tgs = h.def.multi > 1
+          ? pickTargets(h.x, h.y, st.range, h.def.multi)
+          : [inRange];
+        for (const tg of tgs) {
+          fire(h, tg, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent, o);
+        }
       }
     }
 
@@ -3645,7 +3651,9 @@ function renderBarrack() {
             <div class="ds">공격력 ${u.dmg + troopDmgBonusFor(u, troopLv)} <span style="color:#6d7ba0">(강화 +${troopDmgStep(u)}/Lv)</span> · 공속 ${num(troopRateFor(u, troopLv))}${
               troopRateStep(u) ? ` <span style="color:#6d7ba0">(강화 +${troopRateStep(u)}/Lv)</span>` : ''} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}${
               u.aura ? ` · 오라 ${troopAuraDmg(u, troopLv)}/초${troopAuraStep(u) ? ` <span style="color:#6d7ba0">(강화 +${troopAuraStep(u)}/Lv)</span>` : ''}` : ''}${
-              u.stunChance ? ` · <span style="color:#ffe066">${Math.round(u.stunChance*100)}% 기절 ${u.stunDur}초</span>` : ''}</div>
+              u.stunChance ? ` · <span style="color:#ffe066">${Math.round(u.stunChance*100)}% 기절 ${u.stunDur}초</span>` : ''}${
+              u.pierce ? ` · <span style="color:#80deea">관통 ${u.pierce}체</span>` : ''}${
+              u.multi > 1 ? ` · <span style="color:#ffcc80">동시 ${u.multi}표적</span>` : ''}</div>
           </div>
           <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
             <button data-depdown="${u.id}" ${downOff ? 'disabled' : ''} title="출정 −1"
