@@ -795,18 +795,19 @@ const GROUND_UNITS = [
     desc:'버퍼보다 강한 감속과 지속 피해 오라를 두른다' },
   // 지상병력 III — 궁극 형태
   { id:'paladin', name:'팔라딘', cost:1680, color:'#4ade80', accent:'#a7f3d0',
-    dmg:28, range:100, rate:1.7, bspd:520, spd:160, splash:20, slow:0, slowT:0,
-    roam:300,
+    dmg:250, range:100, rate:1.7, bspd:520, spd:160, splash:20, slow:0, slowT:0,
+    roam:300, dmgStep:15,
     desc:'성스러운 힘으로 주변까지 함께 베어내는 지상 최강 전투원' },
   { id:'bowmaster', name:'보우마스터', cost:2240, color:'#f472b6', accent:'#fbcfe8',
-    dmg:128, range:320, rate:0.6, bspd:1000, spd:120, splash:0, slow:0, slowT:0,
-    roam:310,
-    desc:'초장거리에서 강력한 일격을 꽂아 넣는 궁술의 달인' },
+    dmg:128, range:320, rate:2.0, bspd:1000, spd:120, splash:0, slow:0, slowT:0,
+    roam:310, dmgStep:7, rateStep:0.05,
+    desc:'초장거리에서 강력한 일격을 빠르게 퍼붓는 궁술의 달인' },
   { id:'witchdoctor', name:'주술사', cost:1680, color:'#38bdf8', accent:'#bae6fd',
-    dmg:13, range:100, rate:1.4, bspd:480, spd:140, splash:0, slow:0.6, slowT:3.0,
-    roam:300,
+    dmg:100, range:100, rate:1.4, bspd:480, spd:140, splash:0, slow:0.6, slowT:3.0,
+    roam:300, dmgStep:13,
+    stunChance:0.2, stunDur:0.7,
     aura:true, auraDmg:15, auraRange:120,
-    desc:'강력한 저주로 적을 묶고 광역에 저주의 피해를 흩뿌린다' },
+    desc:'저주로 적을 묶고, 20% 확률로 0.7초 기절시킨다' },
   { id:'mechanic', name:'작업공', cost:400, color:'#fbbf24', accent:'#fde68a',
     dmg:0, range:0, rate:0, bspd:0, spd:100, splash:0, slow:0, slowT:0,
     hold:true, unique:true, noCombat:true,
@@ -1298,6 +1299,9 @@ const troopDmgBonusFor = (def, lv) => lv * troopDmgStep(def);
 // 오라(초당 피해)도 강화를 타는 유닛이 있다 — auraDmgStep 이 없으면 고정값 그대로
 const troopAuraStep = def => def.auraDmgStep ?? 0;
 const troopAuraDmg = (def, lv) => def.auraDmg + lv * troopAuraStep(def);
+// 보우마스터처럼 공속까지 강화를 타는 유닛 — rateStep 이 없으면 고정
+const troopRateStep = def => def.rateStep ?? 0;
+const troopRateFor = (def, lv) => def.rate + lv * troopRateStep(def);
 
 const META = [
   { id:'fund',  name:'초기 자금',       max:Infinity, base:30,
@@ -1707,7 +1711,7 @@ const isHeroClass = def => !!def.heroClass;
 const heroStat = h => ({
   dmg:   isTroop(h.def) ? h.def.dmg + troopDmgBonusFor(h.def, S.troopLv) : h.def.dmg * S.dmgMul,
   range: h.def.range,
-  rate:  h.def.rate,
+  rate:  isTroop(h.def) ? troopRateFor(h.def, S.troopLv) : h.def.rate,
 });
 
 function summonHero(cls) {
@@ -2123,8 +2127,17 @@ function fire(from, target, dmg, bspd, splash, slow, slowT, color, opts) {
     if (opts.energyBolt) b.energyBolt = true;
     if (opts.arrow) b.arrow = true;
     if (opts.magicBolt) b.magicBolt = true;
+    if (opts.stunChance) { b.stunChance = opts.stunChance; b.stunDur = opts.stunDur; }
   }
   S.bullets.push(b);
+}
+
+/* 명중한 적을 확률로 기절시킨다 — 이미 기절 중이면 남은 시간을 늘리지 않고 둔다 */
+function tryStun(e, b) {
+  if (!b.stunChance || e.dead) return;
+  if (Math.random() >= b.stunChance) return;
+  e.stunT = Math.max(e.stunT || 0, b.stunDur);
+  addText(e.x, e.y - 18, '기절', '#ffe066');
 }
 
 function update(dt) {
@@ -2317,6 +2330,7 @@ function update(dt) {
         if (h.def.mech) opts.mech = true;
         if (h.def.air) opts.air = true;
         if (h.def.pierce) { opts.pierce = h.def.pierce; }
+        if (h.def.stunChance) { opts.stunChance = h.def.stunChance; opts.stunDur = h.def.stunDur; }
         fire(h, inRange, st.dmg, h.def.bspd, h.def.splash, h.def.slow, h.def.slowT, h.def.accent,
              Object.keys(opts).length ? opts : undefined);
       }
@@ -2619,6 +2633,7 @@ function update(dt) {
         if (e.dead || b.pierced.has(e)) continue;
         if (dist(b.x, b.y, e.x, e.y) <= e.def.r + 6) {
           damage(e, b.dmg, b.slow, b.slowT);
+          tryStun(e, b);
           b.pierced.add(e);
           burst(b.x, b.y, b.color, 6);
           if (b.pierced.size >= b.pierce) { b.gone = true; break; }
@@ -2641,12 +2656,14 @@ function update(dt) {
           if (dd <= b.splash + e.def.r) {
             const falloff = 1 - 0.5 * (dd / (b.splash + e.def.r));
             damage(e, b.dmg * falloff, b.slow, b.slowT);
+            tryStun(e, b);
           }
         }
         ring(tg.x, tg.y, b.splash, b.color);
         if (b.mech) burst(tg.x, tg.y, b.color, 18);
       } else {
         damage(tg, b.dmg, b.slow, b.slowT);
+        tryStun(tg, b);
       }
     } else {
       b.x += dx / d * step;
@@ -3625,8 +3642,10 @@ function renderBarrack() {
           <div class="info">
             <div class="nm"><span style="color:${u.color}">${u.name}</span>
               <span style="color:#7b88a8;font-weight:400">선택 <b style="color:#7fe7ff">${dep}</b>/${owned}</span></div>
-            <div class="ds">공격력 ${u.dmg + troopDmgBonusFor(u, troopLv)} <span style="color:#6d7ba0">(강화 +${troopDmgStep(u)}/Lv)</span> · 공속 ${u.rate} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}${
-              u.aura ? ` · 오라 ${troopAuraDmg(u, troopLv)}/초${troopAuraStep(u) ? ` <span style="color:#6d7ba0">(강화 +${troopAuraStep(u)}/Lv)</span>` : ''}` : ''}</div>
+            <div class="ds">공격력 ${u.dmg + troopDmgBonusFor(u, troopLv)} <span style="color:#6d7ba0">(강화 +${troopDmgStep(u)}/Lv)</span> · 공속 ${num(troopRateFor(u, troopLv))}${
+              troopRateStep(u) ? ` <span style="color:#6d7ba0">(강화 +${troopRateStep(u)}/Lv)</span>` : ''} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}${
+              u.aura ? ` · 오라 ${troopAuraDmg(u, troopLv)}/초${troopAuraStep(u) ? ` <span style="color:#6d7ba0">(강화 +${troopAuraStep(u)}/Lv)</span>` : ''}` : ''}${
+              u.stunChance ? ` · <span style="color:#ffe066">${Math.round(u.stunChance*100)}% 기절 ${u.stunDur}초</span>` : ''}</div>
           </div>
           <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
             <button data-depdown="${u.id}" ${downOff ? 'disabled' : ''} title="출정 −1"
