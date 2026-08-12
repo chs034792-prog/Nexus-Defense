@@ -617,7 +617,7 @@ const maxPopFor = lv => Math.min(TROOP_POP.max, TROOP_POP.base + lv);
 
 /* 병력 코어 구매 — 유닛을 한 기씩 코어로 산다. 값은 TROOP_TIERS 순서의 단계별 고정가.
    지상 I·II·III → 기갑 I·II·III → 공중 I·II·III */
-const TROOP_CORE_BASE = [600, 3000, 8500, 14000, 14000, 28000, 54000, 100000, 180000];
+const TROOP_CORE_BASE = [600, 3000, 8500, 14000, 25000, 54000, 100000, 200000, 300000];
 function troopTierIndex(unitId) {
   return TROOP_TIERS.findIndex(t => t.units.some(u => u.id === unitId));
 }
