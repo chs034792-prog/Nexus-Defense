@@ -634,8 +634,8 @@ function troopCoreBase(unitId) {
   const ti = troopTierIndex(unitId);
   return TROOP_CORE_BASE[ti] || TROOP_CORE_BASE[TROOP_CORE_BASE.length - 1];
 }
-// 다음 한 기 구입가 = base × (보유수+1)
-function troopCoreCost(unitId) { return troopCoreBase(unitId) * (troopOwned(unitId) + 1); }
+// 한 기 구입가 — 보유 수와 무관하게 고정
+function troopCoreCost(unitId) { return troopCoreBase(unitId); }
 function setTroopDeploy(id, n) {
   if (!save.meta.deploy) save.meta.deploy = {};
   if (n > 0) save.meta.deploy[id] = n; else delete save.meta.deploy[id];
