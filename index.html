@@ -739,28 +739,48 @@ function heroXpToNext(lv) {
 const HERO_MAX_SPD = 600;
 const HERO_MAX_SPD_ADV = 1000;
 const HERO_MAX_RATE = 12;
+/* 전직(2차) 이후 이동속도·공속의 시작값과 상한. 상한은 여기서만 정한다. */
+const ADV_STATS = {
+  warrior: { baseSpd:600, spdPerLv:1.5, maxSpd:1000, baseRate:4.0, maxRate:8.0 },
+  archer:  { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:9.0, maxRate:15.0 },
+  mage:    { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:2.0, maxRate:5.0 },
+};
+const ADV_LV = 100;              // 전직 레벨
+const ADV_GROWTH_MUL = 2;        // 전직 후 레벨당 증가량 배율
+const ADV_START_BOOST = 1.15;    // 전직 순간 직전 능력치보다 이만큼 올려서 시작
+
 function heroStatScaled(cls, lv, adv) {
-  const l = lv - 1;
-  const ADV_STATS = {
-    warrior: { baseSpd:600, spdPerLv:1.5, maxSpd:1000, baseRate:4.0, maxRate:8.0 },
-    archer:  { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:9.0, maxRate:15.0 },
-    mage:    { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:2.0, maxRate:5.0 },
-  };
-  let spd, rate;
-  if (adv && lv >= 100) {
-    const as = ADV_STATS[cls.id];
-    const advLv = lv - 100;
-    spd = Math.min(as.baseSpd + as.spdPerLv * advLv, as.maxSpd);
-    rate = Math.min(as.baseRate + (cls.ratePerLv || 0) * advLv + (adv.bonusRate || 0), as.maxRate);
-  } else {
-    spd = Math.min(cls.spd + (cls.spdPerLv || 0) * l, HERO_MAX_SPD);
-    rate = Math.min(cls.rate + (cls.ratePerLv || 0) * l + (adv ? (adv.bonusRate || 0) : 0), HERO_MAX_RATE);
+  const advanced = !!adv && lv >= ADV_LV;
+
+  // 전직 전 — 기존 성장 그대로
+  if (!advanced) {
+    const l = lv - 1;
+    return {
+      dmg:  cls.dmg + (cls.dmgPerLv || 0) * l + (adv ? (adv.bonusDmg || 0) : 0),
+      rate: Math.min(cls.rate + (cls.ratePerLv || 0) * l + (adv ? (adv.bonusRate || 0) : 0), HERO_MAX_RATE),
+      spd:  Math.min(cls.spd + (cls.spdPerLv || 0) * l, HERO_MAX_SPD),
+      splash: (cls.splash || 0) + (adv ? (adv.bonusSplash || 0) : 0),
+    };
   }
+
+  /* 전직 후 — 전직 직전(ADV_LV-1 레벨) 능력치를 기준으로 조금 더 올려 시작하고,
+     레벨당 증가량은 두 배로 간다. 상한(ADV_STATS)은 그대로 지킨다. */
+  const as = ADV_STATS[cls.id];
+  const advLv = lv - ADV_LV;
+  const preL = ADV_LV - 2;                       // 전직 직전 레벨의 (lv-1)
+  const preDmg  = cls.dmg + (cls.dmgPerLv || 0) * preL;
+  const preRate = Math.min(cls.rate + (cls.ratePerLv || 0) * preL, HERO_MAX_RATE);
+  const preSpd  = Math.min(cls.spd + (cls.spdPerLv || 0) * preL, HERO_MAX_SPD);
+
+  const startDmg  = Math.round(preDmg * ADV_START_BOOST) + (adv.bonusDmg || 0);
+  const startRate = Math.max(as.baseRate, preRate * ADV_START_BOOST) + (adv.bonusRate || 0);
+  const startSpd  = Math.max(as.baseSpd,  preSpd  * ADV_START_BOOST);
+
   return {
-    dmg: cls.dmg + (cls.dmgPerLv || 0) * l + (adv ? (adv.bonusDmg || 0) : 0),
-    rate,
-    spd,
-    splash: (cls.splash || 0) + (adv ? (adv.bonusSplash || 0) : 0),
+    dmg:  startDmg + (cls.dmgPerLv || 0) * ADV_GROWTH_MUL * advLv,
+    rate: Math.min(startRate + (cls.ratePerLv || 0) * ADV_GROWTH_MUL * advLv, as.maxRate),
+    spd:  Math.min(startSpd + as.spdPerLv * ADV_GROWTH_MUL * advLv, as.maxSpd),
+    splash: (cls.splash || 0) + (adv.bonusSplash || 0),
   };
 }
 
