@@ -768,15 +768,15 @@ const GROUND_UNITS = [
   // 지상병력 I
   { id:'swordsman', name:'검사', cost:200, color:'#4ade80', accent:'#a7f3d0',
     dmg:6, range:80, rate:1.5, bspd:480, spd:132, splash:0, slow:0, slowT:0,
-    roam:265,
+    roam:265, dmgStep:4,
     desc:'발이 빠르고 범용적인 지상 전투원' },
   { id:'g_sniper', name:'저격수', cost:300, color:'#f472b6', accent:'#fbcfe8',
-    dmg:38, range:265, rate:0.45, bspd:900, spd:92, splash:0, slow:0, slowT:0,
-    hold:true,
-    desc:'먼 적을 정확히 저격한다' },
+    dmg:38, range:265, rate:0.25, bspd:900, spd:92, splash:0, slow:0, slowT:0,
+    hold:true, dmgStep:8,
+    desc:'느리지만 먼 적을 강하게 저격한다' },
   { id:'buffer', name:'버퍼', cost:300, color:'#38bdf8', accent:'#bae6fd',
     dmg:3, range:80, rate:1.2, bspd:400, spd:120, splash:0, slow:0.4, slowT:2.0,
-    roam:265,
+    roam:265, dmgStep:2,
     aura:true, auraDmg:8, auraRange:80,
     desc:'적을 느리게 하고 주변에 지속 피해를 준다' },
   // 지상병력 II — 검사/저격수/버퍼가 더 강해지며 이름이 바뀐다
@@ -1280,7 +1280,7 @@ const NEXUS_UPS = [
    값을 고치면 상점 표시·새 판 스탯·넥서스 정보가 함께 따라온다. */
 const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
-  troopDmg: 4,
+  troopDmg: 4,   // 유닛 정의에 dmgStep 이 없을 때 쓰는 기본 증가폭
   gravDmg: 4, gravRng: 5,
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
@@ -1290,6 +1290,11 @@ const gravRangeFor = lv => Math.min(GRAV.maxRange, GRAV.range + lv * MSTEP.gravR
 
 // 작업공 배치 레벨(p_mech)로 정해지는 넥서스 초당 수리량 — Lv0 이면 0
 const repairAmt = lv => lv > 0 ? REPAIR.base + (lv - 1) * REPAIR.step : 0;
+
+/* 병력 영구 강화는 유닛마다 오르는 폭이 다르다(저격수처럼 한 방이 큰 유닛은 크게,
+   버퍼처럼 보조인 유닛은 작게). 정의에 dmgStep 이 없으면 기본값을 쓴다. */
+const troopDmgStep = def => def.dmgStep ?? MSTEP.troopDmg;
+const troopDmgBonusFor = (def, lv) => lv * troopDmgStep(def);
 
 const META = [
   { id:'fund',  name:'초기 자금',       max:Infinity, base:30,
@@ -1338,7 +1343,7 @@ const BARRACK_META = [
   { id:'m_pop', name:'병력 최대 배치 (인구)', max: TROOP_POP.max - TROOP_POP.base, base:1200,
     desc: lv => `병력을 ${maxPopFor(lv)}기까지 배치 (기본 ${TROOP_POP.base} · 최대 ${TROOP_POP.max})` },
   { id:'troopDmg', name:'병력 영구 강화', max:Infinity, base:70,
-    desc: lv => `병력 공격력 +${num(lv * MSTEP.troopDmg)} (현재 +${num(lv * MSTEP.troopDmg)})` },
+    desc: lv => `모든 병력 공격력 상승 — 증가폭은 유닛마다 다르다 (현재 Lv.${lv})` },
 ];
 
 const HERO_META = [
@@ -1498,7 +1503,7 @@ function saveRun() {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired,
     nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
-    maxPop: S.maxPop, heroUpLv: S.heroUpLv, troopDmgAdd: S.troopDmgAdd,
+    maxPop: S.maxPop, heroUpLv: S.heroUpLv, troopLv: S.troopLv,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
     nexusLv: S.nexusLv,
     heroes: S.heroes.map(h => ({ id: h.def.id, invested: h.invested, homeAng: h.homeAng, fromCore: h.fromCore })),
@@ -1578,7 +1583,7 @@ function newGame(startWave) {
     autoSkill: true,                       // 스킬 자동 발동
     maxPop: maxPopFor(mlv('m_pop')),     // 병력 배치 상한 (코어 영구 강화)
     heroUpLv: 0,                         // 영웅 강화 횟수
-    troopDmgAdd: mlv('troopDmg') * MSTEP.troopDmg,
+    troopLv: mlv('troopDmg'),            // 병력 영구 강화 레벨 (증가폭은 유닛마다 다름)
     nexusEvolved: false, nexusShield: 0, allyAtkBuff: 0,
     hasMechanic: false,
     gravWave: null,
@@ -1641,7 +1646,7 @@ function resumeGame(snap) {
   S.incomeMul = snap.incomeMul ?? 1;
   S.maxPop = snap.maxPop ?? maxPopFor(mlv('m_pop'));
   S.heroUpLv = snap.heroUpLv ?? 0;
-  S.troopDmgAdd = snap.troopDmgAdd ?? (mlv('troopDmg') * MSTEP.troopDmg);
+  S.troopLv = snap.troopLv ?? mlv('troopDmg');
   Object.assign(S.nexus, snap.nexus);
   Object.assign(S.nexusLv, snap.nexusLv);
   S.heroes = (snap.heroes || []).filter(h => defById(h.id)).map(h => {
@@ -1697,7 +1702,7 @@ const heroBlocked = def => CFG.heroesLocked || popFull() ||
 
 const isHeroClass = def => !!def.heroClass;
 const heroStat = h => ({
-  dmg:   isTroop(h.def) ? h.def.dmg + S.troopDmgAdd : h.def.dmg * S.dmgMul,
+  dmg:   isTroop(h.def) ? h.def.dmg + troopDmgBonusFor(h.def, S.troopLv) : h.def.dmg * S.dmgMul,
   range: h.def.range,
   rate:  h.def.rate,
 });
@@ -3579,7 +3584,7 @@ function renderBarrack() {
   $('sCores').textContent = save.cores; $('sSpecial').textContent = save.specialCores;
 
   const cap = maxPopFor(mlv('m_pop'));
-  const troopDmgBonus = mlv('troopDmg') * MSTEP.troopDmg;
+  const troopLv = mlv('troopDmg');
 
   // 1) 인구 상한 + 병력 공격력 강화
   let html = BARRACK_META.map(m => {
@@ -3616,7 +3621,7 @@ function renderBarrack() {
           <div class="info">
             <div class="nm"><span style="color:${u.color}">${u.name}</span>
               <span style="color:#7b88a8;font-weight:400">선택 <b style="color:#7fe7ff">${dep}</b>/${owned}</span></div>
-            <div class="ds">공격력 ${u.dmg + troopDmgBonus} · 공속 ${u.rate} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}</div>
+            <div class="ds">공격력 ${u.dmg + troopDmgBonusFor(u, troopLv)} <span style="color:#6d7ba0">(강화 +${troopDmgStep(u)}/Lv)</span> · 공속 ${u.rate} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}</div>
           </div>
           <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
             <button data-depdown="${u.id}" ${downOff ? 'disabled' : ''} title="출정 −1"
