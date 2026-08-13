@@ -172,7 +172,7 @@
   #stage {
     position: relative; flex-shrink: 0;
     aspect-ratio: 960 / 720;
-    --reserve: 300px;                       /* 패널·여백으로 남겨둘 세로 공간 */
+    --reserve: 240px;                       /* 패널·여백으로 남겨둘 세로 공간 */
     width: min(100%, 1100px, calc((100vh - var(--reserve)) * 4 / 3));
     width: min(100%, 1100px, calc((100dvh - var(--reserve)) * 4 / 3));
   }
@@ -254,11 +254,16 @@
 
   /* 캔버스가 쓰고 남은 세로 공간을 전부 차지한다.
      min-height:0 이 없으면 flex 항목이 내용 높이 밑으로 줄지 못해 스크롤이 죽는다. */
+  /* 전장이 가로폭에 걸려 더 커지지 못하므로, 남는 세로 공간은 패널이 끝까지
+     채운다. 높이 상한을 두면 그만큼 화면 아래가 빈 채로 남는다. */
   #panel {
     width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 8px;
-    flex: 1 1 auto; min-height: 150px; overflow-y: auto; padding-right: 6px; margin-top: 6px;
-    /* 화면을 너무 많이 먹지 않게 상한을 둔다 — 그만큼 전장이 넓게 보인다 */
-    max-height: 38vh; max-height: 38dvh;
+    flex: 1 1 auto; min-height: 0; overflow: hidden; padding-right: 6px; margin-top: 6px;
+  }
+  /* 강화 목록이 든 첫 상자가 남은 높이를 차지하고, 넘치면 그 안에서만 스크롤한다 */
+  #panel > .box:first-of-type {
+    flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    overflow-y: auto;
   }
   #panel::-webkit-scrollbar { width: 6px; }
   #panel::-webkit-scrollbar-thumb { background: #2b3550; border-radius: 3px; }
