@@ -1314,7 +1314,7 @@ const UP_COST_GROW = 1.15;
 const REPAIR = { base: 5, step: 3 };
 /* 중력파 범위 상한 — 필드가 960×720 이라 중심에서 위아래 끝까지가 360 이다.
    상한을 두지 않으면 넥서스에 앉아서 화면 전체를 훑게 되므로 350 에서 멈춘다. */
-const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1, maxRange: 350 };
+const GRAV = { dmg: 8, range: 130, dmgStep: 3, rangeStep: 1, maxRange: 450 };
 
 // 넥서스 개조(다중 포탑) 최대 레벨 — 동시 표적 수는 1 + 레벨, 최대 5표적
 const NEXUS_MOD_MAX = 4;
@@ -1386,24 +1386,25 @@ const troopAuraDmg = (def, lv) => def.auraDmg + lv * troopAuraStep(def);
 const troopRateStep = def => def.rateStep ?? 0;
 const troopRateFor = (def, lv) => def.rate + lv * troopRateStep(def);
 
-/* 일반강화(special 이 없는 항목)는 값이 GENERAL_CAP 에 닿으면 더 오르지 않는다.
-   레벨마다 계속 비싸지면 후반에는 코어를 아무리 모아도 한 칸을 못 올린다. */
-const GENERAL_CAP = 500;
+/* 레벨을 계속 올리는 항목은 값이 META_CAP 에 닿으면 더 오르지 않는다.
+   레벨마다 계속 비싸지면 후반에는 코어를 아무리 모아도 한 칸을 못 올린다.
+   해금 한 번으로 끝나는 항목(작업공·중력파 해금·넥서스 개조)에는 걸지 않는다. */
+const META_CAP = 500;
 
 const META = [
-  { id:'fund',  name:'초기 자금',       max:Infinity, base:30, capCost:GENERAL_CAP,
+  { id:'fund',  name:'초기 자금',       max:Infinity, base:30, capCost:META_CAP,
     desc: lv => `시작 골드 +${num(lv * MSTEP.fund)} (현재 ${CFG.startGold + lv * MSTEP.fund}G)` },
-  { id:'power', name:'공격력 강화',     max:Infinity, base:35, capCost:GENERAL_CAP,
+  { id:'power', name:'공격력 강화',     max:Infinity, base:35, capCost:META_CAP,
     desc: lv => `공격력 +${num(lv * MSTEP.power)} (현재 ${CFG.nexusDmg + lv * MSTEP.power})` },
-  { id:'spd',   name:'공격속도 강화',   max:Infinity, base:40, capCost:GENERAL_CAP,
+  { id:'spd',   name:'공격속도 강화',   max:Infinity, base:40, capCost:META_CAP,
     desc: lv => `공속 +${num(lv * MSTEP.spd)} (현재 ${num(CFG.nexusRate + lv * MSTEP.spd)}발/초)` },
-  { id:'rng',   name:'사거리 강화',     max:Infinity, base:45, capCost:GENERAL_CAP,
+  { id:'rng',   name:'사거리 강화',     max:Infinity, base:45, capCost:META_CAP,
     desc: lv => `사거리 +${num(lv * MSTEP.rng)} (현재 ${CFG.nexusRange + lv * MSTEP.rng})` },
-  { id:'armor', name:'최대체력 강화',   max:Infinity, base:40, capCost:GENERAL_CAP,
+  { id:'armor', name:'최대체력 강화',   max:Infinity, base:40, capCost:META_CAP,
     desc: lv => `최대 체력 +${num(lv * MSTEP.armor)} (현재 ${CFG.nexusHp + lv * MSTEP.armor})` },
-  { id:'mregen',name:'체력재생 강화',   max:Infinity, base:50, capCost:GENERAL_CAP,
+  { id:'mregen',name:'체력재생 강화',   max:Infinity, base:50, capCost:META_CAP,
     desc: lv => `재생 +${num(lv * MSTEP.mregen)} (현재 ${num(lv * MSTEP.mregen)}/초)` },
-  { id:'minc',  name:'수입 증대',       max:Infinity, base:55, capCost:GENERAL_CAP,
+  { id:'minc',  name:'수입 증대',       max:Infinity, base:55, capCost:META_CAP,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
   /* special: true 인 항목은 상점의 '특수강화' 탭에 모아 보여준다.
      저장 구조는 그대로라 목록을 나눌 필요 없이 표시할 때만 갈라 쓴다. */
@@ -1415,12 +1416,12 @@ const META = [
       : `작업공을 배치해 넥서스를 초당 ${REPAIR.base} 수리한다 (인구 차지 안 함)` },
   { id:'m_grav',  name:'중력파 해금',     max:1, base:3000, special:true,
     desc: lv => lv ? '매 판 시작 시 중력파 자동 활성화' : '게임 시작 시 중력파가 자동으로 가동된다' },
-  { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50, special:true,
+  { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50, special:true, capCost:META_CAP,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 피해 +${num(lv * MSTEP.gravDmg)} (현재 +${num(lv * MSTEP.gravDmg)})` },
   // 상한(GRAV.maxRange)에 정확히 닿는 레벨에서 멈춘다
   { id:'m_gravRng', name:'중력파 범위',
-    max: Math.floor((GRAV.maxRange - GRAV.range) / MSTEP.gravRng), base:60, special:true,
+    max: Math.floor((GRAV.maxRange - GRAV.range) / MSTEP.gravRng), base:60, special:true, capCost:META_CAP,
     req: () => mlv('m_grav') > 0, lockMsg: '중력파 해금 필요',
     desc: lv => `중력파 범위 +${num(lv * MSTEP.gravRng)} (현재 ${gravRangeFor(lv)} / 최대 ${GRAV.maxRange})` },
   /* 넥서스 개조 — 한 항목으로 해금과 표적 수를 겸한다. Lv1=2표적 … Lv4=5표적.
