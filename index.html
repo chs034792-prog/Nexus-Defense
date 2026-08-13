@@ -1248,12 +1248,10 @@ function bossBaseStat(w) {
   };
 }
 
-/* 300 웨이브부터 보스 체력을 절반으로 낮춘다.
+/* 보스 체력을 전 구간 절반으로 낮춘다.
    단조 보정(위 스캔)에 걸리면 낮춘 값이 도로 끌어올려지므로,
    보정이 끝난 값에 마지막으로 곱한다. */
-const BOSS_HP_RELIEF_FROM = 300;
 const BOSS_HP_RELIEF = 0.5;
-const bossHpRelief = w => (w >= BOSS_HP_RELIEF_FROM ? BOSS_HP_RELIEF : 1);
 
 const bossStatCache = new Map();
 let bossScanned = 0, bossRunHp = 0, bossRunDmg = 0;
@@ -1272,7 +1270,7 @@ function bossStatAt(w) {
     const b = bossBaseStat(w);
     return { hp: Math.round(b.hp), dmg: Math.round(b.dmg) };
   })();
-  return { hp: Math.round(s.hp * bossHpRelief(w)), dmg: s.dmg };
+  return { hp: Math.round(s.hp * BOSS_HP_RELIEF), dmg: s.dmg };
 }
 
 function buildWave(w) {
