@@ -93,6 +93,34 @@
   }
   #zoneBox h3 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 2px; }
   #zoneBox .hint { text-align: center; margin-bottom: 10px; font-size: 11px; }
+
+  /* 병력 상세 — 카드에 다 담기지 않는 설명을 창으로 띄운다 */
+  #unitOverlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 12px;
+  }
+  #unitOverlay.on { display: flex; }
+  #unitBox {
+    width: 100%; max-width: 360px; max-height: 92vh; overflow-y: auto;
+    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 18px 16px;
+  }
+  #unitBox h3 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+  #unitBox .u-desc {
+    color: #a0b0cc; font-size: 13px; line-height: 1.5; text-align: center;
+    margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #263050;
+  }
+  #unitBox .u-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 7px 2px; border-bottom: 1px solid #1a2133; font-size: 13.5px;
+  }
+  #unitBox .u-row:last-of-type { border-bottom: 0; }
+  #unitBox .u-row .k { color: #7b88a8; }
+  #unitBox .u-row .v { font-weight: 700; }
+  #unitBox .u-row .g { color: #6d7ba0; font-size: 11.5px; font-weight: 400; margin-left: 4px; }
+  #unitBox .u-tag {
+    display: inline-block; margin: 3px 4px 0 0; padding: 3px 9px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 700;
+  }
   .zone-row {
     display: flex; align-items: center; gap: 10px;
     padding: 7px 10px; border-radius: 6px; background: #1a2133; border: 1px solid #263050;
@@ -570,6 +598,16 @@
     <p class="hint" style="color:#6d7ba0">웨이브가 진행될수록 새로운 지역이 열립니다.<br>해금한 지역을 누르면 출격 시작 지점으로 고를 수 있습니다.</p>
     <div id="zoneList" style="margin-top:9px;display:flex;flex-direction:column;gap:4px"></div>
     <button class="ghost" id="btnZoneClose" style="width:100%;margin-top:14px">닫기</button>
+  </div>
+</div>
+
+<!-- ── 병력 상세 오버레이 ─────────────────────── -->
+<div id="unitOverlay">
+  <div id="unitBox">
+    <h3 id="unitName">유닛</h3>
+    <p class="u-desc" id="unitDesc"></p>
+    <div id="unitStats"></div>
+    <button class="ghost" id="btnUnitClose" style="width:100%;margin-top:16px">닫기</button>
   </div>
 </div>
 
@@ -3664,16 +3702,21 @@ function renderBarrack() {
         const buyOff = save.cores < cost;
         const upOff = dep >= owned || deployed >= cap;   // 보유 초과·인구 초과 불가
         const downOff = dep <= 0;
+        /* 화면이 좁으면 설명이 잘리므로 카드에는 핵심만 두고,
+           이름 줄을 누르면 상세 창(unitOverlay)에서 전부 보여준다. */
+        const tags = [];
+        if (u.splash)      tags.push('폭발');
+        if (u.aura)        tags.push('오라');
+        if (u.stunChance)  tags.push('기절');
+        if (u.pierce)      tags.push('관통');
+        if (u.multi > 1)   tags.push('다중');
         return `<div class="meta">
-          <div class="info">
+          <div class="info" data-unitinfo="${u.id}" style="cursor:pointer">
             <div class="nm"><span style="color:${u.color}">${u.name}</span>
-              <span style="color:#7b88a8;font-weight:400">선택 <b style="color:#7fe7ff">${dep}</b>/${owned}</span></div>
-            <div class="ds">공격력 ${u.dmg + troopDmgBonusFor(u, troopLv)} <span style="color:#6d7ba0">(강화 +${troopDmgStep(u)}/Lv)</span> · 공속 ${num(troopRateFor(u, troopLv))}${
-              troopRateStep(u) ? ` <span style="color:#6d7ba0">(강화 +${troopRateStep(u)}/Lv)</span>` : ''} · 사거리 ${u.range}${u.splash ? ' · 폭발 ' + u.splash : ''}${
-              u.aura ? ` · 오라 ${troopAuraDmg(u, troopLv)}/초${troopAuraStep(u) ? ` <span style="color:#6d7ba0">(강화 +${troopAuraStep(u)}/Lv)</span>` : ''}` : ''}${
-              u.stunChance ? ` · <span style="color:#ffe066">${Math.round(u.stunChance*100)}% 기절 ${u.stunDur}초</span>` : ''}${
-              u.pierce ? ` · <span style="color:#80deea">관통 ${u.pierce}체</span>` : ''}${
-              u.multi > 1 ? ` · <span style="color:#ffcc80">동시 ${u.multi}표적</span>` : ''}</div>
+              <span style="color:#7b88a8;font-weight:400">선택 <b style="color:#7fe7ff">${dep}</b>/${owned}</span>
+              <span style="color:#5b9dff;font-weight:400;font-size:11px">ⓘ</span></div>
+            <div class="ds">공격력 ${u.dmg + troopDmgBonusFor(u, troopLv)} · 공속 ${num(troopRateFor(u, troopLv))} · 사거리 ${u.range}${
+              tags.length ? ` <span style="color:#6d7ba0">· ${tags.join('·')}</span>` : ''}</div>
           </div>
           <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
             <button data-depdown="${u.id}" ${downOff ? 'disabled' : ''} title="출정 −1"
@@ -3735,7 +3778,53 @@ function renderBarrack() {
       writeSave(); renderBarrack();
     };
   });
+
+  // 이름 줄을 누르면 상세 창
+  $('barrackMetaList').querySelectorAll('[data-unitinfo]').forEach(el => {
+    el.onclick = () => openUnitInfo(el.dataset.unitinfo);
+  });
 }
+
+/* 병력 상세 창 — 카드에 다 담기지 않는 수치와 특수 효과를 모아 보여준다 */
+function openUnitInfo(id) {
+  const u = troopDefById(id);
+  if (!u) return;
+  const lv = mlv('troopDmg');
+  const dmg = u.dmg + troopDmgBonusFor(u, lv);
+  const rate = troopRateFor(u, lv);
+
+  $('unitName').textContent = u.name;
+  $('unitName').style.color = u.color;
+  $('unitDesc').textContent = u.desc || '';
+
+  const row = (k, v, g) =>
+    `<div class="u-row"><span class="k">${k}</span><span class="v">${v}${g ? `<span class="g">${g}</span>` : ''}</span></div>`;
+
+  let html = '';
+  html += row('보유 / 선택', `${troopDeploy(id)} / ${troopOwned(id)}`);
+  html += row('구입 비용', `${troopCoreCost(id).toLocaleString()} 코어`);
+  html += row('공격력', dmg, `강화 +${troopDmgStep(u)}/Lv`);
+  html += row('공격속도', num(rate), troopRateStep(u) ? `강화 +${troopRateStep(u)}/Lv` : '');
+  html += row('초당 피해', num(+(dmg * rate).toFixed(1)));
+  html += row('사거리', u.range);
+  html += row('이동속도', u.spd === 0 ? '고정 (제자리)' : u.spd);
+  if (u.splash) html += row('폭발 범위', u.splash);
+  if (u.aura)   html += row('오라 피해', `${troopAuraDmg(u, lv)}/초`,
+                            troopAuraStep(u) ? `강화 +${troopAuraStep(u)}/Lv` : '');
+  if (u.aura)   html += row('오라 범위', u.auraRange);
+  if (u.slow)   html += row('감속', `${Math.round(u.slow * 100)}%`, `${u.slowT}초`);
+
+  const tags = [];
+  if (u.pierce)     tags.push(`<span class="u-tag" style="background:#123b45;color:#80deea">관통 ${u.pierce}체</span>`);
+  if (u.multi > 1)  tags.push(`<span class="u-tag" style="background:#4a2c07;color:#ffcc80">동시 ${u.multi}표적</span>`);
+  if (u.stunChance) tags.push(`<span class="u-tag" style="background:#453a0c;color:#ffe066">${Math.round(u.stunChance*100)}% 기절 ${u.stunDur}초</span>`);
+  if (u.hold)       tags.push(`<span class="u-tag" style="background:#2a3350;color:#9fb3d9">고정 배치</span>`);
+  if (tags.length) html += `<div style="margin-top:12px">${tags.join('')}</div>`;
+
+  $('unitStats').innerHTML = html;
+  $('unitOverlay').classList.add('on');
+}
+function closeUnitInfo() { $('unitOverlay').classList.remove('on'); }
 
 function renderHeroMeta() {
   forceAdminCores();
@@ -4388,6 +4477,9 @@ function closeZones() { $('zoneOverlay').classList.remove('on'); }
 $('btnZones').onclick = openZones;
 $('btnZoneClose').onclick = closeZones;
 $('zoneOverlay').onclick = e => { if (e.target === $('zoneOverlay')) closeZones(); };
+
+$('btnUnitClose').onclick = closeUnitInfo;
+$('unitOverlay').onclick = e => { if (e.target === $('unitOverlay')) closeUnitInfo(); };
 
 // ?dev=1 일 때만 메인에 운영자 패널을 늘 펼쳐 둔다
 if (DEV) $('adminBox').style.display = '';
