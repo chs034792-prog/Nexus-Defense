@@ -579,9 +579,11 @@
     <div class="box">
       <div class="tabs">
         <div class="tab on" data-tab="nexus">넥서스</div>
+        <div class="tab" data-tab="troops" style="display:none">병력</div>
         <div class="tab" data-tab="hero" style="display:none">영웅</div>
       </div>
       <div id="nexusShop"></div>
+      <div id="troopsShop" style="display:none"></div>
       <div id="heroShop" style="display:none"></div>
     </div>
 
@@ -1726,6 +1728,8 @@ function newGame(startWave) {
   pausedBySel = false;
   clearRun();
   $('over').classList.remove('on');
+  buildTroopShop();   // 병영에서 보유 목록이 바뀌었을 수 있다
+  setTab(tab);        // 병력을 다 판 상태로 들어오면 넥서스 탭으로 되돌린다
   syncUI();
 }
 
@@ -3941,7 +3945,7 @@ $('shopTabHero').onclick = () => setShopTab('hero');
 
 /* 상점 목록은 처음에 한 번만 만든다.
    매 프레임 innerHTML 을 다시 쓰면 버튼이 눌리는 도중에 교체되어 클릭이 씹힌다. */
-const els = { nexus: [], hero: [], ground: [], pop: null, heroUp: null };
+const els = { nexus: [], hero: [], ground: [], troops: [], pop: null, heroUp: null };
 
 function buildShops() {
   $('nexusShop').innerHTML = NEXUS_UPS.map(u => `
@@ -4013,7 +4017,85 @@ function buildShops() {
     </div>`
     ;
 
-  // 병력은 이제 메인 병영에서 코어로 사서 자동 배치된다 — 인게임 병력 탭 없음
+  buildTroopShop();
+}
+
+/* 인게임 병력 탭 — 판 안에서 구성을 바꾼다.
+   판은 병영의 출정 설정(save.meta.deploy)대로 시작하고, 여기서는 코어를 쓰지 않고
+   "보유한 병력" 안에서만 빼고 넣는다. 바꾼 결과는 이번 판에만 적용되며
+   병영의 기본 설정은 건드리지 않는다.
+   보유 목록은 판 도중 늘지 않으므로 카드는 판이 시작될 때 한 번만 만들고,
+   숫자와 버튼 상태만 renderTroopShop 이 갱신한다(syncUI 가 초당 여러 번 돈다). */
+function buildTroopShop() {
+  const owned = TROOP_TIERS.flatMap(t => t.units).filter(u => troopOwned(u.id) > 0);
+  els.troops = [];
+
+  if (!owned.length) {
+    $('troopsShop').innerHTML =
+      `<p class="hint" style="padding:10px 12px;color:#6d7ba0">보유한 병력이 없습니다. 메인 화면 <b>코어 상점 → 병영</b>에서 병력을 구입하세요.</p>`;
+    return;
+  }
+
+  $('troopsShop').innerHTML =
+    `<p class="hint" id="troopSummary" style="margin:8px 0 4px;padding:0 12px"></p>`
+    + owned.map(u => `<div class="meta" data-tr="${u.id}">
+      <div class="info" data-troopinfo="${u.id}" style="cursor:pointer">
+        <div class="nm"><span style="color:${u.color}">${u.name}</span>
+          <span class="cnt" style="color:#7b88a8;font-weight:400"></span>
+          <span style="color:#5b9dff;font-weight:400;font-size:11px">ⓘ</span></div>
+        <div class="ds">공격력 ${u.dmg + troopDmgBonusFor(u, mlv('troopDmg'))} · 공속 ${num(troopRateFor(u, mlv('troopDmg')))} · 사거리 ${u.range}</div>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
+        <button class="tdown" title="이번 판에서 1기 빼기"
+          style="min-width:30px;padding:6px 0;font-size:16px;font-weight:700">−</button>
+        <button class="tup" title="이번 판에서 1기 넣기"
+          style="min-width:30px;padding:6px 0;font-size:16px;font-weight:700">+</button>
+      </div>
+    </div>`).join('');
+
+  els.troops = owned.map(u => {
+    const card = $('troopsShop').querySelector(`.meta[data-tr="${u.id}"]`);
+    const btnUp = card.querySelector('.tup'), btnDown = card.querySelector('.tdown');
+    btnUp.onclick = () => troopAddInRun(u.id);
+    btnDown.onclick = () => troopRemoveInRun(u.id);
+    card.querySelector('[data-troopinfo]').onclick = () => openUnitInfo(u.id);
+    return { u, card, btnUp, btnDown, cnt: card.querySelector('.cnt') };
+  });
+}
+
+function renderTroopShop() {
+  if (!els.troops.length) return;
+  const full = S.heroes.length >= S.maxPop;
+  const sum = $('troopSummary');
+  if (sum) {
+    sum.innerHTML = `배치 <b style="color:#e6ecff">${S.heroes.length}</b> / <b style="color:#e6ecff">${S.maxPop}</b> — 보유한 병력 안에서 −/+ 로 이번 판 구성을 바꿉니다.`;
+    sum.style.color = full ? '#ffb454' : '#6d7ba0';
+  }
+  for (const e of els.troops) {
+    const own = troopOwned(e.u.id), now = ownedCount(e.u.id);
+    e.cnt.innerHTML = `배치 <b style="color:#7fe7ff">${now}</b>/${own}`;
+    e.btnUp.disabled = now >= own || full;
+    e.btnDown.disabled = now <= 0;
+  }
+}
+
+// 보유 수와 인구 상한 안에서 1기 투입
+function troopAddInRun(id) {
+  if (!S || S.phase === 'over') return;
+  const def = troopDefById(id);
+  if (!def || ownedCount(id) >= troopOwned(id) || S.heroes.length >= S.maxPop) return;
+  placeTroop(def);
+  saveRun(); syncUI();
+}
+
+// 1기 회수 — 가장 나중에 배치된 개체부터 뺀다. 코어는 돌려받지 않는다(보유는 그대로)
+function troopRemoveInRun(id) {
+  if (!S || S.phase === 'over') return;
+  let idx = -1;
+  for (let i = S.heroes.length - 1; i >= 0; i--) if (S.heroes[i].def.id === id) { idx = i; break; }
+  if (idx < 0) return;
+  S.heroes.splice(idx, 1);      // 정보 창이 이 개체를 보고 있었다면 renderSel 이 알아서 닫는다
+  saveRun(); syncUI();
 }
 
 function buyHeroUp() {
@@ -4308,25 +4390,29 @@ function syncUI() {
     $('skill5CdOverlay').style.height = pct5 + '%';
   }
 
-  renderHeroShop(); renderNexusShop(); renderSel(); syncTechTabs();
+  renderHeroShop(); renderNexusShop(); renderTroopShop(); renderSel(); syncTechTabs();
 }
 
 /* ── 탭 ─────────────────────────────────────── */
 let tab = 'nexus';                        // 처음에는 넥서스 강화 탭을 보여준다
 const heroTabLocked = () => !(mlv('t_hero') > 0);
-const SHOP_PANELS = ['nexus', 'hero'];    // 병력은 인게임 탭에서 제거 — 넥서스·영웅만
+const SHOP_PANELS = ['nexus', 'troops', 'hero'];
 const TECH_TABS = { hero: 't_hero' };
+// 병력 탭은 보유한 병력이 있어야 의미가 있다 (구입은 병영에서만)
+const troopTabLocked = () => troopTotalOwned() === 0;
 
 document.querySelectorAll('.tabs .tab').forEach(el => {
   el.onclick = () => {
     const t = el.dataset.tab;
     if (t === 'hero' && heroTabLocked()) return;
+    if (t === 'troops' && troopTabLocked()) return;
     if (TECH_TABS[t] && !mlv(TECH_TABS[t])) return;
     setTab(t);
   };
 });
 function setTab(name) {
   if (name === 'hero' && heroTabLocked()) name = 'nexus';
+  if (name === 'troops' && troopTabLocked()) name = 'nexus';
   if (TECH_TABS[name] && !mlv(TECH_TABS[name])) name = 'nexus';
   tab = name;
   document.querySelectorAll('.tabs .tab').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
@@ -4342,6 +4428,8 @@ function syncTechTabs() {
     const el = document.querySelector(`.tabs .tab[data-tab="${tabName}"]`);
     if (el) el.style.display = mlv(metaId) > 0 ? '' : 'none';
   }
+  const tr = document.querySelector('.tabs .tab[data-tab="troops"]');
+  if (tr) tr.style.display = troopTabLocked() ? 'none' : '';
 }
 
 /* ══════════════════════════════════════════════════════════
