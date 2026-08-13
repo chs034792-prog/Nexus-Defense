@@ -713,7 +713,7 @@ const HERO_CLASSES = [
     desc:'적에게 달려들어 근접 공격하는 전투의 달인',
     summonCost: 0, switchCost: 500,
     dmgPerLv:4, ratePerLv:0.015, spdPerLv:2.5,
-    skill: { name:'파워 스트라이크', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:30 },
+    skill: { name:'참격', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:30 },
     passive: { name:'생명력 착취', desc:'적 처치 시 넥서스 HP 1% 회복', unlockLv:60 },
     skill2: { name:'전쟁의 함성', desc:'모든 적을 밀어내고 2초간 이동속도 50% 감소', cd:30, knockDist:120, slowDur:2, unlockLv:80 } },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
@@ -3142,7 +3142,7 @@ function draw() {
       ctx.restore();
     }
 
-    // 파워 스트라이크 — 크게 회전하는 검 이펙트
+    // 참격 — 크게 회전하는 검 이펙트
     if (cls.id === 'warrior' && hr.skillSwing > 0) {
       const sw = hr.skillSwing;
       const swAng = (1 - sw) * Math.PI * 2.4;
@@ -3161,7 +3161,7 @@ function draw() {
       ctx.restore();
     }
 
-    // 스킬 이펙트 (전사 파워 스트라이크의 범위 펄스)
+    // 스킬 이펙트 (전사 참격의 범위 펄스)
     if (cls.id === 'warrior' && hr.skillEffect > 0) {
       const alpha = hr.skillEffect / 0.5;
       const r = (1 - alpha) * (cls.skill.radius || 150);
