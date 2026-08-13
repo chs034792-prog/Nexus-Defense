@@ -1432,7 +1432,7 @@ const META = [
 const BARRACK_META = [
   { id:'m_pop', name:'병력 최대 배치 (인구)', max: TROOP_POP.max - TROOP_POP.base, base:1200,
     desc: lv => `병력을 ${maxPopFor(lv)}기까지 배치 (기본 ${TROOP_POP.base} · 최대 ${TROOP_POP.max})` },
-  { id:'troopDmg', name:'병력 영구 강화', max:Infinity, base:70,
+  { id:'troopDmg', name:'병력 영구 강화', max:Infinity, base:70, capCost:1500,
     desc: lv => `모든 병력 공격력 상승 — 증가폭은 유닛마다 다르다 (현재 Lv.${lv})` },
 ];
 
@@ -1442,8 +1442,9 @@ const HERO_META = [
     desc: lv => lv ? '영웅 해금됨 — 아래에서 직업을 선택하세요' : '영웅을 해금합니다 (200웨이브 클리어 필요)' },
 ];
 
-// 레벨당 기본가의 배수로 선형 증가한다 — 기본가 100 이면 100 → 200 → 300 …
-const metaCost = (m, lv) => m.base * (lv + 1);
+/* 레벨당 기본가의 배수로 선형 증가한다 — 기본가 100 이면 100 → 200 → 300 …
+   capCost 가 있으면 그 값에서 더 오르지 않고 계속 같은 값을 받는다. */
+const metaCost = (m, lv) => Math.min(m.base * (lv + 1), m.capCost ?? Infinity);
 const coreReward = cleared => Math.floor(10 * Math.pow(Math.max(0, cleared), 1.3));
 
 
