@@ -1425,8 +1425,21 @@ const coreReward = cleared => Math.floor(10 * Math.pow(Math.max(0, cleared), 1.3
 const SAVE_KEY = 'nexusdefense.save';
 let save = { best: 0, cores: 0, specialCores: 0, runs: 0, meta: {}, mig: 0, coupons: [] };
 
+/* 쿠폰 — 코드는 대문자로 비교한다(입력값을 toUpperCase 한다).
+   한 계정당 한 번만 쓸 수 있고, 사용 내역은 save.coupons 에 남는다. */
 const COUPONS = {
-  'WELCOME150K': { cores: 150000, desc: '전체 유저 보상 150,000 코어' },
+  'WELCOME150K':  { cores: 150000, desc: '전체 유저 보상 150,000 코어' },
+
+  'NEXUS2026':    { cores: 50000,  specialCores: 5,  desc: '넥서스 디펜스 오픈 기념' },
+  'FIRSTBLOOD':   { cores: 10000,  desc: '첫 출격 응원 보상' },
+  'CORERUSH':     { cores: 30000,  desc: '코어 러시 보너스' },
+  'BARRACKS20':   { cores: 80000,  desc: '병영 확장 지원금' },
+  'HEROPATH':     { cores: 25000,  specialCores: 3,  desc: '영웅 육성 지원 패키지' },
+  'WAVE100':      { cores: 60000,  desc: '100 웨이브 돌파 기념' },
+  'SPECIAL10':    { specialCores: 10, desc: '특수 코어 10개 지급' },
+  'GRAVITYON':    { cores: 45000,  desc: '중력파 가동 기념' },
+  'IRONSTORM':    { cores: 120000, desc: '기갑 병력 지원 물자' },
+  'SKYFALL':      { cores: 200000, specialCores: 5,  desc: '공중 병력 보급' },
 };
 
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
