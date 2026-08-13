@@ -227,12 +227,13 @@
     font-size: clamp(12px, 2.6vw, 14px);
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
-  #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 6px; align-items: flex-end; }
+  #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 4px; align-items: flex-end; }
   #btnSkill, #btnSkill2, #btnSkill3, #btnSkill4, #btnSkill5 {
-    width: 60px; height: 60px; border-radius: 50%; border: 2px solid #555;
-    background: #1c2437; color: #aaa; font-size: 10px; font-weight: 700;
+    width: 32px; height: 32px; border-radius: 50%; border: 2px solid #555;
+    background: #1c2437; color: #aaa; font-size: 7px; font-weight: 700;
     display: none; cursor: pointer; position: relative; overflow: hidden;
-    align-items: center; justify-content: center;
+    align-items: center; justify-content: center; line-height: 1.1;
+    padding: 0; text-align: center;
     box-shadow: 0 2px 10px rgba(0,0,0,.5);
   }
   #btnSkill.ready { border-color: #66ffaa; color: #66ffaa; }
@@ -245,8 +246,8 @@
     background: rgba(0,0,0,.55); pointer-events: none;
   }
   #btnAutoSkill {
-    width: auto; padding: 6px 10px; border-radius: 6px; border: 1px solid #555;
-    background: #1c2437; color: #7b88a8; font-size: 10px; cursor: pointer;
+    width: auto; padding: 4px 7px; border-radius: 5px; border: 1px solid #555;
+    background: #1c2437; color: #7b88a8; font-size: 8px; cursor: pointer;
     box-shadow: 0 2px 8px rgba(0,0,0,.4); display: none;
   }
   #btnAutoSkill.on { border-color: #66ffaa; color: #66ffaa; }
@@ -254,8 +255,10 @@
   /* 캔버스가 쓰고 남은 세로 공간을 전부 차지한다.
      min-height:0 이 없으면 flex 항목이 내용 높이 밑으로 줄지 못해 스크롤이 죽는다. */
   #panel {
-    width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 10px;
-    flex: 1 1 auto; min-height: 200px; overflow-y: auto; padding-right: 6px; margin-top: 8px;
+    width: 100%; max-width: 1100px; display: flex; flex-direction: column; gap: 8px;
+    flex: 1 1 auto; min-height: 150px; overflow-y: auto; padding-right: 6px; margin-top: 6px;
+    /* 화면을 너무 많이 먹지 않게 상한을 둔다 — 그만큼 전장이 넓게 보인다 */
+    max-height: 38vh; max-height: 38dvh;
   }
   #panel::-webkit-scrollbar { width: 6px; }
   #panel::-webkit-scrollbar-thumb { background: #2b3550; border-radius: 3px; }
@@ -270,14 +273,15 @@
     }
     #stage {
       --reserve: 16px;
-      width: min(calc(100% - 340px), 900px, calc((100vh - var(--reserve)) * 4 / 3));
-      width: min(calc(100% - 340px), 900px, calc((100dvh - var(--reserve)) * 4 / 3));
+      width: min(calc(100% - 296px), 940px, calc((100vh - var(--reserve)) * 4 / 3));
+      width: min(calc(100% - 296px), 940px, calc((100dvh - var(--reserve)) * 4 / 3));
     }
     #panel {
-      width: 320px;
+      width: 276px;
       flex: 0 0 auto;
       min-height: 0;
       margin-top: 0;
+      /* 가로 배치에서는 옆에 세로로 길게 두는 게 자연스러워 높이 상한을 되돌린다 */
       max-height: calc(100vh - 24px);
       max-height: calc(100dvh - 24px);
     }
@@ -323,6 +327,13 @@
     background: #21304f; border-color: #37507f; color: #ffd45e;
   }
   .card .buy:hover:not(:disabled) { background: #2b4272; }
+  /* 골드가 닿는 데까지 한 번에 올리는 버튼 — 구매 버튼 오른쪽에 붙는다 */
+  .card .buymax {
+    width: auto; min-width: 40px; margin-left: 4px;
+    padding: 7px 8px; font-size: 11px; font-weight: 800; white-space: nowrap;
+    background: #2a4a2f; border-color: #3f7048; color: #86efac;
+  }
+  .card .buymax:hover:not(:disabled) { background: #35603c; }
   #nexusShop .card { padding: 7px 9px; }
   #nexusShop .card .ds { margin-top: 1px; }
 
@@ -3931,13 +3942,16 @@ function buildShops() {
         <div class="ds">${u.desc}</div>
       </div>
       <button class="buy"></button>
+      ${u.once ? '' : '<button class="buymax" title="골드가 되는 만큼 한 번에 강화">MAX</button>'}
     </div>`).join('');
   els.nexus = NEXUS_UPS.map(u => {
     const card = $('nexusShop').querySelector(`.card[data-u="${u.id}"]`);
-    const btn = card.querySelector('button');
+    const btn = card.querySelector('.buy');
+    const btnMax = card.querySelector('.buymax');
     card.onclick = () => buyNexusUp(u.id);
     btn.onclick = ev => { ev.stopPropagation(); buyNexusUp(u.id); };
-    return { u, card, btn, lv: card.querySelector('.lv'), ds: card.querySelector('.ds') };
+    if (btnMax) btnMax.onclick = ev => { ev.stopPropagation(); buyNexusUpMax(u.id); };
+    return { u, card, btn, btnMax, lv: card.querySelector('.lv'), ds: card.querySelector('.ds') };
   });
 
   $('heroShop').innerHTML = `<div id="heroStatus" style="padding:8px 12px;color:#7b88a8;font-size:13px"></div>`
@@ -4099,10 +4113,34 @@ function buyNexusUp(id) {
   const lv = S.nexusLv[u.id];
   if (u.once && lv > 0) return;
   if (u.max && lv >= u.max) return;
+  if (u.cond && !u.cond()) return;      // 상한을 cond 로만 막는 항목(중력파 범위) 보호
   const c = u.cost(lv);
   if (S.gold < c) return;
   S.gold -= c; S.nexusLv[u.id]++; u.apply(S);
   addText(CX, CY - 88, u.once ? u.name + ' 해금' : u.name + ' Lv.' + S.nexusLv[u.id], '#7fe7ff');
+  saveRun();
+  syncUI();
+}
+
+/* 골드가 닿는 데까지 한 번에 올린다. 강화마다 비용이 오르므로 매번 다시 계산하고,
+   최대 레벨·골드 부족·구매 조건(cond) 중 어느 하나라도 걸리면 멈춘다.
+   중력파 범위처럼 레벨 상한 없이 cond 로만 한계를 막는 항목이 있어, cond 를
+   매번 확인하지 않으면 상한에 닿은 뒤에도 계속 사서 골드를 전부 태운다. */
+function buyNexusUpMax(id) {
+  const u = NEXUS_UPS.find(x => x.id === id);
+  if (!u || u.once) return;
+  let bought = 0;
+  while (true) {
+    const lv = S.nexusLv[u.id];
+    if (u.max && lv >= u.max) break;
+    if (u.cond && !u.cond()) break;
+    const c = u.cost(lv);
+    if (S.gold < c) break;
+    S.gold -= c; S.nexusLv[u.id]++; u.apply(S);
+    bought++;
+  }
+  if (!bought) return;
+  addText(CX, CY - 88, `${u.name} Lv.${S.nexusLv[u.id]} (+${bought})`, '#86efac');
   saveRun();
   syncUI();
 }
@@ -4118,6 +4156,7 @@ function renderNexusShop() {
     e.lv.textContent = e.u.max ? `${lv}/${e.u.max}` : e.u.once ? (maxed ? '보유' : '') : 'Lv.' + lv;
     e.btn.textContent = maxed ? '최대' : c + 'G';
     e.btn.disabled = off;
+    if (e.btnMax) e.btnMax.disabled = off;   // 한 번도 못 사면 MAX 도 막는다
     e.card.classList.toggle('poor', off);
     if (e.u.stat) e.ds.textContent = e.u.desc + ' (' + e.u.stat() + ')';
   }
