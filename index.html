@@ -1248,6 +1248,13 @@ function bossBaseStat(w) {
   };
 }
 
+/* 300 웨이브부터 보스 체력을 절반으로 낮춘다.
+   단조 보정(위 스캔)에 걸리면 낮춘 값이 도로 끌어올려지므로,
+   보정이 끝난 값에 마지막으로 곱한다. */
+const BOSS_HP_RELIEF_FROM = 300;
+const BOSS_HP_RELIEF = 0.5;
+const bossHpRelief = w => (w >= BOSS_HP_RELIEF_FROM ? BOSS_HP_RELIEF : 1);
+
 const bossStatCache = new Map();
 let bossScanned = 0, bossRunHp = 0, bossRunDmg = 0;
 function bossStatAt(w) {
@@ -1261,9 +1268,11 @@ function bossStatAt(w) {
     }
     bossScanned = Math.max(bossScanned, w);
   }
-  if (bossStatCache.has(w)) return bossStatCache.get(w);
-  const b = bossBaseStat(w);
-  return { hp: Math.round(b.hp), dmg: Math.round(b.dmg) };
+  const s = bossStatCache.get(w) || (() => {
+    const b = bossBaseStat(w);
+    return { hp: Math.round(b.hp), dmg: Math.round(b.dmg) };
+  })();
+  return { hp: Math.round(s.hp * bossHpRelief(w)), dmg: s.dmg };
 }
 
 function buildWave(w) {
@@ -1315,12 +1324,8 @@ const NEXUS_UPS = [
     stat: () => `현재 +${Math.round((S.incomeMul - 1) * 100)}%`,
     cost: lv => Math.floor((5 + lv * 5) * Math.pow(UP_COST_GROW, lv)),
     apply: s => { s.incomeMul += 0.04; } },
-  { id:'grav',     name:'중력파 가동',   desc:'넥서스 주변 범위 내 적에게 초당 피해',
-    stat: () => S.gravWave ? `피해 ${S.gravWave.dmg} · 범위 ${S.gravWave.range}` : '미가동',
-    cost: lv => Math.floor(300 * Math.pow(1.3, lv)),
-    max: 1,
-    cond: () => mlv('m_grav') > 0,
-    apply: s => { s.gravWave = { dmg: GRAV.dmg, range: GRAV.range, ang: 0 }; } },
+  /* 중력파 가동은 특수강화(m_grav)로만 켠다 — 판 안에서 골드로 켜는 항목은 없앴다.
+     아래 공격력·범위 강화는 이미 가동 중일 때만 나온다. */
   { id:'gravDmg',  name:'중력파 공격력', desc:`중력파 초당 피해 +${GRAV.dmgStep}`,
     stat: () => S.gravWave ? `현재 ${S.gravWave.dmg}/초` : '',
     cost: lv => Math.floor(80 * Math.pow(UP_COST_GROW, lv)),
