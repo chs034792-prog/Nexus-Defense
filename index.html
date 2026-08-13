@@ -1386,20 +1386,24 @@ const troopAuraDmg = (def, lv) => def.auraDmg + lv * troopAuraStep(def);
 const troopRateStep = def => def.rateStep ?? 0;
 const troopRateFor = (def, lv) => def.rate + lv * troopRateStep(def);
 
+/* 일반강화(special 이 없는 항목)는 값이 GENERAL_CAP 에 닿으면 더 오르지 않는다.
+   레벨마다 계속 비싸지면 후반에는 코어를 아무리 모아도 한 칸을 못 올린다. */
+const GENERAL_CAP = 500;
+
 const META = [
-  { id:'fund',  name:'초기 자금',       max:Infinity, base:30,
+  { id:'fund',  name:'초기 자금',       max:Infinity, base:30, capCost:GENERAL_CAP,
     desc: lv => `시작 골드 +${num(lv * MSTEP.fund)} (현재 ${CFG.startGold + lv * MSTEP.fund}G)` },
-  { id:'power', name:'공격력 강화',     max:Infinity, base:35,
+  { id:'power', name:'공격력 강화',     max:Infinity, base:35, capCost:GENERAL_CAP,
     desc: lv => `공격력 +${num(lv * MSTEP.power)} (현재 ${CFG.nexusDmg + lv * MSTEP.power})` },
-  { id:'spd',   name:'공격속도 강화',   max:Infinity, base:40,
+  { id:'spd',   name:'공격속도 강화',   max:Infinity, base:40, capCost:GENERAL_CAP,
     desc: lv => `공속 +${num(lv * MSTEP.spd)} (현재 ${num(CFG.nexusRate + lv * MSTEP.spd)}발/초)` },
-  { id:'rng',   name:'사거리 강화',     max:Infinity, base:45,
+  { id:'rng',   name:'사거리 강화',     max:Infinity, base:45, capCost:GENERAL_CAP,
     desc: lv => `사거리 +${num(lv * MSTEP.rng)} (현재 ${CFG.nexusRange + lv * MSTEP.rng})` },
-  { id:'armor', name:'최대체력 강화',   max:Infinity, base:40,
+  { id:'armor', name:'최대체력 강화',   max:Infinity, base:40, capCost:GENERAL_CAP,
     desc: lv => `최대 체력 +${num(lv * MSTEP.armor)} (현재 ${CFG.nexusHp + lv * MSTEP.armor})` },
-  { id:'mregen',name:'체력재생 강화',   max:Infinity, base:50,
+  { id:'mregen',name:'체력재생 강화',   max:Infinity, base:50, capCost:GENERAL_CAP,
     desc: lv => `재생 +${num(lv * MSTEP.mregen)} (현재 ${num(lv * MSTEP.mregen)}/초)` },
-  { id:'minc',  name:'수입 증대',       max:Infinity, base:55,
+  { id:'minc',  name:'수입 증대',       max:Infinity, base:55, capCost:GENERAL_CAP,
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
   /* special: true 인 항목은 상점의 '특수강화' 탭에 모아 보여준다.
      저장 구조는 그대로라 목록을 나눌 필요 없이 표시할 때만 갈라 쓴다. */
