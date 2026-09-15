@@ -715,27 +715,49 @@ const HERO_CLASSES = [
     desc:'적에게 달려들어 근접 공격하는 전투의 달인',
     summonCost: 0, switchCost: 500,
     dmgPerLv:4, ratePerLv:0.015, spdPerLv:2.5,
-    skill: { name:'슬래시', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:30 },
-    passive: { name:'생명력 착취', desc:'적 처치 시 넥서스 HP 1% 회복', unlockLv:60 },
-    skill2: { name:'전쟁의 함성', desc:'모든 적을 밀어내고 2초간 이동속도 50% 감소', cd:30, knockDist:120, slowDur:2, unlockLv:80 } },
+    skill: { name:'슬래시', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:50 },
+    passive: { name:'생명력 착취', desc:'적 처치 시 넥서스 HP 1% 회복', unlockLv:80 },
+    skill2: { name:'전쟁의 함성', desc:'모든 적을 밀어내고 2초간 이동속도 50% 감소', cd:30, knockDist:120, slowDur:2, unlockLv:100 } },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
     dmg:10, range:400, rate:4.5, bspd:900, spd:120, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true, arrow: true,
     desc:'초장거리에서 빠른 화살을 퍼붓는 원거리 전문가',
     summonCost: 0, switchCost: 500,
     dmgPerLv:1, ratePerLv:0.04, spdPerLv:1,
-    skill: { name:'연발샷', desc:'가장 가까운 적에게 화살 6발을 연달아 발사', cd:14, shots:6, dmgMul:2, unlockLv:30 },
-    passive: { name:'속사', desc:'공격 시 15% 확률로 즉시 한 발 더 발사', unlockLv:60 },
-    skill2: { name:'공포의 화살', desc:'모든 적을 3초간 공포에 빠뜨려 도주시킴', cd:30, fearDur:3, unlockLv:80 } },
+    skill: { name:'연발샷', desc:'가장 가까운 적에게 화살 6발을 연달아 발사', cd:14, shots:6, dmgMul:2, unlockLv:50 },
+    passive: { name:'속사', desc:'공격 시 15% 확률로 즉시 한 발 더 발사', unlockLv:80 },
+    skill2: { name:'공포의 화살', desc:'모든 적을 3초간 공포에 빠뜨려 도주시킴', cd:30, fearDur:3, unlockLv:100 } },
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
     dmg:60, range:200, rate:0.5, bspd:350, spd:100, splash:50, slow:0.3, slowT:1.5,
     roam:9999, heroClass:true, energyBolt: true,
     desc:'짧은 쿨타임의 에너지 볼트로 적을 제압하고 감속시킨다',
     summonCost: 0, switchCost: 500,
     dmgPerLv:5, ratePerLv:0.01,
-    skill: { name:'매직샷', desc:'거대한 마법 구체를 발사해 주변에 폭발 피해', cd:4, radius:110, dmgMul:5, unlockLv:30 },
-    passive: { name:'마력 환류', desc:'적 처치 시 스킬 쿨타임 1초 감소', unlockLv:60 },
-    skill2: { name:'시간 정지', desc:'모든 적을 3초간 스턴 (이동·공격 불가)', cd:30, stunDur:3, unlockLv:80 } },
+    skill: { name:'매직샷', desc:'거대한 마법 구체를 발사해 주변에 폭발 피해', cd:4, radius:110, dmgMul:5, unlockLv:50 },
+    passive: { name:'마력 환류', desc:'적 처치 시 스킬 쿨타임 1초 감소', unlockLv:80 },
+    skill2: { name:'시간 정지', desc:'모든 적을 3초간 스턴 (이동·공격 불가)', cd:30, stunDur:3, unlockLv:100 } },
+  { id:'runecaster', name:'룬술사', color:'#f59e0b', accent:'#fde68a',
+    dmg:20, range:260, rate:1.0, bspd:600, spd:130, splash:0, slow:0, slowT:0,
+    roam:9999, heroClass:true,
+    desc:'넥서스에 룬을 새겨 넥서스의 공격을 증폭시키는 지원가',
+    trait:'출전 중 넥서스 공격력 +15%, 레벨마다 +0.5%p',
+    summonCost: 0, switchCost: 500,
+    dmgPerLv:2, ratePerLv:0.01, spdPerLv:1,
+    nexusAmp: { base:0.15, perLv:0.005 },
+    skill: { name:'룬 폭주', desc:'6초간 넥서스 공격력 2배', cd:20, dur:6, dmgMul:2, unlockLv:50 },
+    passive: { name:'과충전', desc:'넥서스 탄환이 반경 40 폭발 피해를 준다', splash:40, unlockLv:80 },
+    skill2: { name:'룬 속박', desc:'넥서스 사거리 안의 모든 적에게 넥서스 공격력 3배 피해 + 2.5초 스턴', cd:30, dmgMul:3, stunDur:2.5, unlockLv:100 } },
+  { id:'summoner', name:'소환사', color:'#14b8a6', accent:'#99f6e4',
+    dmg:18, range:240, rate:1.0, bspd:500, spd:120, splash:0, slow:0, slowT:0,
+    roam:9999, heroClass:true,
+    desc:'소환수를 불러내 함께 싸우는 군단의 주인',
+    trait:'5초마다 소환수 소환 — 20초 유지, 최대 2기 (25레벨마다 +1, 최대 8기)',
+    summonCost: 0, switchCost: 500,
+    dmgPerLv:2, ratePerLv:0.01, spdPerLv:1,
+    minion: { every:5, life:20, max:2, maxPerLv:25, cap:8, dmgMul:1.0, rate:1.2, range:14, spd:170 },
+    skill: { name:'대량 소환', desc:'소환수 3기를 즉시 추가 소환 (최대 수 무시, 12초 유지)', cd:18, count:3, life:12, unlockLv:50 },
+    passive: { name:'영혼 수확', desc:'적 처치 시 25% 확률로 그 자리에 소환수 1기 (최대 수 +2까지)', chance:0.25, extra:2, unlockLv:80 },
+    skill2: { name:'속박의 포효', desc:'모든 소환수 주변 반경 100의 적에게 공격력 3배 피해 + 2초 스턴', cd:28, radius:100, dmgMul:3, stunDur:2, unlockLv:100 } },
 ];
 
 const HERO_ADV = {
@@ -743,43 +765,71 @@ const HERO_ADV = {
     { id:'swordmaster', name:'검성', color:'#ff4444', accent:'#ff8888',
       desc:'공격력·공속 극대화, 적을 베어가는 순수 딜러',
       bonusDmg:20, bonusRate:0.5,
-      skill3: { name:'검무', desc:'0.5초간 8회 연속 베기, 각 타격 2배 피해', cd:20, hits:8, dmgMul:2, unlockLv:100 },
-      skill4: { name:'참격', desc:'가장 가까운 적에게 공격력 15배 피해', cd:10, dmgMul:15, unlockLv:150 },
-      skill5: { name:'천검난무', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:200 } },
+      skill3: { name:'검무', desc:'0.5초간 8회 연속 베기, 각 타격 2배 피해', cd:20, hits:8, dmgMul:2, unlockLv:120 },
+      skill4: { name:'참격', desc:'가장 가까운 적에게 공격력 15배 피해', cd:10, dmgMul:15, unlockLv:170 },
+      skill5: { name:'천검난무', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:220 } },
     { id:'guardian', name:'수호자', color:'#4488ff', accent:'#88bbff',
       desc:'넥서스 보호 특화, 받는 피해 30% 감소 보호막',
       bonusDmg:0, bonusRate:0,
-      skill3: { name:'불굴의 방벽', desc:'5초간 넥서스가 받는 피해 70% 감소', cd:25, shieldDur:5, dmgReduce:0.7, unlockLv:100 },
-      skill4: { name:'심판의 일격', desc:'가장 가까운 적에게 공격력 12배 피해 + 3초 스턴', cd:14, dmgMul:12, stunDur:3, unlockLv:150 },
-      skill5: { name:'천벌', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 3초 스턴', cd:180, stunDur:3, unlockLv:200 } },
+      skill3: { name:'불굴의 방벽', desc:'5초간 넥서스가 받는 피해 70% 감소', cd:25, shieldDur:5, dmgReduce:0.7, unlockLv:120 },
+      skill4: { name:'심판의 일격', desc:'가장 가까운 적에게 공격력 12배 피해 + 3초 스턴', cd:14, dmgMul:12, stunDur:3, unlockLv:170 },
+      skill5: { name:'천벌', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 3초 스턴', cd:180, stunDur:3, unlockLv:220 } },
   ],
   archer: [
     { id:'sharpshooter', name:'명사수', color:'#00ff88', accent:'#88ffbb',
       desc:'단일 대상 치명타 특화, 보스 킬러',
       bonusDmg:5, bonusRate:1.0,
-      skill3: { name:'저격', desc:'HP가 가장 높은 적에게 현재 HP의 8% 피해', cd:12, hpPct:0.08, unlockLv:100 },
-      skill4: { name:'급소 사격', desc:'가장 가까운 적에게 공격력 10배 피해 + 현재 HP 5%', cd:8, dmgMul:10, hpPct:0.05, unlockLv:150 },
-      skill5: { name:'만시(萬矢)', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:200 } },
+      skill3: { name:'저격', desc:'HP가 가장 높은 적에게 현재 HP의 8% 피해', cd:12, hpPct:0.08, unlockLv:120 },
+      skill4: { name:'급소 사격', desc:'가장 가까운 적에게 공격력 10배 피해 + 현재 HP 5%', cd:8, dmgMul:10, hpPct:0.05, unlockLv:170 },
+      skill5: { name:'만시(萬矢)', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:220 } },
     { id:'stormarcher', name:'폭풍사수', color:'#ffee00', accent:'#fff888',
       desc:'다수 관통·범위 공격 특화, 물량 처리기',
       bonusDmg:0, bonusRate:0.5,
-      skill3: { name:'화살비', desc:'모든 적에게 공격력 3배 피해의 화살비', cd:22, dmgMul:3, unlockLv:100 },
-      skill4: { name:'번개 화살', desc:'가장 가까운 적에게 공격력 14배 피해', cd:10, dmgMul:14, unlockLv:150 },
-      skill5: { name:'뇌신의 화살', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:160, unlockLv:200 } },
+      skill3: { name:'화살비', desc:'모든 적에게 공격력 3배 피해의 화살비', cd:22, dmgMul:3, unlockLv:120 },
+      skill4: { name:'번개 화살', desc:'가장 가까운 적에게 공격력 14배 피해', cd:10, dmgMul:14, unlockLv:170 },
+      skill5: { name:'뇌신의 화살', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:160, unlockLv:220 } },
   ],
   mage: [
     { id:'archmage', name:'대마법사', color:'#ff44ff', accent:'#ff88ff',
       desc:'순수 화력 극대화, 폭발 범위·데미지 강화',
       bonusDmg:25, bonusSplash:30,
-      skill3: { name:'메테오', desc:'전체 적에게 공격력 6배 피해 + 3초 화상', cd:24, dmgMul:6, burnDur:3, unlockLv:100 },
-      skill4: { name:'소멸의 광선', desc:'가장 가까운 적에게 공격력 18배 피해', cd:12, dmgMul:18, unlockLv:150 },
-      skill5: { name:'아포칼립스', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 5초 화상', cd:180, burnDur:5, unlockLv:200 } },
+      skill3: { name:'메테오', desc:'전체 적에게 공격력 6배 피해 + 3초 화상', cd:24, dmgMul:6, burnDur:3, unlockLv:120 },
+      skill4: { name:'소멸의 광선', desc:'가장 가까운 적에게 공격력 18배 피해', cd:12, dmgMul:18, unlockLv:170 },
+      skill5: { name:'아포칼립스', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 5초 화상', cd:180, burnDur:5, unlockLv:220 } },
     { id:'chronomancer', name:'시간술사', color:'#00ddff', accent:'#88eeff',
       desc:'CC·서포트 특화, 아군 공격속도 2배 버프',
       bonusDmg:0, bonusRate:0,
-      skill3: { name:'시간 가속', desc:'6초간 모든 아군 공격속도 2배', cd:28, buffDur:6, atkMul:2, unlockLv:100 },
-      skill4: { name:'시간 붕괴', desc:'가장 가까운 적에게 공격력 13배 피해 + 2초 스턴', cd:11, dmgMul:13, stunDur:2, unlockLv:150 },
-      skill5: { name:'영겁회귀', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 4초 스턴', cd:170, stunDur:4, unlockLv:200 } },
+      skill3: { name:'시간 가속', desc:'6초간 모든 아군 공격속도 2배', cd:28, buffDur:6, atkMul:2, unlockLv:120 },
+      skill4: { name:'시간 붕괴', desc:'가장 가까운 적에게 공격력 13배 피해 + 2초 스턴', cd:11, dmgMul:13, stunDur:2, unlockLv:170 },
+      skill5: { name:'영겁회귀', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 4초 스턴', cd:170, stunDur:4, unlockLv:220 } },
+  ],
+  runecaster: [
+    { id:'runemaster', name:'룬마스터', color:'#ff9f1c', accent:'#ffd29a',
+      desc:'넥서스 화력 극대화, 넥서스 증폭 +50%p',
+      bonusDmg:0, bonusRate:0, bonusNexusAmp:0.5,
+      skill3: { name:'룬 오버드라이브', desc:'8초간 넥서스 공격력 3배 + 공격속도 1.5배', cd:26, dur:8, dmgMul:3, rateMul:1.5, unlockLv:120 },
+      skill4: { name:'룬 창', desc:'가장 가까운 적에게 넥서스 공격력 20배 피해', cd:10, dmgMul:20, nexusScale:true, unlockLv:170 },
+      skill5: { name:'룬 붕괴', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배)', cd:160, nexusScale:true, unlockLv:220 } },
+    { id:'resonator', name:'공명술사', color:'#facc15', accent:'#fef08a',
+      desc:'넥서스 사거리 +25%·다중 조준 특화, 넥서스 증폭 +20%p',
+      bonusDmg:0, bonusRate:0, bonusNexusAmp:0.2, bonusNexusRange:0.25,
+      skill3: { name:'연쇄 룬', desc:'8초간 넥서스가 적 4명을 추가로 동시 조준', cd:24, dur:8, extraTargets:4, unlockLv:120 },
+      skill4: { name:'룬 사슬', desc:'가장 가까운 적에게 넥서스 공격력 15배 피해 + 3초 스턴', cd:12, dmgMul:15, stunDur:3, nexusScale:true, unlockLv:170 },
+      skill5: { name:'천상의 공명', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배) + 4초 스턴', cd:170, stunDur:4, nexusScale:true, unlockLv:220 } },
+  ],
+  summoner: [
+    { id:'elementalist', name:'정령술사', color:'#22d3ee', accent:'#a5f3fc',
+      desc:'강력한 정령 소환, 소환수 공격력 +50%·폭발 반경 40',
+      bonusDmg:10, bonusRate:0, bonusMinionDmg:0.5, minionSplash:40,
+      skill3: { name:'정령왕 강림', desc:'12초간 거대 정령 소환 (공격력 8배, 반경 80 폭발)', cd:30, life:12, dmgMul:8, splash:80, unlockLv:120 },
+      skill4: { name:'정령의 창', desc:'가장 가까운 적에게 공격력 16배 피해', cd:10, dmgMul:16, unlockLv:170 },
+      skill5: { name:'원소 폭풍', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 4초 화상', cd:170, burnDur:4, unlockLv:220 } },
+    { id:'necromancer', name:'강령술사', color:'#a3e635', accent:'#d9f99d',
+      desc:'해골 군단, 소환수 최대 수 +3·소환 주기 절반',
+      bonusDmg:0, bonusRate:0, bonusMinionMax:3, minionEveryMul:0.5,
+      skill3: { name:'망자의 군단', desc:'해골 소환수 8기를 즉시 소환 (10초 유지, 최대 수 무시)', cd:26, count:8, life:10, unlockLv:120 },
+      skill4: { name:'영혼 흡수', desc:'가장 가까운 적에게 공격력 12배 피해 + 현재 HP 5%', cd:9, dmgMul:12, hpPct:0.05, unlockLv:170 },
+      skill5: { name:'사령의 문', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 3초 스턴', cd:160, stunDur:3, unlockLv:220 } },
   ],
 };
 
@@ -791,9 +841,10 @@ function getHeroAdv(classId) {
   return advList ? advList.find(a => a.id === hl.adv) : null;
 }
 const HERO_XP_BASE = 5;
+const HERO_XP_MUL = 1.2;
 function heroXpToNext(lv) {
-  const base = HERO_XP_BASE + lv * 5;
-  if (lv < 60) return base;
+  const base = (HERO_XP_BASE + lv * 5) * HERO_XP_MUL;
+  if (lv < 60) return Math.round(base);
   return Math.round(base * Math.pow(1.04, lv - 59));
 }
 const HERO_MAX_SPD = 600;
@@ -804,6 +855,8 @@ const ADV_STATS = {
   warrior: { baseSpd:600, spdPerLv:1.5, maxSpd:1000, baseRate:4.0, maxRate:8.0 },
   archer:  { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:9.0, maxRate:15.0 },
   mage:    { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:2.0, maxRate:5.0 },
+  runecaster: { baseSpd:250, spdPerLv:0, maxSpd:250, baseRate:2.0, maxRate:5.0 },
+  summoner:   { baseSpd:250, spdPerLv:0, maxSpd:250, baseRate:2.0, maxRate:5.0 },
 };
 const ADV_LV = 100;              // 전직 레벨
 const ADV_GROWTH_MUL = 2;        // 전직 후 레벨당 증가량 배율
@@ -842,6 +895,49 @@ function heroStatScaled(cls, lv, adv) {
     spd:  Math.min(startSpd + as.spdPerLv * ADV_GROWTH_MUL * advLv, as.maxSpd),
     splash: (cls.splash || 0) + (adv.bonusSplash || 0),
   };
+}
+
+// 룬술사 — 영웅이 있을 때만 넥서스 사격 증폭. 룬 폭주·전직 스킬 배율은 곱하지 않고 큰 쪽만 쓴다
+function nexusBoost() {
+  const b = { dmg: 1, rate: 1, range: 1, extraTargets: 0, splash: 0, amp: 0 };
+  const hr = S && S.hero;
+  if (!hr || !hr.def.nexusAmp) return b;
+  const cls = hr.def, adv = hr.adv;
+  b.amp = cls.nexusAmp.base + cls.nexusAmp.perLv * (hr.level - 1) + (adv ? (adv.bonusNexusAmp || 0) : 0);
+  let skillMul = hr.surgeT > 0 ? cls.skill.dmgMul : 1;
+  const s3 = hr.rune3T > 0 && adv && adv.skill3;
+  if (s3) {
+    if (s3.dmgMul) skillMul = Math.max(skillMul, s3.dmgMul);
+    if (s3.rateMul) b.rate = s3.rateMul;
+    if (s3.extraTargets) b.extraTargets = s3.extraTargets;
+  }
+  b.dmg = (1 + b.amp) * skillMul;
+  b.range = 1 + (adv ? (adv.bonusNexusRange || 0) : 0);
+  if (cls.passive && hr.level >= cls.passive.unlockLv) b.splash = cls.passive.splash || 0;
+  return b;
+}
+const nexusShotDmg = () => Math.round(S.nexus.dmg * nexusBoost().dmg);
+
+// 소환사 — 소환수는 판 안에서만 존재. 스킬로 부른 수(extra)·거대 정령(king)은 최대 수에서 뺀다
+function minionCap(hr) {
+  const m = hr.def.minion, adv = hr.adv;
+  return Math.min(m.cap, m.max + Math.floor((hr.level - 1) / m.maxPerLv)) + (adv ? (adv.bonusMinionMax || 0) : 0);
+}
+const regularMinions = () => S.minions.filter(mi => !mi.extra && !mi.king).length;
+function spawnMinion(x, y, opts) {
+  const hr = S.hero, m = hr.def.minion;
+  const a = Math.random() * 6.2832;
+  S.minions.push({ x: x + Math.cos(a) * 18, y: y + Math.sin(a) * 18, ang: a, cd: 0,
+                   life: opts.life ?? m.life, spawnT: 0.4, extra: !!opts.extra, king: !!opts.king });
+  burst(x, y, hr.adv ? hr.adv.accent : hr.def.accent, opts.king ? 24 : 6);
+}
+function splashHit(x, y, dmg, splash, color) {
+  for (const e of S.enemies) {
+    if (e.dead) continue;
+    const dd = dist(e.x, e.y, x, y);
+    if (dd <= splash + e.def.r) damage(e, dmg * (1 - 0.5 * (dd / (splash + e.def.r))), 0, 0);
+  }
+  ring(x, y, splash, color);
 }
 
 const GROUND_UNITS = [
@@ -1681,7 +1777,7 @@ function newGame(startWave) {
              regen: mlv('mregen') * MSTEP.mregen + repairAmt(mlv('p_mech')) + (boost ? boost.regen : 0),
              cd: 0, hitFlash: 0, ang: 0 },
     nexusLv: Object.fromEntries(NEXUS_UPS.map(u => [u.id, 0])),
-    heroes: [], enemies: [], bullets: [], eBullets: [], bombs: [], parts: [], texts: [],
+    heroes: [], enemies: [], bullets: [], eBullets: [], bombs: [], parts: [], texts: [], minions: [],
     queue: [], spawnT: 0, shake: 0, hired: 0,
     autoT: 0,
     dmgMul: 1,                           // 영웅 강화로 오르는 영웅 공격력 배율
@@ -1849,6 +1945,8 @@ function switchHero(cls) {
   S.hero.level = hl ? hl.level : 1;
   S.hero.xp = hl ? hl.xp : 0;
   S.hero.adv = getHeroAdv(cls.id);
+  S.hero.surgeT = 0; S.hero.rune3T = 0; S.hero.minionT = 0;
+  S.minions = [];
   addText(S.hero.x, S.hero.y - 24, cls.name + '(으)로 교체! (특수코어 -' + SWITCH_SPECIAL_CORE_COST + ')', cls.accent);
   saveRun(); syncUI();
 }
@@ -1857,6 +1955,7 @@ function dismissHero() {
   if (!S.hero) return;
   addText(S.hero.x, S.hero.y - 24, '영웅 해산', '#ff6b81');
   S.hero = null;
+  S.minions = [];
   saveRun(); syncUI();
 }
 
@@ -1873,9 +1972,9 @@ function showAdvancement(classId) {
       <div class="info">
         <div class="nm" style="color:${a.color}">${a.name}</div>
         <div class="ds">${a.desc}</div>
-        <div class="ds" style="color:#7b88a8;margin-top:4px">스킬: ${a.skill3.name} — ${a.skill3.desc} (${a.skill3.cd}초)</div>
-        <div class="ds" style="color:#7b88a8;margin-top:2px">Lv.150: ${a.skill4.name} — ${a.skill4.desc} (${a.skill4.cd}초)</div>
-        <div class="ds" style="color:#ff3366;margin-top:2px">Lv.200: ${a.skill5.name} — ${a.skill5.desc} (${a.skill5.cd}초)</div>
+        <div class="ds" style="color:#7b88a8;margin-top:4px">Lv.${a.skill3.unlockLv}: ${a.skill3.name} — ${a.skill3.desc} (${a.skill3.cd}초)</div>
+        <div class="ds" style="color:#7b88a8;margin-top:2px">Lv.${a.skill4.unlockLv}: ${a.skill4.name} — ${a.skill4.desc} (${a.skill4.cd}초)</div>
+        <div class="ds" style="color:#ff3366;margin-top:2px">Lv.${a.skill5.unlockLv}: ${a.skill5.name} — ${a.skill5.desc} (${a.skill5.cd}초)</div>
       </div>
     </div>
   `).join('');
@@ -2189,6 +2288,8 @@ function damage(e, amount, slow, slowT) {
           addText(CX, CY - 40, '+' + heal, '#66ff66');
         } else if (S.hero.def.id === 'mage') {
           if (S.hero.skillCd > 0) S.hero.skillCd = Math.max(0, S.hero.skillCd - 1);
+        } else if (S.hero.def.id === 'summoner') {
+          if (Math.random() < ps.chance && regularMinions() < minionCap(S.hero) + ps.extra) spawnMinion(e.x, e.y, {});
         }
       }
     }
@@ -2348,11 +2449,13 @@ function update(dt) {
   /* 넥서스 사격 — 개조(다중 포탑) 레벨만큼 여러 적을 동시에 조준한다 */
   n.cd -= dt;
   if (n.cd <= 0) {
-    const targets = pickTargets(CX, CY, n.range, 1 + mlv('m_nexusMod'));
+    const nb = nexusBoost();
+    const targets = pickTargets(CX, CY, n.range * nb.range, 1 + mlv('m_nexusMod') + nb.extraTargets);
     if (targets.length) {
-      n.cd = 1 / n.rate;
+      n.cd = 1 / (n.rate * nb.rate);
       const color = S.nexusEvolved ? '#ffb347' : '#7fe7ff';
-      for (const t of targets) fire({ x: CX, y: CY }, t, n.dmg, 560, 0, 0, 0, color);
+      const shot = Math.round(n.dmg * nb.dmg);
+      for (const t of targets) fire({ x: CX, y: CY }, t, shot, 560, nb.splash, 0, 0, color);
     }
   }
 
@@ -2460,6 +2563,8 @@ function update(dt) {
   if (S.hero) {
     const hr = S.hero, cls = hr.def;
     const hs = heroStatScaled(cls, hr.level, hr.adv);
+    const hColor = hr.adv ? hr.adv.color : cls.color;
+    const hAccent = hr.adv ? hr.adv.accent : cls.accent;
     if (hr.spawnT > 0) hr.spawnT -= dt;
     if (hr.recoil > 0) hr.recoil -= dt * 6;
     if (hr.swordSwing > 0) hr.swordSwing -= dt * 4;
@@ -2474,6 +2579,8 @@ function update(dt) {
     if (hr.skill5Cd > 0) hr.skill5Cd -= dt;
     if (S.nexusShield > 0) S.nexusShield -= dt;
     if (S.allyAtkBuff > 0) S.allyAtkBuff -= dt;
+    if (hr.surgeT > 0) hr.surgeT -= dt;
+    if (hr.rune3T > 0) hr.rune3T -= dt;
 
 
     const home = { x: CX + Math.cos(hr.homeAng) * CFG.postR * 0.6,
@@ -2520,9 +2627,59 @@ function update(dt) {
       }
     }
 
-    // 스킬 발동 (자동 또는 수동) — 범위 내 적이 있을 때만
+    // 소환사 — 주기적으로 소환수를 부르고, 소환수는 근처 적에게 달려가 싸운다
+    if (cls.minion) {
+      const md = cls.minion, madv = hr.adv, kingSk = madv && madv.skill3;
+      hr.minionT = (hr.minionT || 0) - dt;
+      if (hr.minionT <= 0 && regularMinions() < minionCap(hr) && S.enemies.some(e => !e.dead)) {
+        spawnMinion(hr.x, hr.y, {});
+        hr.minionT = md.every * (madv ? (madv.minionEveryMul || 1) : 1);
+      }
+      const mDmgMul = 1 + (madv ? (madv.bonusMinionDmg || 0) : 0);
+      const mColor = madv ? madv.accent : cls.accent;
+      for (const mi of S.minions) {
+        mi.life -= dt;
+        mi.cd -= dt;
+        if (mi.spawnT > 0) mi.spawnT -= dt;
+        const t = pickTarget(mi.x, mi.y, mi.king ? 9999 : 320);
+        let dx = 0, dy = 0;
+        if (t) {
+          const d = dist(mi.x, mi.y, t.x, t.y);
+          const reach = (mi.king ? 46 : md.range + 7) + t.def.r;
+          mi.ang = Math.atan2(t.y - mi.y, t.x - mi.x);
+          if (d > reach) { dx = (t.x - mi.x) / d; dy = (t.y - mi.y) / d; }
+          else if (mi.cd <= 0) {
+            mi.cd = 1 / (mi.king ? 1.0 : md.rate);
+            const dmg = hs.dmg * (mi.king ? kingSk.dmgMul : md.dmgMul) * mDmgMul;
+            const splash = mi.king ? kingSk.splash : (madv ? (madv.minionSplash || 0) : 0);
+            if (splash > 0) splashHit(t.x, t.y, dmg, splash, mColor);
+            else { damage(t, dmg, 0, 0); burst(t.x, t.y, mColor, 3); }
+          }
+        } else {
+          const d = dist(mi.x, mi.y, hr.x, hr.y);
+          if (d > 50) { dx = (hr.x - mi.x) / d; dy = (hr.y - mi.y) / d; mi.ang = Math.atan2(dy, dx); }
+        }
+        for (const o of S.minions) {
+          if (o === mi) continue;
+          const d = dist(mi.x, mi.y, o.x, o.y);
+          if (d > 0 && d < 16) { dx += (mi.x - o.x) / d * 0.5; dy += (mi.y - o.y) / d * 0.5; }
+        }
+        const mm = Math.hypot(dx, dy);
+        if (mm > 0.01) {
+          const step = (mi.king ? 150 : md.spd) * dt;
+          mi.x = clamp(mi.x + dx / mm * step, 10, W - 10);
+          mi.y = clamp(mi.y + dy / mm * step, 10, H - 10);
+        }
+      }
+      for (const mi of S.minions) if (mi.life <= 0) burst(mi.x, mi.y, mColor, 5);
+      S.minions = S.minions.filter(mi => mi.life > 0);
+    }
+
+    // 스킬 발동 (자동 또는 수동) — 범위 내 적이 있을 때만. 룬술사는 넥서스 사거리 기준
     const skillRange = cls.id === 'warrior' ? (cls.skill ? cls.skill.radius : cls.range) : cls.range;
-    const enemyInSkillRange = S.enemies.some(e => !e.dead && dist(hr.x, hr.y, e.x, e.y) <= skillRange);
+    const enemyInSkillRange = cls.nexusAmp
+      ? S.enemies.some(e => !e.dead && dist(CX, CY, e.x, e.y) <= S.nexus.range * nexusBoost().range + e.def.r)
+      : S.enemies.some(e => !e.dead && dist(hr.x, hr.y, e.x, e.y) <= skillRange);
     const canSkill = cls.skill && hr.level >= cls.skill.unlockLv && hr.skillCd <= 0 && enemyInSkillRange;
     if (canSkill && (S.autoSkill || hr.pendingSkill)) {
       hr.pendingSkill = false;
@@ -2548,12 +2705,19 @@ function update(dt) {
         const t = inRange || pickTarget(hr.x, hr.y, cls.range);
         if (t) fire(hr, t, skDmg, cls.bspd * 0.6, sk.radius, 0.5, 2.5, '#d88aff', { magicBolt: true });
         addText(hr.x, hr.y - 36, sk.name + '!', '#d88aff');
+      } else if (cls.id === 'runecaster') {
+        hr.surgeT = sk.dur;
+        addText(CX, CY - 70, sk.name + '!', cls.accent);
+        burst(CX, CY, cls.color, 24);
+      } else if (cls.id === 'summoner') {
+        for (let i = 0; i < sk.count; i++) spawnMinion(hr.x, hr.y, { life: sk.life, extra: true });
+        addText(hr.x, hr.y - 36, sk.name + '!', cls.accent);
       }
     }
 
     // CC 스킬 (skill2) 발동 — 범위 내 적이 있을 때만
     const sk2 = cls.skill2;
-    const canSkill2 = sk2 && hr.level >= sk2.unlockLv && hr.skill2Cd <= 0 && enemyInSkillRange;
+    const canSkill2 = sk2 && hr.level >= sk2.unlockLv && hr.skill2Cd <= 0 && enemyInSkillRange && (!cls.minion || S.minions.length > 0);
     if (canSkill2 && (S.autoSkill || hr.pendingSkill2)) {
       hr.pendingSkill2 = false;
       hr.skill2Cd = sk2.cd;
@@ -2585,6 +2749,28 @@ function update(dt) {
         }
         addText(hr.x, hr.y - 36, sk2.name + '!', '#00bfff');
         burst(hr.x, hr.y, '#00bfff', 20);
+      } else if (cls.id === 'runecaster') {
+        const nb = nexusBoost();
+        const rr = S.nexus.range * nb.range;
+        const bindDmg = Math.round(S.nexus.dmg * nb.dmg * sk2.dmgMul);
+        for (const e of S.enemies) {
+          if (e.dead || dist(CX, CY, e.x, e.y) > rr + e.def.r) continue;
+          damage(e, bindDmg, 0, 0);
+          if (!e.dead) e.stunT = sk2.stunDur;
+          burst(e.x, e.y, cls.accent, 6);
+        }
+        ring(CX, CY, rr, cls.color);
+        addText(CX, CY - 70, sk2.name + '!', cls.accent);
+      } else if (cls.id === 'summoner') {
+        const roarDmg = Math.round(hs.dmg * sk2.dmgMul);
+        for (const e of S.enemies) {
+          if (e.dead || !S.minions.some(mi => dist(mi.x, mi.y, e.x, e.y) <= sk2.radius + e.def.r)) continue;
+          damage(e, roarDmg, 0, 0);
+          if (!e.dead) e.stunT = sk2.stunDur;
+          burst(e.x, e.y, cls.accent, 6);
+        }
+        for (const mi of S.minions) ring(mi.x, mi.y, sk2.radius, cls.accent);
+        addText(hr.x, hr.y - 36, sk2.name + '!', cls.accent);
       }
     }
 
@@ -2636,6 +2822,17 @@ function update(dt) {
         S.allyAtkMul = sk3.atkMul;
         addText(hr.x, hr.y - 36, sk3.name + '!', '#00ddff');
         burst(hr.x, hr.y, '#00ddff', 20);
+      } else if (adv.id === 'runemaster' || adv.id === 'resonator') {
+        hr.rune3T = sk3.dur;
+        addText(CX, CY - 70, sk3.name + '!', adv.color);
+        burst(CX, CY, adv.color, 28);
+      } else if (adv.id === 'elementalist') {
+        S.minions = S.minions.filter(mi => !mi.king);
+        spawnMinion(hr.x, hr.y, { life: sk3.life, king: true });
+        addText(hr.x, hr.y - 36, sk3.name + '!', adv.color);
+      } else if (adv.id === 'necromancer') {
+        for (let i = 0; i < sk3.count; i++) spawnMinion(hr.x, hr.y, { life: sk3.life, extra: true });
+        addText(hr.x, hr.y - 36, sk3.name + '!', adv.color);
       }
     }
 
@@ -2645,9 +2842,12 @@ function update(dt) {
     if (canSkill4 && (S.autoSkill || hr.pendingSkill4)) {
       hr.pendingSkill4 = false;
       hr.skill4Cd = sk4.cd;
-      const target = pickTarget(hr.x, hr.y, cls.range) || pickTarget(hr.x, hr.y, skillRange);
+      const target = sk4.nexusScale
+        ? pickTarget(CX, CY, S.nexus.range * nexusBoost().range)
+        : pickTarget(hr.x, hr.y, cls.range) || pickTarget(hr.x, hr.y, skillRange);
       if (target) {
-        const sk4Dmg = Math.round(hs.dmg * sk4.dmgMul + (sk4.hpPct ? target.hp * sk4.hpPct : 0));
+        const base4 = sk4.nexusScale ? nexusShotDmg() : hs.dmg;
+        const sk4Dmg = Math.round(base4 * sk4.dmgMul + (sk4.hpPct ? target.hp * sk4.hpPct : 0));
         damage(target, sk4Dmg, 0, 0);
         if (sk4.stunDur) target.stunT = sk4.stunDur;
         burst(target.x, target.y, hColor, 14);
@@ -2663,7 +2863,7 @@ function update(dt) {
     if (canSkill5 && (S.autoSkill || hr.pendingSkill5)) {
       hr.pendingSkill5 = false;
       hr.skill5Cd = sk5.cd;
-      const bossDmg = Math.round(hs.dmg * 50);
+      const bossDmg = Math.round((sk5.nexusScale ? nexusShotDmg() : hs.dmg) * 50);
       for (const e of S.enemies) {
         if (e.dead) continue;
         const dmg = e.boss ? bossDmg : 999999;
@@ -2946,6 +3146,35 @@ function draw() {
     ctx.restore();
   }
 
+  /* 소환수 */
+  if (S.hero && S.hero.def.minion) {
+    const madv = S.hero.adv;
+    const mCol = madv ? madv.color : S.hero.def.color;
+    const mAcc = madv ? madv.accent : S.hero.def.accent;
+    for (const mi of S.minions) {
+      const r = mi.king ? 16 : 7;
+      const pop = mi.spawnT > 0 ? 1 + mi.spawnT : 1;
+      const alpha = 0.35 + 0.65 * Math.min(1, mi.life / 1.5);   // 사라지기 직전에 흐려진다
+      ctx.save();
+      ctx.translate(mi.x, mi.y);
+      ctx.scale(pop, pop);
+      if (mi.king) {
+        ctx.globalAlpha = alpha * 0.25 + Math.sin(Date.now() * 0.004) * 0.08;
+        ctx.fillStyle = mCol;
+        ctx.beginPath(); ctx.arc(0, 0, r + 9, 0, 6.284); ctx.fill();
+      }
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#1c2437';
+      ctx.strokeStyle = mCol; ctx.lineWidth = mi.king ? 3 : 2;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.284); ctx.fill(); ctx.stroke();
+      ctx.rotate(mi.ang);
+      ctx.fillStyle = mAcc;
+      ctx.beginPath(); ctx.arc(r * 0.35, -r * 0.32, r * 0.2, 0, 6.284); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 0.35, r * 0.32, r * 0.2, 0, 6.284); ctx.fill();
+      ctx.restore();
+    }
+  }
+
   /* 단일 영웅 렌더링 */
   if (S.hero) {
     const hr = S.hero, cls = hr.def;
@@ -3079,6 +3308,35 @@ function draw() {
       ctx.globalAlpha = 0.6 + Math.sin(Date.now() * 0.005) * 0.3;
       ctx.beginPath(); ctx.arc(12, 0, 3, 0, 6.284); ctx.fill();
       ctx.globalAlpha = 1;
+    } else if (cls.id === 'runecaster') {
+      // 룬술사: 회전하는 룬 삼각형
+      ctx.rotate(Date.now() * 0.003 - hr.ang);
+      ctx.strokeStyle = hAccent; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = i * 2.0944;
+        i ? ctx.lineTo(Math.cos(a) * 12, Math.sin(a) * 12) : ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 12);
+      }
+      ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = hColor;
+      ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, 6.284); ctx.fill();
+      ctx.fillStyle = hAccent;
+      for (let i = 0; i < 3; i++) {
+        const a = i * 2.0944 + 1.0472;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * 9, Math.sin(a) * 9, 1.8, 0, 6.284); ctx.fill();
+      }
+    } else if (cls.id === 'summoner') {
+      // 소환사: 펼친 마법서 + 떠도는 영혼 구슬
+      ctx.fillStyle = hColor;
+      ctx.fillRect(-7, -8, 14, 16);
+      ctx.strokeStyle = hAccent; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, 8); ctx.stroke();
+      const orb = Date.now() * 0.004;
+      ctx.fillStyle = hAccent;
+      for (let i = 0; i < 2; i++) {
+        const a = orb + i * Math.PI;
+        ctx.beginPath(); ctx.arc(Math.cos(a) * 13, Math.sin(a) * 13, 2.5, 0, 6.284); ctx.fill();
+      }
     }
     ctx.restore();
 
@@ -3262,7 +3520,10 @@ function draw() {
       ctx.globalAlpha = 1;
     }
 
-    ue.timer -= dt;
+    // draw 에는 dt 가 없어 실제 프레임 간격으로 줄인다
+    const nowT = performance.now();
+    ue.timer -= ue.lastT ? (nowT - ue.lastT) / 1000 : 0;
+    ue.lastT = nowT;
     if (ue.timer <= 0) S.ultEffect = null;
   }
 
@@ -3521,9 +3782,30 @@ function drawNexus() {
 
   ctx.strokeStyle = S.nexusEvolved ? 'rgba(255,200,80,.30)' : 'rgba(127,231,255,.30)';
   ctx.fillStyle = S.nexusEvolved ? 'rgba(255,200,80,.035)' : 'rgba(127,231,255,.035)';
-  ctx.beginPath(); ctx.arc(CX, CY, n.range, 0, 6.284);
+  const nb = nexusBoost();
+  ctx.beginPath(); ctx.arc(CX, CY, n.range * nb.range, 0, 6.284);
   ctx.fill();
   ctx.stroke();
+
+  // 룬술사 증폭 표시 — 룬 폭주·전직 스킬 중에는 더 밝고 빠르게 돈다
+  if (nb.amp > 0) {
+    const hot = nb.dmg > 1 + nb.amp + 1e-6 || nb.rate > 1 || nb.extraTargets > 0;
+    const rr = NEXUS_R * 1.9;
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(performance.now() / (hot ? 250 : 900));
+    ctx.strokeStyle = hot ? 'rgba(255,170,40,.9)' : 'rgba(245,158,11,.5)';
+    ctx.lineWidth = hot ? 2.5 : 1.5;
+    ctx.setLineDash([6, 8]);
+    ctx.beginPath(); ctx.arc(0, 0, rr, 0, 6.284); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = hot ? '#ffd29a' : '#fde68a';
+    for (let i = 0; i < 6; i++) {
+      const a = i * 1.0472;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, hot ? 3.5 : 2.5, 0, 6.284); ctx.fill();
+    }
+    ctx.restore();
+  }
 
   const evo = S.nexusEvolved;
   const glowCol = evo ? 'rgba(255,180,60,' : 'rgba(80,180,255,';
@@ -3908,11 +4190,12 @@ function renderHeroMeta() {
           <div class="info" style="margin:0">
             <div class="nm" style="color:${cls.color}">${cls.name}${lvText} ${sel ? '<span style="color:#ffe066">✦ 선택됨</span>' : ''}</div>
             <div class="ds">${cls.desc}</div>
+            ${cls.trait ? `<div class="ds" style="color:${cls.accent}">특성: ${cls.trait}</div>` : ''}
             <div class="ds" style="color:#7b88a8;margin-top:2px">공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range}</div>
             <div class="ds" style="color:#7b88a8">스킬: ${sk.name} (Lv.${sk.unlockLv} 해금, ${sk.cd}초 쿨다운)${hl.level > 1 ? ' · 경험치 ' + hl.xp + '/' + heroXpToNext(hl.level) : ''}</div>
             ${cls.passive ? `<div class="ds" style="color:${hl.level >= cls.passive.unlockLv ? '#66ff66' : '#555'}">패시브: ${cls.passive.name} — ${cls.passive.desc} (Lv.${cls.passive.unlockLv} 해금${hl.level >= cls.passive.unlockLv ? ' ✦' : ''})</div>` : ''}
             ${cls.skill2 ? `<div class="ds" style="color:${hl.level >= cls.skill2.unlockLv ? '#00bfff' : '#555'}">CC스킬: ${cls.skill2.name} — ${cls.skill2.desc} (Lv.${cls.skill2.unlockLv} 해금${hl.level >= cls.skill2.unlockLv ? ' ✦' : ''})</div>` : ''}
-            ${(() => { const hadv = getHeroAdv(cls.id); return hadv ? `<div class="ds" style="color:${hadv.color}">전직: ${hadv.name} ✦ · ${hadv.skill3.name} — ${hadv.skill3.desc} (${hadv.skill3.cd}초)</div>` + (hadv.skill4 ? `<div class="ds" style="color:${hadv.color}">Lv.150: ${hadv.skill4.name} — ${hadv.skill4.desc} (${hadv.skill4.cd}초)</div>` : '') + (hadv.skill5 ? `<div class="ds" style="color:#ff3366">Lv.200: ${hadv.skill5.name} — ${hadv.skill5.desc} (${hadv.skill5.cd}초)</div>` : '') : (hl.level >= 100 ? `<div class="ds" style="color:#ffe066">Lv.100 전직 가능!</div>` : `<div class="ds" style="color:#555">전직: Lv.100 해금</div>`); })()}
+            ${(() => { const hadv = getHeroAdv(cls.id); return hadv ? `<div class="ds" style="color:${hadv.color}">전직: ${hadv.name} ✦ · ${hadv.skill3.name} — ${hadv.skill3.desc} (${hadv.skill3.cd}초)</div>` + (hadv.skill4 ? `<div class="ds" style="color:${hadv.color}">Lv.${hadv.skill4.unlockLv}: ${hadv.skill4.name} — ${hadv.skill4.desc} (${hadv.skill4.cd}초)</div>` : '') + (hadv.skill5 ? `<div class="ds" style="color:#ff3366">Lv.${hadv.skill5.unlockLv}: ${hadv.skill5.name} — ${hadv.skill5.desc} (${hadv.skill5.cd}초)</div>` : '') : (hl.level >= 100 ? `<div class="ds" style="color:#ffe066">Lv.100 전직 가능!</div>` : `<div class="ds" style="color:#555">전직: Lv.100 해금</div>`); })()}
           </div>
         </div>
         <button data-hcsel="${cls.id}" ${sel || (!sel && needSpecial && !canSwitch) ? 'disabled' : ''}>${btnText}</button>
@@ -4134,6 +4417,8 @@ function renderHeroShop() {
     $('heroXpBar').style.width = xpPct + '%';
     $('heroXpText').textContent = `경험치 ${S.hero.xp} / ${xpNeed}`;
     let stats = `공격력 ${Math.floor(hs.dmg)} · 공속 ${hs.rate.toFixed(2)} · 사거리 ${cls.range} · 이동속도 ${Math.floor(hs.spd)}`;
+    if (cls.nexusAmp) stats += ` · 넥서스 증폭 +${Math.round(nexusBoost().amp * 100)}%`;
+    if (cls.minion) stats += ` · 소환수 ${S.minions.length} (기본 최대 ${minionCap(S.hero)})`;
     $('heroStatsRow').textContent = stats;
     if (cls.skill) {
       skillSec.style.display = '';
@@ -4144,7 +4429,9 @@ function renderHeroShop() {
       $('heroSkillName').textContent = sk.name;
       $('heroSkillName').style.color = ok ? cls.color : '#7b88a8';
       $('heroSkillDesc').textContent = sk.desc;
-      const hitInfo = sk.shots ? `타격당 ×${sk.dmgMul} (${sk.shots}연발)` : `피해배율 ×${sk.dmgMul}`;
+      const hitInfo = sk.count ? `소환수 ${sk.count}기 · ${sk.life}초 유지`
+                    : sk.dur ? `${sk.dur}초 지속 · 넥서스 공격력 ×${sk.dmgMul}`
+                    : sk.shots ? `타격당 ×${sk.dmgMul} (${sk.shots}연발)` : `피해배율 ×${sk.dmgMul}`;
       $('heroSkillInfo').textContent = `쿨다운 ${sk.cd}초 · ${hitInfo}`;
       $('heroSkillBadge').textContent = ok ? '습득됨' : `Lv.${sk.unlockLv} 해금`;
       $('heroSkillBadge').style.color = ok ? '#66ffaa' : '#ff6b81';
@@ -4288,16 +4575,20 @@ function renderSel() {
       ? `<div class="stat"><span>중력파</span><b>피해 ${S.gravWave.dmg}/초 · 범위 ${S.gravWave.range}</b></div>` : '';
     const modInfo = mlv('m_nexusMod') > 0
       ? `<div class="stat"><span>다중 포탑</span><b>동시 ${1 + mlv('m_nexusMod')}표적 사격</b></div>` : '';
+    const nb = nexusBoost();
+    const shot = Math.round(n.dmg * nb.dmg);
+    const ampInfo = nb.amp > 0
+      ? `<div class="stat"><span>룬술사 증폭</span><b>공격력 ×${nb.dmg.toFixed(2)}${nb.rate > 1 ? ` · 공속 ×${nb.rate}` : ''}${nb.extraTargets ? ` · 추가 조준 +${nb.extraTargets}` : ''}${nb.splash ? ` · 폭발 반경 ${nb.splash}` : ''}</b></div>` : '';
     $('selStats').innerHTML = `
       <div class="stat"><span>체력</span><b>${Math.ceil(n.hp)} / ${n.maxHp}</b></div>
-      <div class="stat"><span>공격력</span><b>${n.dmg}</b></div>
-      <div class="stat"><span>공격속도</span><b>${n.rate.toFixed(1)} 발/초</b></div>
-      <div class="stat"><span>초당 피해량</span><b>${(n.dmg * n.rate).toFixed(1)}</b></div>
-      <div class="stat"><span>사거리</span><b>${n.range}</b></div>
+      <div class="stat"><span>공격력</span><b>${shot === n.dmg ? n.dmg : `${n.dmg} → ${shot}`}</b></div>
+      <div class="stat"><span>공격속도</span><b>${(n.rate * nb.rate).toFixed(1)} 발/초</b></div>
+      <div class="stat"><span>초당 피해량</span><b>${(shot * n.rate * nb.rate).toFixed(1)}</b></div>
+      <div class="stat"><span>사거리</span><b>${Math.round(n.range * nb.range)}</b></div>
       <div class="stat"><span>체력재생</span><b>${n.regen.toFixed(1)}/초</b></div>
       <div class="stat"><span>골드 배율</span><b>×${S.goldMul.toFixed(2)}</b></div>
       <div class="stat"><span>수입 배율</span><b>×${S.incomeMul.toFixed(2)}</b></div>
-      ${repairInfo}${gravInfo}${modInfo}`;
+      ${repairInfo}${gravInfo}${modInfo}${ampInfo}`;
     return;
   }
 
