@@ -715,27 +715,27 @@ const HERO_CLASSES = [
     desc:'적에게 달려들어 근접 공격하는 전투의 달인',
     summonCost: 0, switchCost: 500,
     dmgPerLv:4, ratePerLv:0.015, spdPerLv:2.5,
-    skill: { name:'슬래시', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:50 },
-    passive: { name:'생명력 착취', desc:'적 처치 시 넥서스 HP 1% 회복', unlockLv:80 },
-    skill2: { name:'전쟁의 함성', desc:'모든 적을 밀어내고 2초간 이동속도 50% 감소', cd:30, knockDist:120, slowDur:2, unlockLv:100 } },
+    skill: { name:'슬래시', desc:'큰 검을 휘둘러 주변 모든 적에게 3배 피해', cd:16, radius:170, dmgMul:3, unlockLv:80 },
+    passive: { name:'생명력 착취', desc:'적 처치 시 넥서스 HP 1% 회복', unlockLv:150 },
+    skill2: { name:'전쟁의 함성', desc:'모든 적을 밀어내고 2초간 이동속도 50% 감소', cd:30, knockDist:120, slowDur:2, unlockLv:250 } },
   { id:'archer', name:'궁수', color:'#22c55e', accent:'#86efac',
     dmg:10, range:400, rate:4.5, bspd:900, spd:120, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true, arrow: true,
     desc:'초장거리에서 빠른 화살을 퍼붓는 원거리 전문가',
     summonCost: 0, switchCost: 500,
     dmgPerLv:1, ratePerLv:0.04, spdPerLv:1,
-    skill: { name:'연발샷', desc:'가장 가까운 적에게 화살 6발을 연달아 발사', cd:14, shots:6, dmgMul:2, unlockLv:50 },
-    passive: { name:'속사', desc:'공격 시 15% 확률로 즉시 한 발 더 발사', unlockLv:80 },
-    skill2: { name:'공포의 화살', desc:'모든 적을 3초간 공포에 빠뜨려 도주시킴', cd:30, fearDur:3, unlockLv:100 } },
+    skill: { name:'연발샷', desc:'가장 가까운 적에게 화살 6발을 연달아 발사', cd:14, shots:6, dmgMul:2, unlockLv:80 },
+    passive: { name:'속사', desc:'공격 시 15% 확률로 즉시 한 발 더 발사', unlockLv:150 },
+    skill2: { name:'공포의 화살', desc:'모든 적을 3초간 공포에 빠뜨려 도주시킴', cd:30, fearDur:3, unlockLv:250 } },
   { id:'mage', name:'마법사', color:'#a855f7', accent:'#d8b4fe',
     dmg:60, range:200, rate:0.5, bspd:350, spd:100, splash:50, slow:0.3, slowT:1.5,
     roam:9999, heroClass:true, energyBolt: true,
     desc:'짧은 쿨타임의 에너지 볼트로 적을 제압하고 감속시킨다',
     summonCost: 0, switchCost: 500,
     dmgPerLv:5, ratePerLv:0.01,
-    skill: { name:'매직샷', desc:'거대한 마법 구체를 발사해 주변에 폭발 피해', cd:4, radius:110, dmgMul:5, unlockLv:50 },
-    passive: { name:'마력 환류', desc:'적 처치 시 스킬 쿨타임 1초 감소', unlockLv:80 },
-    skill2: { name:'시간 정지', desc:'모든 적을 3초간 스턴 (이동·공격 불가)', cd:30, stunDur:3, unlockLv:100 } },
+    skill: { name:'매직샷', desc:'거대한 마법 구체를 발사해 주변에 폭발 피해', cd:4, radius:110, dmgMul:5, unlockLv:80 },
+    passive: { name:'마력 환류', desc:'적 처치 시 스킬 쿨타임 1초 감소', unlockLv:150 },
+    skill2: { name:'시간 정지', desc:'모든 적을 3초간 스턴 (이동·공격 불가)', cd:30, stunDur:3, unlockLv:250 } },
   { id:'runecaster', name:'룬술사', color:'#f59e0b', accent:'#fde68a',
     dmg:20, range:260, rate:1.0, bspd:600, spd:130, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true,
@@ -744,9 +744,9 @@ const HERO_CLASSES = [
     summonCost: 0, switchCost: 500,
     dmgPerLv:2, ratePerLv:0.01, spdPerLv:1,
     nexusAmp: { base:0.15, perLv:0.005 },
-    skill: { name:'룬 폭주', desc:'6초간 넥서스 공격력 2배', cd:20, dur:6, dmgMul:2, unlockLv:50 },
-    passive: { name:'과충전', desc:'넥서스 탄환이 반경 40 폭발 피해를 준다', splash:40, unlockLv:80 },
-    skill2: { name:'룬 속박', desc:'넥서스 사거리 안의 모든 적에게 넥서스 공격력 3배 피해 + 2.5초 스턴', cd:30, dmgMul:3, stunDur:2.5, unlockLv:100 } },
+    skill: { name:'룬 폭주', desc:'6초간 넥서스 공격력 2배', cd:20, dur:6, dmgMul:2, unlockLv:80 },
+    passive: { name:'과충전', desc:'넥서스 탄환이 반경 40 폭발 피해를 준다', splash:40, unlockLv:150 },
+    skill2: { name:'룬 속박', desc:'넥서스 사거리 안의 모든 적에게 넥서스 공격력 3배 피해 + 2.5초 스턴', cd:30, dmgMul:3, stunDur:2.5, unlockLv:250 } },
   { id:'summoner', name:'소환사', color:'#14b8a6', accent:'#99f6e4',
     dmg:18, range:240, rate:1.0, bspd:500, spd:120, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true,
@@ -755,9 +755,9 @@ const HERO_CLASSES = [
     summonCost: 0, switchCost: 500,
     dmgPerLv:2, ratePerLv:0.01, spdPerLv:1,
     minion: { every:5, life:20, max:2, maxPerLv:25, cap:8, dmgMul:1.0, rate:1.2, range:14, spd:170 },
-    skill: { name:'대량 소환', desc:'소환수 3기를 즉시 추가 소환 (최대 수 무시, 12초 유지)', cd:18, count:3, life:12, unlockLv:50 },
-    passive: { name:'영혼 수확', desc:'적 처치 시 25% 확률로 그 자리에 소환수 1기 (최대 수 +2까지)', chance:0.25, extra:2, unlockLv:80 },
-    skill2: { name:'속박의 포효', desc:'모든 소환수 주변 반경 100의 적에게 공격력 3배 피해 + 2초 스턴', cd:28, radius:100, dmgMul:3, stunDur:2, unlockLv:100 } },
+    skill: { name:'대량 소환', desc:'소환수 3기를 즉시 추가 소환 (최대 수 무시, 12초 유지)', cd:18, count:3, life:12, unlockLv:80 },
+    passive: { name:'영혼 수확', desc:'적 처치 시 25% 확률로 그 자리에 소환수 1기 (최대 수 +2까지)', chance:0.25, extra:2, unlockLv:150 },
+    skill2: { name:'속박의 포효', desc:'모든 소환수 주변 반경 100의 적에게 공격력 3배 피해 + 2초 스턴', cd:28, radius:100, dmgMul:3, stunDur:2, unlockLv:250 } },
 ];
 
 const HERO_ADV = {
@@ -765,71 +765,71 @@ const HERO_ADV = {
     { id:'swordmaster', name:'검성', color:'#ff4444', accent:'#ff8888',
       desc:'공격력·공속 극대화, 적을 베어가는 순수 딜러',
       bonusDmg:20, bonusRate:0.5,
-      skill3: { name:'검무', desc:'0.5초간 8회 연속 베기, 각 타격 2배 피해', cd:20, hits:8, dmgMul:2, unlockLv:120 },
-      skill4: { name:'참격', desc:'가장 가까운 적에게 공격력 15배 피해', cd:10, dmgMul:15, unlockLv:170 },
-      skill5: { name:'천검난무', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:220 } },
+      skill3: { name:'검무', desc:'0.5초간 8회 연속 베기, 각 타격 2배 피해', cd:20, hits:8, dmgMul:2, unlockLv:400 },
+      skill4: { name:'참격', desc:'가장 가까운 적에게 공격력 15배 피해', cd:10, dmgMul:15, unlockLv:700 },
+      skill5: { name:'천검난무', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:1000 } },
     { id:'guardian', name:'수호자', color:'#4488ff', accent:'#88bbff',
       desc:'넥서스 보호 특화, 받는 피해 30% 감소 보호막',
       bonusDmg:0, bonusRate:0,
-      skill3: { name:'불굴의 방벽', desc:'5초간 넥서스가 받는 피해 70% 감소', cd:25, shieldDur:5, dmgReduce:0.7, unlockLv:120 },
-      skill4: { name:'심판의 일격', desc:'가장 가까운 적에게 공격력 12배 피해 + 3초 스턴', cd:14, dmgMul:12, stunDur:3, unlockLv:170 },
-      skill5: { name:'천벌', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 3초 스턴', cd:180, stunDur:3, unlockLv:220 } },
+      skill3: { name:'불굴의 방벽', desc:'5초간 넥서스가 받는 피해 70% 감소', cd:25, shieldDur:5, dmgReduce:0.7, unlockLv:400 },
+      skill4: { name:'심판의 일격', desc:'가장 가까운 적에게 공격력 12배 피해 + 3초 스턴', cd:14, dmgMul:12, stunDur:3, unlockLv:700 },
+      skill5: { name:'천벌', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 3초 스턴', cd:180, stunDur:3, unlockLv:1000 } },
   ],
   archer: [
     { id:'sharpshooter', name:'명사수', color:'#00ff88', accent:'#88ffbb',
       desc:'단일 대상 치명타 특화, 보스 킬러',
       bonusDmg:5, bonusRate:1.0,
-      skill3: { name:'저격', desc:'HP가 가장 높은 적에게 현재 HP의 8% 피해', cd:12, hpPct:0.08, unlockLv:120 },
-      skill4: { name:'급소 사격', desc:'가장 가까운 적에게 공격력 10배 피해 + 현재 HP 5%', cd:8, dmgMul:10, hpPct:0.05, unlockLv:170 },
-      skill5: { name:'만시(萬矢)', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:220 } },
+      skill3: { name:'저격', desc:'HP가 가장 높은 적에게 현재 HP의 8% 피해', cd:12, hpPct:0.08, unlockLv:400 },
+      skill4: { name:'급소 사격', desc:'가장 가까운 적에게 공격력 10배 피해 + 현재 HP 5%', cd:8, dmgMul:10, hpPct:0.05, unlockLv:700 },
+      skill5: { name:'만시(萬矢)', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:150, unlockLv:1000 } },
     { id:'stormarcher', name:'폭풍사수', color:'#ffee00', accent:'#fff888',
       desc:'다수 관통·범위 공격 특화, 물량 처리기',
       bonusDmg:0, bonusRate:0.5,
-      skill3: { name:'화살비', desc:'모든 적에게 공격력 3배 피해의 화살비', cd:22, dmgMul:3, unlockLv:120 },
-      skill4: { name:'번개 화살', desc:'가장 가까운 적에게 공격력 14배 피해', cd:10, dmgMul:14, unlockLv:170 },
-      skill5: { name:'뇌신의 화살', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:160, unlockLv:220 } },
+      skill3: { name:'화살비', desc:'모든 적에게 공격력 3배 피해의 화살비', cd:22, dmgMul:3, unlockLv:400 },
+      skill4: { name:'번개 화살', desc:'가장 가까운 적에게 공격력 14배 피해', cd:10, dmgMul:14, unlockLv:700 },
+      skill5: { name:'뇌신의 화살', desc:'전체 적에게 999999 피해 (보스: 공격력 50배)', cd:160, unlockLv:1000 } },
   ],
   mage: [
     { id:'archmage', name:'대마법사', color:'#ff44ff', accent:'#ff88ff',
       desc:'순수 화력 극대화, 폭발 범위·데미지 강화',
       bonusDmg:25, bonusSplash:30,
-      skill3: { name:'메테오', desc:'전체 적에게 공격력 6배 피해 + 3초 화상', cd:24, dmgMul:6, burnDur:3, unlockLv:120 },
-      skill4: { name:'소멸의 광선', desc:'가장 가까운 적에게 공격력 18배 피해', cd:12, dmgMul:18, unlockLv:170 },
-      skill5: { name:'아포칼립스', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 5초 화상', cd:180, burnDur:5, unlockLv:220 } },
+      skill3: { name:'메테오', desc:'전체 적에게 공격력 6배 피해 + 3초 화상', cd:24, dmgMul:6, burnDur:3, unlockLv:400 },
+      skill4: { name:'소멸의 광선', desc:'가장 가까운 적에게 공격력 18배 피해', cd:12, dmgMul:18, unlockLv:700 },
+      skill5: { name:'아포칼립스', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 5초 화상', cd:180, burnDur:5, unlockLv:1000 } },
     { id:'chronomancer', name:'시간술사', color:'#00ddff', accent:'#88eeff',
       desc:'CC·서포트 특화, 아군 공격속도 2배 버프',
       bonusDmg:0, bonusRate:0,
-      skill3: { name:'시간 가속', desc:'6초간 모든 아군 공격속도 2배', cd:28, buffDur:6, atkMul:2, unlockLv:120 },
-      skill4: { name:'시간 붕괴', desc:'가장 가까운 적에게 공격력 13배 피해 + 2초 스턴', cd:11, dmgMul:13, stunDur:2, unlockLv:170 },
-      skill5: { name:'영겁회귀', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 4초 스턴', cd:170, stunDur:4, unlockLv:220 } },
+      skill3: { name:'시간 가속', desc:'6초간 모든 아군 공격속도 2배', cd:28, buffDur:6, atkMul:2, unlockLv:400 },
+      skill4: { name:'시간 붕괴', desc:'가장 가까운 적에게 공격력 13배 피해 + 2초 스턴', cd:11, dmgMul:13, stunDur:2, unlockLv:700 },
+      skill5: { name:'영겁회귀', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 4초 스턴', cd:170, stunDur:4, unlockLv:1000 } },
   ],
   runecaster: [
     { id:'runemaster', name:'룬마스터', color:'#ff9f1c', accent:'#ffd29a',
       desc:'넥서스 화력 극대화, 넥서스 증폭 +50%p',
       bonusDmg:0, bonusRate:0, bonusNexusAmp:0.5,
-      skill3: { name:'룬 오버드라이브', desc:'8초간 넥서스 공격력 3배 + 공격속도 1.5배', cd:26, dur:8, dmgMul:3, rateMul:1.5, unlockLv:120 },
-      skill4: { name:'룬 창', desc:'가장 가까운 적에게 넥서스 공격력 20배 피해', cd:10, dmgMul:20, nexusScale:true, unlockLv:170 },
-      skill5: { name:'룬 붕괴', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배)', cd:160, nexusScale:true, unlockLv:220 } },
+      skill3: { name:'룬 오버드라이브', desc:'8초간 넥서스 공격력 3배 + 공격속도 1.5배', cd:26, dur:8, dmgMul:3, rateMul:1.5, unlockLv:400 },
+      skill4: { name:'룬 창', desc:'가장 가까운 적에게 넥서스 공격력 20배 피해', cd:10, dmgMul:20, nexusScale:true, unlockLv:700 },
+      skill5: { name:'룬 붕괴', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배)', cd:160, nexusScale:true, unlockLv:1000 } },
     { id:'resonator', name:'공명술사', color:'#facc15', accent:'#fef08a',
       desc:'넥서스 사거리 +25%·다중 조준 특화, 넥서스 증폭 +20%p',
       bonusDmg:0, bonusRate:0, bonusNexusAmp:0.2, bonusNexusRange:0.25,
-      skill3: { name:'연쇄 룬', desc:'8초간 넥서스가 적 4명을 추가로 동시 조준', cd:24, dur:8, extraTargets:4, unlockLv:120 },
-      skill4: { name:'룬 사슬', desc:'가장 가까운 적에게 넥서스 공격력 15배 피해 + 3초 스턴', cd:12, dmgMul:15, stunDur:3, nexusScale:true, unlockLv:170 },
-      skill5: { name:'천상의 공명', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배) + 4초 스턴', cd:170, stunDur:4, nexusScale:true, unlockLv:220 } },
+      skill3: { name:'연쇄 룬', desc:'8초간 넥서스가 적 4명을 추가로 동시 조준', cd:24, dur:8, extraTargets:4, unlockLv:400 },
+      skill4: { name:'룬 사슬', desc:'가장 가까운 적에게 넥서스 공격력 15배 피해 + 3초 스턴', cd:12, dmgMul:15, stunDur:3, nexusScale:true, unlockLv:700 },
+      skill5: { name:'천상의 공명', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배) + 4초 스턴', cd:170, stunDur:4, nexusScale:true, unlockLv:1000 } },
   ],
   summoner: [
     { id:'elementalist', name:'정령술사', color:'#22d3ee', accent:'#a5f3fc',
       desc:'강력한 정령 소환, 소환수 공격력 +50%·폭발 반경 40',
       bonusDmg:10, bonusRate:0, bonusMinionDmg:0.5, minionSplash:40,
-      skill3: { name:'정령왕 강림', desc:'12초간 거대 정령 소환 (공격력 8배, 반경 80 폭발)', cd:30, life:12, dmgMul:8, splash:80, unlockLv:120 },
-      skill4: { name:'정령의 창', desc:'가장 가까운 적에게 공격력 16배 피해', cd:10, dmgMul:16, unlockLv:170 },
-      skill5: { name:'원소 폭풍', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 4초 화상', cd:170, burnDur:4, unlockLv:220 } },
+      skill3: { name:'정령왕 강림', desc:'12초간 거대 정령 소환 (공격력 8배, 반경 80 폭발)', cd:30, life:12, dmgMul:8, splash:80, unlockLv:400 },
+      skill4: { name:'정령의 창', desc:'가장 가까운 적에게 공격력 16배 피해', cd:10, dmgMul:16, unlockLv:700 },
+      skill5: { name:'원소 폭풍', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 4초 화상', cd:170, burnDur:4, unlockLv:1000 } },
     { id:'necromancer', name:'강령술사', color:'#a3e635', accent:'#d9f99d',
       desc:'해골 군단, 소환수 최대 수 +3·소환 주기 절반',
       bonusDmg:0, bonusRate:0, bonusMinionMax:3, minionEveryMul:0.5,
-      skill3: { name:'망자의 군단', desc:'해골 소환수 8기를 즉시 소환 (10초 유지, 최대 수 무시)', cd:26, count:8, life:10, unlockLv:120 },
-      skill4: { name:'영혼 흡수', desc:'가장 가까운 적에게 공격력 12배 피해 + 현재 HP 5%', cd:9, dmgMul:12, hpPct:0.05, unlockLv:170 },
-      skill5: { name:'사령의 문', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 3초 스턴', cd:160, stunDur:3, unlockLv:220 } },
+      skill3: { name:'망자의 군단', desc:'해골 소환수 8기를 즉시 소환 (10초 유지, 최대 수 무시)', cd:26, count:8, life:10, unlockLv:400 },
+      skill4: { name:'영혼 흡수', desc:'가장 가까운 적에게 공격력 12배 피해 + 현재 HP 5%', cd:9, dmgMul:12, hpPct:0.05, unlockLv:700 },
+      skill5: { name:'사령의 문', desc:'전체 적에게 999999 피해 (보스: 공격력 50배) + 3초 스턴', cd:160, stunDur:3, unlockLv:1000 } },
   ],
 };
 
@@ -842,24 +842,26 @@ function getHeroAdv(classId) {
 }
 const HERO_XP_BASE = 5;
 const HERO_XP_MUL = 1.2;
+// 레벨의 제곱으로 느는 항 — 후반 한 판(약 200만 경험치)을 17번쯤 돌면 Lv.1500 에 닿는다
+const HERO_XP_QUAD = 0.02;
 function heroXpToNext(lv) {
-  const base = (HERO_XP_BASE + lv * 5) * HERO_XP_MUL;
-  if (lv < 60) return Math.round(base);
-  return Math.round(base * Math.pow(1.04, lv - 59));
+  return Math.round((HERO_XP_BASE + lv * 5 + lv * lv * HERO_XP_QUAD) * HERO_XP_MUL);
 }
 const HERO_MAX_SPD = 600;
 const HERO_MAX_SPD_ADV = 1000;
 const HERO_MAX_RATE = 12;
-/* 전직(2차) 이후 이동속도·공속의 시작값과 상한. 상한은 여기서만 정한다. */
+/* 전직(2차) 이후 이동속도·공속의 시작값과 상한, 레벨당 공격력. 상한은 여기서만 정한다.
+   공속 상한이 낮은 직업일수록 레벨당 공격력을 크게 줘서 Lv.1500 초당 피해를 비슷하게 맞춘다. */
 const ADV_STATS = {
-  warrior: { baseSpd:600, spdPerLv:1.5, maxSpd:1000, baseRate:4.0, maxRate:8.0 },
-  archer:  { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:9.0, maxRate:15.0 },
-  mage:    { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:2.0, maxRate:5.0 },
-  runecaster: { baseSpd:250, spdPerLv:0, maxSpd:250, baseRate:2.0, maxRate:5.0 },
-  summoner:   { baseSpd:250, spdPerLv:0, maxSpd:250, baseRate:2.0, maxRate:5.0 },
+  warrior: { baseSpd:600, spdPerLv:1.5, maxSpd:1000, baseRate:4.0, maxRate:8.0,  dmgPerLv:12 },
+  archer:  { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:9.0, maxRate:15.0, dmgPerLv:5 },
+  mage:    { baseSpd:250, spdPerLv:0,   maxSpd:250,  baseRate:2.0, maxRate:5.0,  dmgPerLv:15 },
+  runecaster: { baseSpd:250, spdPerLv:0, maxSpd:250, baseRate:2.0, maxRate:5.0, dmgPerLv:9 },
+  summoner:   { baseSpd:250, spdPerLv:0, maxSpd:250, baseRate:2.0, maxRate:5.0, dmgPerLv:4.5 },
 };
 const ADV_LV = 100;              // 전직 레벨
-const ADV_GROWTH_MUL = 2;        // 전직 후 레벨당 증가량 배율
+const ADV_GROWTH_MUL = 2;        // 전직 후 공속·이동속도의 레벨당 증가량 배율
+const ADV_ACCEL = 1400;          // 전직 후 이만큼 오를 때마다 레벨당 공격력 증가량이 한 배씩 더 붙는다
 const ADV_START_BOOST = 1.15;    // 전직 순간 직전 능력치보다 이만큼 올려서 시작
 
 function heroStatScaled(cls, lv, adv) {
@@ -876,8 +878,8 @@ function heroStatScaled(cls, lv, adv) {
     };
   }
 
-  /* 전직 후 — 전직 직전(ADV_LV-1 레벨) 능력치를 기준으로 조금 더 올려 시작하고,
-     레벨당 증가량은 두 배로 간다. 상한(ADV_STATS)은 그대로 지킨다. */
+  /* 전직 후 — 전직 직전(ADV_LV-1 레벨) 능력치를 기준으로 조금 더 올려 시작한다.
+     공격력은 직업별 dmgPerLv 로 오르되 레벨이 높을수록 가팔라지고, 공속·이동속도는 상한을 지킨다. */
   const as = ADV_STATS[cls.id];
   const advLv = lv - ADV_LV;
   const preL = ADV_LV - 2;                       // 전직 직전 레벨의 (lv-1)
@@ -890,7 +892,7 @@ function heroStatScaled(cls, lv, adv) {
   const startSpd  = Math.max(as.baseSpd,  preSpd  * ADV_START_BOOST);
 
   return {
-    dmg:  startDmg + (cls.dmgPerLv || 0) * ADV_GROWTH_MUL * advLv,
+    dmg:  startDmg + as.dmgPerLv * advLv * (1 + advLv / ADV_ACCEL),
     rate: Math.min(startRate + (cls.ratePerLv || 0) * ADV_GROWTH_MUL * advLv, as.maxRate),
     spd:  Math.min(startSpd + as.spdPerLv * ADV_GROWTH_MUL * advLv, as.maxSpd),
     splash: (cls.splash || 0) + (adv.bonusSplash || 0),
@@ -5113,7 +5115,7 @@ function renderHeroMeta() {
       const sel = cur === cls.id;
       const sk = cls.skill;
       const hl = save.meta.heroLevels[cls.id] || { xp: 0, level: 1 };
-      const hs = heroStatScaled(cls, hl.level);
+      const hs = heroStatScaled(cls, hl.level, getHeroAdv(cls.id));
       const lvText = hl.level > 1 ? ` <span style="color:#ffe066">Lv.${hl.level}</span>` : '';
       const canSwitch = !needSpecial || save.specialCores >= SWITCH_SPECIAL_CORE_COST;
       const btnText = sel ? '선택됨' : needSpecial ? '<span style="color:#f0abfc">' + SWITCH_SPECIAL_CORE_COST + '</span> 특수 코어' : '선택';
@@ -5339,7 +5341,7 @@ function renderHeroShop() {
     skillSec.style.display = 'none';
   } else if (has) {
     const cls = S.hero.def;
-    const hs = heroStatScaled(cls, S.hero.level);
+    const hs = heroStatScaled(cls, S.hero.level, S.hero.adv);
     const xpNeed = heroXpToNext(S.hero.level);
     const xpPct = Math.min(S.hero.xp / xpNeed * 100, 100);
     statusEl.textContent = '';
