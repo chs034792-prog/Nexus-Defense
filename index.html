@@ -8,17 +8,52 @@
 <meta http-equiv="Expires" content="0">
 <title>Nexus Defense</title>
 <style>
+  /* ── 디자인 토큰 ───────────────────────────────
+     색·둥글기·그림자는 여기서만 정한다. 새 UI 를 붙일 때도 아래 변수를 쓰면
+     화면끼리 색이 어긋나지 않는다. */
+  :root {
+    --bg:          #080b13;
+    --surface:     #111827;     /* 카드·상자 바탕 */
+    --surface-hi:  #18213a;     /* 눌리거나 올라온 상태 */
+    --surface-sunk:#0b101c;     /* 탭 트랙·입력창처럼 파인 곳 */
+    --line:        rgba(140,170,230,.14);
+    --line-strong: rgba(140,170,230,.28);
+    --text:        #e9eefc;
+    --text-dim:    #9aa8c7;
+    --text-mute:   #6b789a;
+    --brand:       #4b86ff;
+    --brand-deep:  #2f62df;
+    --cyan:        #7fe7ff;
+    --gold:        #ffd45e;
+    --ok:          #4ade80;
+    --danger:      #f87171;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+    --sh-1: 0 1px 2px rgba(0,0,0,.45);
+    --sh-2: 0 8px 24px rgba(0,0,0,.45);
+    --sh-3: 0 20px 56px rgba(0,0,0,.6);
+    --ring: 0 0 0 2px rgba(75,134,255,.5);
+    --hair: inset 0 1px 0 rgba(255,255,255,.05);   /* 카드 위쪽 1px 하이라이트 */
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
   body {
-    background: #0b0e17;
-    color: #dfe6f5;
-    font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    /* 숫자·영문은 시스템 폰트로, 한글은 맑은 고딕으로 떨어진다 */
+    font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "맑은 고딕", sans-serif;
+    -webkit-font-smoothing: antialiased;
     display: flex; justify-content: center; align-items: center;
     padding: 4px;
     user-select: none;
     touch-action: manipulation;
   }
+  /* 숫자가 바뀔 때 폭이 들썩이지 않게 고정폭 숫자를 쓴다 */
+  .chip, .stat, .meta, .card, #rankTable, .rec .v, #menu .records { font-variant-numeric: tabular-nums; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(140,170,230,.18); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(140,170,230,.3); }
   /* 스크롤이 되려면 이 높이 사슬(#appWrap → #app → .screen)이 끊기면 안 된다.
      중간에 높이가 auto 인 요소가 있으면 자식의 height:100% 가 계산되지 않아
      내용이 넘쳐도 스크롤바가 생기지 않는다. */
@@ -34,41 +69,77 @@
     width: 100%; max-width: 1254px; height: 100%; overflow-y: auto;
     flex-direction: column; align-items: center;
     padding: clamp(16px, 4vw, 40px) 16px;
-    background: radial-gradient(circle at 50% 45%, #182140 0%, #0d1120 62%);
-    border: 1px solid #232b41; border-radius: 8px;
+    background:
+      radial-gradient(900px 520px at 50% -8%, rgba(79,130,255,.16) 0%, rgba(79,130,255,0) 70%),
+      radial-gradient(700px 500px at 50% 110%, rgba(127,231,255,.08) 0%, rgba(127,231,255,0) 70%),
+      linear-gradient(180deg, #0e1526 0%, #0a0e1a 55%, #080b13 100%);
+    border: 1px solid var(--line); border-radius: var(--r-lg);
+    box-shadow: var(--hair);
   }
   /* 내용이 넘칠 땐 위쪽이 잘리지 않도록 가운데 정렬을 포기한다 */
   #menu { justify-content: safe center; }
   #shopScreen { justify-content: flex-start; }
   #metaList, #backupBox { flex-shrink: 0; }
   #menu .title {
-    font-size: clamp(30px, 8vw, 62px); font-weight: 800; letter-spacing: .1em; text-align: center;
-    background: linear-gradient(180deg,#cfe6ff,#4b8ff0);
+    font-size: clamp(30px, 8vw, 62px); font-weight: 800; letter-spacing: .12em; text-align: center;
+    background: linear-gradient(170deg,#ffffff 0%,#cfe2ff 38%,#5b9dff 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 6px 26px rgba(75,134,255,.35));
   }
-  #menu .sub { color: #6d7ba0; font-size: 14px; letter-spacing: .3em; margin-top: 4px; }
-  #menu .records { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(16px, 5vw, 34px); margin: 34px 0 30px; }
-  #menu .rec { text-align: center; }
-  #menu .rec .v { font-size: 30px; font-weight: 800; color: #dfe6f5; }
-  #menu .rec .k { font-size: 12px; color: #6d7ba0; letter-spacing: .1em; margin-top: 3px; }
-  #menu .menuBtns { display: flex; flex-direction: column; gap: 11px; width: 100%; max-width: 260px; }
-  #menu button { padding: 15px; font-size: 16px; letter-spacing: .06em; }
+  #menu .sub { color: var(--text-mute); font-size: 13px; letter-spacing: .38em; margin-top: 6px; }
+  /* 기록 네 칸은 폭을 똑같이 맞춘다 — 숫자 길이에 따라 칸이 들쭉날쭉해 보이지 않게 */
+  #menu .records {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+    width: 100%; max-width: 560px; margin: 30px 0 28px;
+  }
+  @media (max-width: 520px) { #menu .records { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  #menu .rec {
+    text-align: center; padding: 12px 10px; min-width: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
+    border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--hair);
+  }
+  #menu .rec .v { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1.15; }
+  #menu .rec .k { font-size: 11px; color: var(--text-mute); letter-spacing: .12em; margin-top: 4px; }
+  #menu .menuBtns { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 280px; }
+  #menu button { padding: 14px; font-size: 15px; letter-spacing: .04em; }
 
-  #shopScreen h2 { font-size: 26px; font-weight: 800; letter-spacing: .1em; margin-bottom: 6px; }
-  #shopScreen .cores { color: #7fe7ff; font-size: 15px; font-weight: 700; margin-bottom: 20px; }
+  #shopScreen h2 { font-size: 26px; font-weight: 800; letter-spacing: .08em; margin-bottom: 6px; }
+  #shopScreen .cores { color: var(--cyan); font-size: 14px; font-weight: 700; margin-bottom: 18px; letter-spacing: .02em; }
+  /* 상점 탭 — 눌린 칸만 밝게 띄운다 (활성 표시는 setShopTab 이 on 클래스로 준다) */
+  .shopTab { flex: 1; padding: 9px 0; font-size: 13.5px; letter-spacing: .02em; }
+  .shopTab.on {
+    background: linear-gradient(180deg, rgba(91,157,255,.34), rgba(47,106,224,.18));
+    border-color: rgba(91,157,255,.55); color: #fff;
+    box-shadow: 0 4px 14px rgba(47,106,224,.28), var(--hair);
+  }
   #metaList { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 8px; }
+  /* 화면이 넓으면 강화 목록을 두 줄로 펼친다 — 가운데만 길게 늘어지지 않게 */
+  @media (min-width: 1040px) {
+    #metaList, #specialMetaList, #barrackMetaList {
+      max-width: 1000px !important;
+      display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    #nexusInfo { max-width: 1000px !important; }
+    #nexusInfoStats { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 4px 24px !important; }
+    #shopScreen .hint { max-width: 1000px; }
+  }
+  #menu .rec .v { overflow: hidden; text-overflow: ellipsis; }
   /* 설명이 한 줄이냐 두 줄이냐에 따라 칸 높이가 들쭉날쭉해지므로,
      설명을 두 줄로 묶고 최소 높이를 줘서 모든 칸을 같은 크기로 맞춘다. */
   .meta {
     display: flex; align-items: center; gap: 14px;
-    background: #161d2e; border: 1px solid #263050; border-radius: 8px; padding: 13px 15px;
+    background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)), var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-md); padding: 13px 15px;
     min-height: 96px;
+    box-shadow: var(--hair), var(--sh-1);
+    transition: border-color .15s, transform .08s, box-shadow .15s;
   }
-  .meta.max { border-color: #2f5c46; }
+  .meta:hover { border-color: var(--line-strong); }
+  .meta.max { border-color: rgba(74,222,128,.4); background: linear-gradient(180deg, rgba(74,222,128,.08), rgba(74,222,128,.02)), var(--surface); }
   .meta .info { flex: 1; min-width: 0; }
-  .meta .nm { font-size: 14px; font-weight: 700; }
+  .meta .nm { font-size: 14px; font-weight: 700; letter-spacing: .01em; }
   .meta .ds {
-    font-size: 12px; color: #7b88a8; margin-top: 3px; line-height: 1.35;
+    font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.45;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
   /* 비용은 절대 줄바꿈되지 않게 — "144 코 / 어" 처럼 잘려 보이던 문제 */
@@ -78,18 +149,22 @@
     white-space: nowrap; line-height: 1.15;
   }
   .meta button .cost { font-size: 15px; font-weight: 800; }
-  .meta button .unit { font-size: 10px; font-weight: 600; opacity: .7; letter-spacing: .06em; }
+  .meta button .unit { font-size: 10px; font-weight: 600; opacity: .75; letter-spacing: .06em; }
   #shopScreen .back { width: 200px; margin-top: 24px; }
+  #nexusInfo .stat, #nexusInfoStats > div { font-size: 12.5px; }
 
   /* 지역 정보 — 메인 아래로 늘어나면 목록이 길어 화면을 밀어내므로 별도 창으로 띄운다 */
   #zoneOverlay {
     display: none; position: fixed; inset: 0; z-index: 999;
-    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 12px;
+    background: rgba(6,8,16,.78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    justify-content: center; align-items: center; padding: 12px;
   }
   #zoneOverlay.on { display: flex; }
   #zoneBox {
     width: 100%; max-width: 380px; max-height: 92vh; overflow-y: auto;
-    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 16px 14px;
+    background: linear-gradient(180deg, #151d31, #101725);
+    border: 1px solid var(--line-strong); border-radius: var(--r-lg); padding: 18px 16px;
+    box-shadow: var(--sh-3), var(--hair);
   }
   #zoneBox h3 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 2px; }
   #zoneBox .hint { text-align: center; margin-bottom: 10px; font-size: 11px; }
@@ -97,50 +172,56 @@
   /* 병력 상세 — 카드에 다 담기지 않는 설명을 창으로 띄운다 */
   #unitOverlay {
     display: none; position: fixed; inset: 0; z-index: 1000;
-    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 12px;
+    background: rgba(6,8,16,.78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    justify-content: center; align-items: center; padding: 12px;
   }
   #unitOverlay.on { display: flex; }
   #unitBox {
     width: 100%; max-width: 360px; max-height: 92vh; overflow-y: auto;
-    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 18px 16px;
+    background: linear-gradient(180deg, #151d31, #101725);
+    border: 1px solid var(--line-strong); border-radius: var(--r-lg); padding: 18px 16px;
+    box-shadow: var(--sh-3), var(--hair);
   }
   #unitBox h3 { font-size: 22px; font-weight: 800; text-align: center; margin-bottom: 4px; }
   #unitBox .u-desc {
-    color: #a0b0cc; font-size: 13px; line-height: 1.5; text-align: center;
-    margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #263050;
+    color: var(--text-dim); font-size: 13px; line-height: 1.55; text-align: center;
+    margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
   }
   #unitBox .u-row {
     display: flex; justify-content: space-between; align-items: baseline;
-    padding: 7px 2px; border-bottom: 1px solid #1a2133; font-size: 13.5px;
+    padding: 7px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px;
   }
   #unitBox .u-row:last-of-type { border-bottom: 0; }
-  #unitBox .u-row .k { color: #7b88a8; }
+  #unitBox .u-row .k { color: var(--text-mute); }
   #unitBox .u-row .v { font-weight: 700; }
-  #unitBox .u-row .g { color: #6d7ba0; font-size: 11.5px; font-weight: 400; margin-left: 4px; }
+  #unitBox .u-row .g { color: var(--text-mute); font-size: 11.5px; font-weight: 400; margin-left: 4px; }
   #unitBox .u-tag {
     display: inline-block; margin: 3px 4px 0 0; padding: 3px 9px; border-radius: 999px;
     font-size: 11.5px; font-weight: 700;
   }
   .zone-row {
     display: flex; align-items: center; gap: 10px;
-    padding: 7px 10px; border-radius: 6px; background: #1a2133; border: 1px solid #263050;
+    padding: 8px 11px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    border: 1px solid var(--line);
     font-size: 12px;
   }
-  .zone-row.reached { border-color: #3f6ac0; }
+  .zone-row.reached { border-color: rgba(75,134,255,.45); }
   .meta.locked { opacity: .4; }
   .zone-row.locked { opacity: .4; }
-  .zone-row.selectable { cursor: pointer; }
-  .zone-row.selectable:hover { background: #212a42; }
-  .zone-row.current { border-color: #ffd45e; box-shadow: 0 0 0 1px #ffd45e inset; }
-  .zone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .zone-row.selectable { cursor: pointer; transition: background .12s, border-color .12s; }
+  .zone-row.selectable:hover { background: rgba(255,255,255,.07); border-color: var(--line-strong); }
+  .zone-row.current { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(255,212,94,.45) inset, 0 4px 16px rgba(255,212,94,.12); }
+  .zone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 10px currentColor; }
   .zone-name { font-weight: 700; flex: 1; }
-  .zone-wave { color: #a0b0cc; font-size: 13px; font-weight: 600; white-space: nowrap; }
-  .zone-pick { color: #ffd45e; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .zone-wave { color: var(--text-dim); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .zone-pick { color: var(--gold); font-size: 11px; font-weight: 700; white-space: nowrap; }
   #zoneChip {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 2px;
-    border: 1px solid #2a3350; border-radius: 8px; padding: 8px 10px;
-    font-weight: 700; letter-spacing: .06em;
+    border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px 10px;
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+    font-weight: 700; letter-spacing: .04em;
   }
   #zoneChip .zc-name  { font-size: 15px; }
   #zoneChip .zc-range {
@@ -148,17 +229,26 @@
     opacity: .75; font-variant-numeric: tabular-nums;
   }
 
-  #backupBox {
+  #backupBox, #couponBox, #adminBox {
     width: 100%; max-width: 380px; margin-top: 14px;
-    background: #141926; border: 1px solid #232b41; border-radius: 8px; padding: 13px 15px;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.012)), var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-md); padding: 15px 16px;
+    box-shadow: var(--hair), var(--sh-1);
   }
-  #backupBox h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  #backupBox h3, #couponBox h3, #adminBox h3 { font-size: 13px; font-weight: 700; margin-bottom: 6px; letter-spacing: .02em; }
   #backupBox button { width: auto; flex: 1; padding: 9px; font-size: 12px; }
   #backupText {
     width: 100%; margin-top: 9px; min-height: 54px; resize: vertical;
-    background: #0e1320; border: 1px solid #263050; border-radius: 6px;
-    color: #aab6d0; font-family: monospace; font-size: 11px; padding: 7px;
+    background: var(--surface-sunk); border: 1px solid var(--line); border-radius: var(--r-sm);
+    color: var(--text-dim); font-family: ui-monospace, Consolas, monospace; font-size: 11px; padding: 8px;
     word-break: break-all;
+  }
+  /* 입력칸은 인라인 스타일로 색이 박혀 있어도 토큰 쪽이 이기도록 한 번 더 잡아준다 */
+  #couponInput, #adminWaveInput, #nickEditInput, #backupText {
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  #couponInput:focus, #adminWaveInput:focus, #nickEditInput:focus, #backupText:focus {
+    border-color: rgba(75,134,255,.6) !important; box-shadow: var(--ring);
   }
 
   /* ── 게임 화면 ─────────────────────────────── */
@@ -179,8 +269,9 @@
     width: 100%; height: 100%;
     object-fit: cover;                      /* 남는 공간을 채우고 넘치는 쪽을 자른다 */
     background: #10141f;
-    border: 1px solid #232b41;
-    border-radius: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-2), var(--hair);
     cursor: pointer;
   }
 
@@ -191,22 +282,35 @@
   }
   #credit {
     flex-basis: 100%; text-align: right;
-    font-size: clamp(8px, 1.6vw, 11px); color: #5a6890; opacity: .75;
+    font-size: clamp(8px, 1.6vw, 11px); color: var(--text-mute); opacity: .6;
     pointer-events: none;
   }
+  /* 전장 위에 뜨는 칩 — 유리판처럼 뒤를 흐린다 */
   .chip {
-    background: rgba(14,18,30,.86);
-    border: 1px solid #2b3550;
-    border-radius: 6px;
-    padding: 4px 7px;
+    background: rgba(13,18,30,.6);
+    backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    border: 1px solid rgba(150,180,235,.18);
+    border-radius: 10px;
+    padding: 5px 9px;
     font-size: clamp(9px, 2.2vw, 14px); font-weight: 700;
-    display: flex; gap: 4px; align-items: center;
+    display: flex; gap: 5px; align-items: center;
     white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0,0,0,.35), var(--hair);
+    transition: border-color .12s, background .12s;
   }
-  .chip small { font-weight: 400; color: #7b88a8; font-size: .85em; }
+  .chip small { font-weight: 500; color: var(--text-mute); font-size: .82em; letter-spacing: .04em; }
+  .chip[style*="pointer"]:hover { border-color: rgba(150,180,235,.4); background: rgba(24,32,52,.72); }
   #hpwrap { flex: 1; min-width: 72px; }
-  #hpbar { height: 10px; background: #23293c; border-radius: 5px; overflow: hidden; margin-top: 4px; }
-  #hpfill { height: 100%; width: 100%; background: linear-gradient(90deg,#4de3a2,#2fb37c); transition: width .15s; }
+  #hpbar {
+    height: 9px; background: rgba(0,0,0,.45); border-radius: 999px; overflow: hidden; margin-top: 5px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.5);
+  }
+  #hpfill {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg,#34d399,#4de3a2 55%,#a7f3d0);
+    box-shadow: 0 0 12px rgba(77,227,162,.5);
+    transition: width .15s;
+  }
 
   #waveBtnWrap { position: absolute; left: 2%; bottom: 3%; z-index: 2; }
   #waveBtnWrap button {
@@ -214,11 +318,16 @@
     font-size: clamp(11px, 2.6vw, 13px);
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
-  #nexusBtn { position: absolute; left: 2%; top: 42px; z-index: 2; }
+  /* 넥서스 정보 버튼은 상단 칩들과 같은 줄에 흘려 둔다 — 칩이 두 줄로 접히는
+     좁은 화면에서도 서로 겹치지 않는다. */
+  #nexusBtn { pointer-events: auto; }
   #nexusBtn button {
-    width: auto; padding: 8px 12px;
-    font-size: clamp(10px, 2.4vw, 12px);
-    box-shadow: 0 2px 10px rgba(0,0,0,.4);
+    width: auto; padding: 5px 11px; border-radius: 10px;
+    font-size: clamp(9px, 2.2vw, 12px);
+    background: rgba(13,18,30,.6);
+    backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    border-color: rgba(150,180,235,.18); color: var(--text-dim);
+    box-shadow: 0 4px 14px rgba(0,0,0,.35), var(--hair);
   }
   #pauseEndWrap { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); z-index: 4; }
   #pauseEndWrap button {
@@ -226,30 +335,35 @@
     font-size: clamp(12px, 2.6vw, 14px);
     box-shadow: 0 2px 10px rgba(0,0,0,.4);
   }
-  #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 4px; align-items: flex-end; }
+  #skillArea { position: absolute; right: 2%; bottom: 3%; z-index: 2; display: flex; gap: 6px; align-items: flex-end; }
   #btnSkill, #btnSkill2, #btnSkill3, #btnSkill4, #btnSkill5 {
-    width: 32px; height: 32px; border-radius: 50%; border: 2px solid #555;
-    background: #1c2437; color: #aaa; font-size: 7px; font-weight: 700;
+    width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(150,180,235,.28);
+    background: rgba(18,25,42,.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    color: #8b97b8; font-size: 7.5px; font-weight: 700;
     display: none; cursor: pointer; position: relative; overflow: hidden;
     align-items: center; justify-content: center; line-height: 1.1;
     padding: 0; text-align: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,.5);
+    box-shadow: 0 4px 14px rgba(0,0,0,.45);
+    transition: transform .1s, box-shadow .15s, border-color .15s, color .15s;
   }
-  #btnSkill.ready { border-color: #66ffaa; color: #66ffaa; }
-  #btnSkill2.ready { border-color: #00bfff; color: #00bfff; }
-  #btnSkill3.ready { border-color: #ff88ff; color: #ff88ff; }
-  #btnSkill4.ready { border-color: #ffaa33; color: #ffaa33; }
-  #btnSkill5.ready { border-color: #ff3366; color: #ff3366; text-shadow: 0 0 8px #ff3366; }
+  #btnSkill:active, #btnSkill2:active, #btnSkill3:active, #btnSkill4:active, #btnSkill5:active { transform: scale(.94); }
+  /* 준비되면 태두리가 켜지고 은은하게 빛난다 */
+  #btnSkill.ready { border-color: #66ffaa; color: #66ffaa; box-shadow: 0 0 14px rgba(102,255,170,.4), 0 4px 14px rgba(0,0,0,.45); }
+  #btnSkill2.ready { border-color: #00bfff; color: #00bfff; box-shadow: 0 0 14px rgba(0,191,255,.4), 0 4px 14px rgba(0,0,0,.45); }
+  #btnSkill3.ready { border-color: #ff88ff; color: #ff88ff; box-shadow: 0 0 14px rgba(255,136,255,.4), 0 4px 14px rgba(0,0,0,.45); }
+  #btnSkill4.ready { border-color: #ffaa33; color: #ffaa33; box-shadow: 0 0 14px rgba(255,170,51,.4), 0 4px 14px rgba(0,0,0,.45); }
+  #btnSkill5.ready { border-color: #ff3366; color: #ff3366; text-shadow: 0 0 8px #ff3366; box-shadow: 0 0 18px rgba(255,51,102,.5), 0 4px 14px rgba(0,0,0,.45); }
   #btnSkill .cd-overlay, #btnSkill2 .cd-overlay, #btnSkill3 .cd-overlay, #btnSkill4 .cd-overlay, #btnSkill5 .cd-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,.55); pointer-events: none;
   }
   #btnAutoSkill {
-    width: auto; padding: 4px 7px; border-radius: 5px; border: 1px solid #555;
-    background: #1c2437; color: #7b88a8; font-size: 8px; cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,.4); display: none;
+    width: auto; padding: 5px 9px; border-radius: 999px; border: 1px solid rgba(150,180,235,.28);
+    background: rgba(18,25,42,.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    color: var(--text-mute); font-size: 8.5px; font-weight: 700; letter-spacing: .06em; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4); display: none;
   }
-  #btnAutoSkill.on { border-color: #66ffaa; color: #66ffaa; }
+  #btnAutoSkill.on { border-color: #66ffaa; color: #66ffaa; box-shadow: 0 0 12px rgba(102,255,170,.28), 0 4px 12px rgba(0,0,0,.4); }
 
   /* 캔버스가 쓰고 남은 세로 공간을 전부 차지한다.
      min-height:0 이 없으면 flex 항목이 내용 높이 밑으로 줄지 못해 스크롤이 죽는다. */
@@ -266,7 +380,7 @@
     overflow-y: auto;
   }
   #panel::-webkit-scrollbar { width: 6px; }
-  #panel::-webkit-scrollbar-thumb { background: #2b3550; border-radius: 3px; }
+  #panel::-webkit-scrollbar-thumb { background: rgba(140,170,230,.2); border-radius: 999px; }
 
   /* ── PC 가로 레이아웃: 캔버스 옆에 패널을 놓아 한 화면에 들어오게 한다 ── */
   @media (min-width: 960px) {
@@ -281,12 +395,12 @@
       --reserve: 16px;
       flex: 0 0 auto;
       aspect-ratio: 960 / 720;
-      width: min(calc(100% - 296px), 940px, calc((100vh - var(--reserve)) * 4 / 3));
-      width: min(calc(100% - 296px), 940px, calc((100dvh - var(--reserve)) * 4 / 3));
+      width: min(calc(100% - 320px), 940px, calc((100vh - var(--reserve)) * 4 / 3));
+      width: min(calc(100% - 320px), 940px, calc((100dvh - var(--reserve)) * 4 / 3));
     }
     #gameScreen.on canvas { object-fit: fill; }
     #panel {
-      width: 276px;
+      width: 300px;
       flex: 0 0 auto;
       height: auto;
       min-height: 0;
@@ -296,114 +410,153 @@
     }
   }
 
-  .box { background: #141926; border: 1px solid #232b41; border-radius: 8px; padding: 11px; }
+  .box {
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)), var(--surface);
+    border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px;
+    box-shadow: var(--hair), var(--sh-1);
+  }
   .box h3 {
-    font-size: 12px; letter-spacing: .08em; color: #7b88a8;
-    text-transform: uppercase; margin-bottom: 9px; font-weight: 700;
+    font-size: 11px; letter-spacing: .12em; color: var(--text-mute);
+    text-transform: uppercase; margin-bottom: 10px; font-weight: 700;
   }
 
-  .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  /* 탭 — 파인 트랙 위에 선택된 칸만 떠 있는 세그먼트 모양 */
+  .tabs {
+    display: flex; gap: 3px; margin-bottom: 10px; padding: 3px;
+    background: var(--surface-sunk); border: 1px solid var(--line); border-radius: 11px;
+  }
   .tabs .tab {
     flex: 1; text-align: center; padding: 7px 0; cursor: pointer;
-    font-size: 12px; font-weight: 700; letter-spacing: .06em;
-    border-radius: 6px; border: 1px solid #263050;
-    background: #131a29; color: #6d7ba0;
+    font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    border-radius: 8px; border: 1px solid transparent;
+    background: transparent; color: var(--text-mute);
+    transition: background .14s, color .14s, border-color .14s, box-shadow .14s;
   }
-  .tabs .tab:hover { color: #aab6d0; }
-  .tabs .tab.on { background: #24304d; border-color: #3f6ac0; color: #dfe6f5; }
-  .tabs .tab.locked { opacity: .45; cursor: not-allowed; }
-  .tabs .tab.locked:hover { color: #6d7ba0; }
+  .tabs .tab:hover { color: var(--text-dim); background: rgba(255,255,255,.04); }
+  .tabs .tab.on {
+    background: linear-gradient(180deg, rgba(91,157,255,.34), rgba(47,106,224,.16));
+    border-color: rgba(91,157,255,.5); color: #fff;
+    box-shadow: 0 3px 12px rgba(47,106,224,.28), var(--hair);
+  }
+  .tabs .tab.locked { opacity: .4; cursor: not-allowed; }
+  .tabs .tab.locked:hover { color: var(--text-mute); background: transparent; }
 
   .card {
-    display: flex; gap: 9px; align-items: center;
-    padding: 8px; border-radius: 6px; border: 1px solid #263050;
-    background: #1a2133; cursor: pointer; margin-bottom: 6px;
-    transition: background .12s, border-color .12s;
+    display: flex; gap: 10px; align-items: center;
+    padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012));
+    cursor: pointer; margin-bottom: 6px;
+    transition: background .12s, border-color .12s, transform .08s;
   }
   .card:last-child { margin-bottom: 0; }
-  .card:hover { background: #212a42; }
-  .card.poor { opacity: .45; cursor: not-allowed; }
+  .card:hover { background: rgba(255,255,255,.08); border-color: var(--line-strong); }
+  .card:active { transform: translateY(1px); }
+  .card.poor { opacity: .42; cursor: not-allowed; }
   .swatch {
     width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
-    box-shadow: 0 0 0 2px #141926, 0 0 0 3px currentColor;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px currentColor, 0 0 14px currentColor;
   }
   .card .nm { font-size: 13px; font-weight: 700; }
-  .card .ds { font-size: 11px; color: #7b88a8; margin-top: 2px; line-height: 1.35; }
-  .card .cost { margin-left: auto; font-size: 13px; font-weight: 700; color: #ffd45e; white-space: nowrap; }
+  .card .ds { font-size: 11px; color: var(--text-dim); margin-top: 3px; line-height: 1.4; }
+  .card .cost { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--gold); white-space: nowrap; }
   .card .buy {
-    margin-left: auto; width: auto; min-width: 66px;
+    margin-left: auto; width: auto; min-width: 62px;
     padding: 7px 10px; font-size: 12px; white-space: nowrap;
-    background: #21304f; border-color: #37507f; color: #ffd45e;
+    background: linear-gradient(180deg, rgba(255,212,94,.18), rgba(255,212,94,.06));
+    border-color: rgba(255,212,94,.4); color: var(--gold); box-shadow: none;
   }
-  .card .buy:hover:not(:disabled) { background: #2b4272; }
+  .card .buy:hover:not(:disabled) { background: rgba(255,212,94,.26); border-color: rgba(255,212,94,.6); box-shadow: 0 4px 14px rgba(255,212,94,.15); }
   /* 골드가 닿는 데까지 한 번에 올리는 버튼 — 구매 버튼 오른쪽에 붙는다 */
   .card .buymax {
     width: auto; min-width: 40px; margin-left: 4px;
     padding: 7px 8px; font-size: 11px; font-weight: 800; white-space: nowrap;
-    background: #2a4a2f; border-color: #3f7048; color: #86efac;
+    background: linear-gradient(180deg, rgba(74,222,128,.18), rgba(74,222,128,.05));
+    border-color: rgba(74,222,128,.4); color: #86efac; box-shadow: none;
   }
-  .card .buymax:hover:not(:disabled) { background: #35603c; }
-  #nexusShop .card { padding: 7px 9px; }
-  #nexusShop .card .ds { margin-top: 1px; }
+  .card .buymax:hover:not(:disabled) { background: rgba(74,222,128,.26); border-color: rgba(74,222,128,.6); box-shadow: 0 4px 14px rgba(74,222,128,.14); }
+  #nexusShop .card { padding: 8px 9px; }
+  #nexusShop .card .ds { margin-top: 2px; }
 
   button {
-    width: 100%; padding: 9px; border-radius: 6px; border: 1px solid #2f6ae0;
-    background: #2f6ae0; color: #fff; font-size: 13px; font-weight: 700;
+    width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(120,170,255,.35);
+    background: linear-gradient(180deg, var(--brand), var(--brand-deep));
+    color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .01em;
     cursor: pointer; font-family: inherit;
+    box-shadow: var(--hair), var(--sh-1);
+    transition: background .14s, box-shadow .14s, border-color .14s, color .14s, transform .07s;
   }
-  button:hover:not(:disabled) { background: #3f7bf5; }
-  button:disabled { background: #232b41; border-color: #232b41; color: #626e8c; cursor: default; }
-  button.ghost { background: transparent; border-color: #33405f; color: #aab6d0; }
-  button.ghost:hover:not(:disabled) { background: #1e2740; }
-  button.danger { background: transparent; border-color: #6b3141; color: #e08292; }
-  button.danger:hover:not(:disabled) { background: #2a1a20; }
+  button:hover:not(:disabled) {
+    background: linear-gradient(180deg, #5c93ff, #3a6fee);
+    box-shadow: var(--hair), 0 6px 18px rgba(47,106,224,.35);
+  }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible { outline: none; box-shadow: var(--ring), var(--sh-1); }
+  button:disabled { background: rgba(255,255,255,.03); border-color: var(--line); color: #5c6884; box-shadow: none; cursor: default; }
+  button.ghost {
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+    border-color: var(--line-strong); color: var(--text-dim); box-shadow: none;
+  }
+  button.ghost:hover:not(:disabled) { background: rgba(255,255,255,.09); color: var(--text); border-color: rgba(140,170,230,.42); box-shadow: none; }
+  button.danger { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.35); color: #fca5a5; box-shadow: none; }
+  button.danger:hover:not(:disabled) { background: rgba(248,113,113,.16); border-color: rgba(248,113,113,.55); box-shadow: none; }
   .row { display: flex; gap: 6px; }
-  .stat { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: #aab6d0; }
-  .stat b { color: #dfe6f5; }
-  .hint { font-size: 11px; color: #66728f; line-height: 1.5; }
+  .stat { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; color: var(--text-dim); }
+  .stat b { color: var(--text); }
+  .hint { font-size: 11px; color: var(--text-mute); line-height: 1.6; }
 
   #selModal {
     position: fixed; inset: 0; z-index: 60;
     display: flex; justify-content: center; align-items: center; padding: 16px;
-    background: rgba(6,9,16,.72);
+    background: rgba(6,9,16,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   }
   #selModal #selBox {
     width: 100%; max-width: 340px; max-height: 82vh; overflow-y: auto;
-    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-3), var(--hair);
   }
-  .selHead { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .selHead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
   .selHead h3 { flex: 1; margin: 0; }
   .selHead button { width: 30px; padding: 4px 0; font-size: 13px; line-height: 1; }
 
   #over {
     position: absolute; inset: 0; display: none;
     flex-direction: column; justify-content: center; align-items: center; gap: 14px;
-    background: rgba(8,10,18,.88); border-radius: 8px;
+    background: radial-gradient(60% 60% at 50% 45%, rgba(20,26,44,.86), rgba(6,9,16,.93));
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    border-radius: var(--r-lg);
   }
   #over.on { display: flex; }
-  #over h1 { font-size: 34px; }
-  #over p { color: #aab6d0; font-size: 15px; }
+  #over h1 { font-size: 34px; letter-spacing: .04em; }
+  #over p { color: var(--text-dim); font-size: 15px; }
   #over button { width: 180px; }
 
   /* ── 랭킹 ─────────────────────────────── */
   #rankOverlay {
     display: none; position: fixed; inset: 0; z-index: 999;
-    background: rgba(6,8,16,.92); justify-content: center; align-items: center; padding: 12px;
+    background: rgba(6,8,16,.78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    justify-content: center; align-items: center; padding: 12px;
   }
   #rankOverlay.on { display: flex; }
   #rankBox {
     width: 100%; max-width: 360px; max-height: 92vh; overflow-y: auto;
-    background: #121828; border: 1px solid #263050; border-radius: 10px; padding: 16px 14px;
+    background: linear-gradient(180deg, #151d31, #101725);
+    border: 1px solid var(--line-strong); border-radius: var(--r-lg); padding: 18px 16px;
+    box-shadow: var(--sh-3), var(--hair);
   }
-  #rankBox h2 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 2px; }
+  #rankBox h2 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 2px; letter-spacing: .04em; }
   #rankBox .hint { text-align: center; margin-bottom: 10px; font-size: 11px; }
-  #rankTable { width: 100%; border-collapse: collapse; font-size: 12px; }
-  #rankTable th { color: #6d7ba0; font-weight: 600; padding: 5px 4px; text-align: left; border-bottom: 1px solid #263050; }
-  #rankTable td { padding: 6px 4px; border-bottom: 1px solid #1a2133; }
-  #rankTable tr.me td { color: #7fe7ff; font-weight: 700; }
-  #rankTable .rank { width: 28px; text-align: center; }
-  #rankTable .wave { text-align: right; color: #ffd45e; font-weight: 700; }
-  #rankTable .runs { text-align: right; color: #7b88a8; }
+  #rankTable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  #rankTable th {
+    color: var(--text-mute); font-weight: 600; padding: 6px 4px; text-align: left;
+    border-bottom: 1px solid var(--line-strong); font-size: 11px; letter-spacing: .06em;
+  }
+  #rankTable td { padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  #rankTable tr:last-child td { border-bottom: 0; }
+  #rankTable tr.me td { color: var(--cyan); font-weight: 700; background: rgba(127,231,255,.07); }
+  #rankTable .rank { width: 28px; text-align: center; color: var(--text-mute); }
+  #rankTable tr.me .rank { color: var(--cyan); }
+  #rankTable .wave { text-align: right; color: var(--gold); font-weight: 700; }
+  #rankTable .runs { text-align: right; color: var(--text-mute); }
   #nickBar button, #menu #nickBar button {
     width: auto; flex-shrink: 0; white-space: nowrap;
     padding: 5px 12px; font-size: 13px; letter-spacing: 0;
@@ -424,9 +577,9 @@
     <span id="nickDisplay" style="font-size:17px;color:#ffd45e;cursor:pointer;border-bottom:1px dashed #ffd45e44;padding:2px 8px;font-style:italic;letter-spacing:1px;white-space:nowrap"></span>
     <button id="btnNickEdit" style="background:none;border:none;color:#ffd45e88;font-size:13px;cursor:pointer;padding:2px 4px">✎</button>
     <div id="nickEditBox" style="display:none;align-items:center;gap:6px">
-      <input id="nickEditInput" type="text" maxlength="12" style="width:150px;padding:5px 10px;border-radius:6px;border:1px solid #ffd45e44;background:#1a1a2e;color:#ffd45e;font-size:15px;font-style:italic;letter-spacing:0.5px;text-align:center">
-      <button id="btnNickConfirm" style="padding:5px 12px;border-radius:6px;border:none;background:#ffd45e;color:#0d1117;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">확인</button>
-      <button id="btnNickCancel" style="padding:5px 10px;border-radius:6px;border:1px solid #30363d;background:none;color:#8b949e;font-size:13px;cursor:pointer;white-space:nowrap">취소</button>
+      <input id="nickEditInput" type="text" maxlength="12" style="width:150px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,212,94,.35);background:rgba(255,255,255,.04);color:#ffd45e;font-size:15px;font-style:italic;letter-spacing:0.5px;text-align:center">
+      <button id="btnNickConfirm" style="padding:6px 13px;border-radius:10px;border:none;background:linear-gradient(180deg,#ffdf82,#f5c13c);color:#1a1405;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">확인</button>
+      <button id="btnNickCancel" style="padding:6px 11px;border-radius:10px;border:1px solid rgba(140,170,230,.25);background:none;color:#9aa8c7;font-size:13px;cursor:pointer;white-space:nowrap">취소</button>
     </div>
   </div>
   <div class="records">
@@ -462,7 +615,7 @@
     <p class="hint">쿠폰 코드를 입력하면 보상을 받을 수 있습니다.</p>
     <div style="margin-top:9px;display:flex;flex-direction:column;gap:8px">
       <input id="couponInput" type="text" placeholder="쿠폰 코드 입력"
-             style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid #2a3350;background:#0f1524;color:#e6ecff;font-size:15px;text-transform:uppercase">
+             style="width:100%;box-sizing:border-box;padding:11px 13px;border-radius:10px;border:1px solid rgba(140,170,230,.2);background:#0b101c;color:#e9eefc;font-size:15px;letter-spacing:.06em;text-transform:uppercase">
       <button id="btnCouponUse" style="width:100%;padding:10px 16px">사용</button>
     </div>
     <p id="couponMsg" class="hint" style="margin-top:8px;min-height:18px"></p>
@@ -473,7 +626,7 @@
     <p class="hint">코어가 무제한이고, 원하는 웨이브로 바로 출격할 수 있습니다.</p>
     <div class="row" style="margin-top:12px;gap:8px">
       <input id="adminWaveInput" type="number" min="1" placeholder="웨이브 번호"
-             style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #2a3350;background:#0f1524;color:#e6ecff;font-size:15px">
+             style="flex:1;padding:11px 13px;border-radius:10px;border:1px solid rgba(140,170,230,.2);background:#0b101c;color:#e9eefc;font-size:15px">
       <button id="btnAdminGo" style="flex:0 0 auto;padding:8px 16px">이동</button>
     </div>
     <div class="row" style="margin-top:8px">
@@ -494,11 +647,11 @@
   <h2>영구 강화 상점</h2>
   <div class="cores">보유 코어 <span id="sCores">0</span> · <span style="color:#f0abfc">특수 코어 <span id="sSpecial">0</span></span></div>
 
-  <div style="display:flex;gap:6px;margin-bottom:14px;width:100%;max-width:560px">
-    <button id="shopTabMeta" class="ghost" style="flex:1;padding:8px 0;font-size:14px">일반강화</button>
-    <button id="shopTabSpecial" class="ghost" style="flex:1;padding:8px 0;font-size:14px">특수강화</button>
-    <button id="shopTabBarrack" class="ghost" style="flex:1;padding:8px 0;font-size:14px">병영</button>
-    <button id="shopTabHero" class="ghost" style="flex:1;padding:8px 0;font-size:14px">영웅</button>
+  <div style="display:flex;gap:6px;margin-bottom:16px;width:100%;max-width:560px">
+    <button id="shopTabMeta" class="ghost shopTab">일반강화</button>
+    <button id="shopTabSpecial" class="ghost shopTab">특수강화</button>
+    <button id="shopTabBarrack" class="ghost shopTab">병영</button>
+    <button id="shopTabHero" class="ghost shopTab">영웅</button>
   </div>
 
   <div id="shopMeta">
@@ -545,6 +698,7 @@
       <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiSpeed">1x</div>
       <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiPause">⏸</div>
       <div class="chip" style="pointer-events:auto;cursor:pointer" id="uiBack">✕</div>
+      <div id="nexusBtn"><button id="btnNexusInfo" class="ghost">넥서스 정보</button></div>
       <div id="credit">제작자 채희선</div>
     </div>
     <div id="over">
@@ -564,7 +718,6 @@
     </div>
     <div id="pauseEndWrap" style="display:none"><button id="btnEndRound" class="danger">라운드 종료</button></div>
     <div id="waveBtnWrap"><button id="btnWave">웨이브 1 시작</button></div>
-    <div id="nexusBtn"><button id="btnNexusInfo" class="ghost">넥서스 정보</button></div>
     <div id="skillArea">
       <button id="btnAutoSkill">Auto</button>
       <button id="btnSkill"><span id="skillName"></span><div class="cd-overlay" id="skillCdOverlay"></div></button>
@@ -5110,12 +5263,12 @@ function setShopTab(tab) {
   $('shopSpecial').style.display = tab === 'special' ? '' : 'none';
   $('shopBarrack').style.display = tab === 'barrack' ? '' : 'none';
   $('shopHero').style.display = tab === 'hero' ? '' : 'none';
-  const active = ';background:#2a3a5c;border-color:#5b9dff;color:#fff';
-  const base = 'flex:1;padding:8px 0;font-size:14px';
-  $('shopTabMeta').style.cssText = base + (tab === 'meta' ? active : '');
-  $('shopTabSpecial').style.cssText = base + (tab === 'special' ? active : '');
-  $('shopTabBarrack').style.cssText = base + (tab === 'barrack' ? active : '');
-  $('shopTabHero').style.cssText = base + (tab === 'hero' ? active : '');
+  // 눌린 탭 표시는 CSS(.shopTab.on)에 맡긴다
+  const mark = (id, on) => { $(id).className = 'ghost shopTab' + (on ? ' on' : ''); };
+  mark('shopTabMeta', tab === 'meta');
+  mark('shopTabSpecial', tab === 'special');
+  mark('shopTabBarrack', tab === 'barrack');
+  mark('shopTabHero', tab === 'hero');
   if (tab === 'special') renderSpecialMeta();
   if (tab === 'barrack') renderBarrack();
   if (tab === 'hero') renderHeroMeta();
