@@ -740,10 +740,10 @@ const HERO_CLASSES = [
     dmg:20, range:260, rate:1.0, bspd:600, spd:130, splash:0, slow:0, slowT:0,
     roam:9999, heroClass:true,
     desc:'넥서스에 룬을 새겨 넥서스의 공격을 증폭시키는 지원가',
-    trait:'출전 중 넥서스 공격력 +15%, 레벨마다 +0.5%p',
+    trait:'출전 중 넥서스 공격력 +30%, 레벨마다 +1%p',
     summonCost: 0, switchCost: 500,
     dmgPerLv:2, ratePerLv:0.01, spdPerLv:1,
-    nexusAmp: { base:0.15, perLv:0.005 },
+    nexusAmp: { base:0.30, perLv:0.01 },
     skill: { name:'룬 폭주', desc:'6초간 넥서스 공격력 2배', cd:20, dur:6, dmgMul:2, unlockLv:80 },
     passive: { name:'과충전', desc:'넥서스 탄환이 반경 40 폭발 피해를 준다', splash:40, unlockLv:150 },
     skill2: { name:'룬 속박', desc:'넥서스 사거리 안의 모든 적에게 넥서스 공격력 3배 피해 + 2.5초 스턴', cd:30, dmgMul:3, stunDur:2.5, unlockLv:250 } },
@@ -805,14 +805,14 @@ const HERO_ADV = {
   ],
   runecaster: [
     { id:'runemaster', name:'룬마스터', color:'#ff9f1c', accent:'#ffd29a',
-      desc:'넥서스 화력 극대화, 넥서스 증폭 +50%p',
-      bonusDmg:0, bonusRate:0, bonusNexusAmp:0.5,
+      desc:'넥서스 화력 극대화, 넥서스 증폭 +100%p',
+      bonusDmg:0, bonusRate:0, bonusNexusAmp:1.0,
       skill3: { name:'룬 오버드라이브', desc:'8초간 넥서스 공격력 3배 + 공격속도 1.5배', cd:26, dur:8, dmgMul:3, rateMul:1.5, unlockLv:400 },
       skill4: { name:'룬 창', desc:'가장 가까운 적에게 넥서스 공격력 20배 피해', cd:10, dmgMul:20, nexusScale:true, unlockLv:700 },
       skill5: { name:'룬 붕괴', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배)', cd:160, nexusScale:true, unlockLv:1000 } },
     { id:'resonator', name:'공명술사', color:'#facc15', accent:'#fef08a',
-      desc:'넥서스 사거리 +25%·다중 조준 특화, 넥서스 증폭 +20%p',
-      bonusDmg:0, bonusRate:0, bonusNexusAmp:0.2, bonusNexusRange:0.25,
+      desc:'넥서스 사거리 +25%·다중 조준 특화, 넥서스 증폭 +40%p',
+      bonusDmg:0, bonusRate:0, bonusNexusAmp:0.4, bonusNexusRange:0.25,
       skill3: { name:'연쇄 룬', desc:'8초간 넥서스가 적 4명을 추가로 동시 조준', cd:24, dur:8, extraTargets:4, unlockLv:400 },
       skill4: { name:'룬 사슬', desc:'가장 가까운 적에게 넥서스 공격력 15배 피해 + 3초 스턴', cd:12, dmgMul:15, stunDur:3, nexusScale:true, unlockLv:700 },
       skill5: { name:'천상의 공명', desc:'전체 적에게 999999 피해 (보스: 넥서스 공격력 50배) + 4초 스턴', cd:170, stunDur:4, nexusScale:true, unlockLv:1000 } },
@@ -940,6 +940,15 @@ function splashHit(x, y, dmg, splash, color) {
     if (dd <= splash + e.def.r) damage(e, dmg * (1 - 0.5 * (dd / (splash + e.def.r))), 0, 0);
   }
   ring(x, y, splash, color);
+}
+
+/* 반격 파동(특수강화 m_nexThorn) — 넥서스가 맞을 때마다 주변 적에게 되돌려준다.
+   넥서스 공격력을 그대로 타므로 룬술사의 증폭도 함께 실린다. */
+function nexusThorns() {
+  const lv = mlv('m_nexThorn');
+  if (!lv) return;
+  splashHit(CX, CY, S.nexus.dmg * nexusBoost().dmg * lv * MSTEP.nexThorn, NEX_THORN_R, '#7fe7ff');
+  burst(CX, CY, '#7fe7ff', 10);
 }
 
 const GROUND_UNITS = [
@@ -1412,6 +1421,14 @@ const GRAV = { dmg: 8, range: 130, dmgStep: 3, maxRange: 450 };
 // 넥서스 개조(다중 포탑) 최대 레벨 — 동시 표적 수는 1 + 레벨, 최대 5표적
 const NEXUS_MOD_MAX = 4;
 
+/* 넥서스 탄환 개조·반격 파동의 상한 — 레벨당 증가폭은 MSTEP 에 모아 둔다 */
+const NEX_PIERCE_MAX = 4;     // 관통 수 = 1 + 레벨 (최대 5체)
+const NEX_BLAST_MAX  = 10;    // 폭발 반경 = 레벨 x MSTEP.nexBlast
+const NEX_CHILL_MAX  = 12;    // 감속률 = 레벨 x MSTEP.nexChill
+const NEX_CHILL_DUR  = 1.5;   // 냉각탄 감속 지속 (초)
+const NEX_THORN_MAX  = 5;     // 반격 피해 = 넥서스 공격력 x 레벨 x MSTEP.nexThorn
+const NEX_THORN_R    = 160;   // 반격 파동 반경
+
 const NEXUS_UPS = [
   { id:'dmg',   name:'공격력 강화',   desc:'넥서스 공격력 +2',
     stat: () => `현재 ${S.nexus.dmg}`,
@@ -1456,6 +1473,7 @@ const MSTEP = {
   fund: 10, power: 2, spd: 0.1, rng: 1, armor: 5, mregen: 0.15, minc: 1.0,
   troopDmg: 4,   // 유닛 정의에 dmgStep 이 없을 때 쓰는 기본 증가폭
   gravDmg: 4, gravRng: 5,
+  nexBlast: 8, nexChill: 0.05, nexThorn: 2,   // 넥서스 폭발탄 반경 · 냉각탄 감속률 · 반격 배율
 };
 const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 
@@ -1511,6 +1529,20 @@ const META = [
     desc: lv => lv
       ? `넥서스가 동시에 ${1 + lv}표적을 사격 (최대 ${1 + NEXUS_MOD_MAX}표적)`
       : `넥서스를 개조해 여러 적을 동시에 조준한다 (해금 시 2표적, 최대 ${1 + NEXUS_MOD_MAX}표적)` },
+  /* 아래 셋은 넥서스가 쏘는 탄환 자체를 바꾼다 — 세 가지를 같이 켤 수 있다. */
+  { id:'m_nexPierce', name:'넥서스 관통탄', max: NEX_PIERCE_MAX, base:3000, special:true,
+    desc: lv => lv
+      ? `넥서스 탄환이 최대 ${1 + lv}체를 꿰뚫는다 (최대 ${1 + NEX_PIERCE_MAX}체)`
+      : `넥서스 탄환이 적을 꿰뚫고 지나가게 한다 (해금 시 2체, 최대 ${1 + NEX_PIERCE_MAX}체)` },
+  { id:'m_nexBlast', name:'넥서스 폭발탄', max: NEX_BLAST_MAX, base:700, special:true,
+    desc: lv => `넥서스 탄환이 반경 ${num(lv * MSTEP.nexBlast)} 폭발 피해 (최대 ${NEX_BLAST_MAX * MSTEP.nexBlast})` },
+  { id:'m_nexChill', name:'넥서스 냉각탄', max: NEX_CHILL_MAX, base:600, special:true,
+    desc: lv => `넥서스 탄환에 맞은 적을 ${Math.round(lv * MSTEP.nexChill * 100)}% 감속 (${NEX_CHILL_DUR}초, 최대 ${Math.round(NEX_CHILL_MAX * MSTEP.nexChill * 100)}%)` },
+  /* 반격 파동 — 맞고만 있던 넥서스가 되받아친다. 넥서스 공격력을 그대로 탄다. */
+  { id:'m_nexThorn', name:'넥서스 반격 파동', max: NEX_THORN_MAX, base:2500, special:true,
+    desc: lv => lv
+      ? `넥서스가 맞을 때 반경 ${NEX_THORN_R} 적에게 공격력 ${num(lv * MSTEP.nexThorn)}배 피해`
+      : `넥서스가 공격받으면 충격파로 되받아친다 (해금 시 공격력 ${MSTEP.nexThorn}배, 반경 ${NEX_THORN_R})` },
 ];
 
 /* ── 병영 상점: 병력 최대 배치(인구) + 병력 공격력 강화 ───────────
@@ -2394,6 +2426,7 @@ function update(dt) {
           S.shake = Math.max(S.shake, 8);
           burst(e.x, e.y, '#ff6b81', 8);
           addText(CX, CY - 55, '-' + e.def.dmg, '#ff6b81');
+          nexusThorns();
           if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
         }
       } else {
@@ -2405,6 +2438,7 @@ function update(dt) {
         burst(e.x, e.y, '#ff6b81', 16);
         addText(CX, CY - 55, '-' + eDmg, '#ff6b81');
         e.dead = true;
+        nexusThorns();
         if (n.hp <= 0) { n.hp = 0; gameOver(); return; }
       }
     } else {
@@ -2435,7 +2469,8 @@ function update(dt) {
   }
   S.eBullets = S.eBullets.filter(b => !b.gone);
 
-  /* 넥서스 사격 — 개조(다중 포탑) 레벨만큼 여러 적을 동시에 조준한다 */
+  /* 넥서스 사격 — 개조(다중 포탑) 레벨만큼 여러 적을 동시에 조준하고,
+     탄환 개조(관통·폭발·냉각) 특수강화를 그대로 얹는다 */
   n.cd -= dt;
   if (n.cd <= 0) {
     const nb = nexusBoost();
@@ -2444,7 +2479,12 @@ function update(dt) {
       n.cd = 1 / (n.rate * nb.rate);
       const color = S.nexusEvolved ? '#ffb347' : '#7fe7ff';
       const shot = Math.round(n.dmg * nb.dmg);
-      for (const t of targets) fire({ x: CX, y: CY }, t, shot, 560, nb.splash, 0, 0, color);
+      const splash = nb.splash + mlv('m_nexBlast') * MSTEP.nexBlast;
+      const chill = mlv('m_nexChill') * MSTEP.nexChill;
+      const pierce = mlv('m_nexPierce');
+      const opts = pierce ? { pierce: 1 + pierce } : undefined;
+      for (const t of targets)
+        fire({ x: CX, y: CY }, t, shot, 560, splash, chill, chill ? NEX_CHILL_DUR : 0, color, opts);
     }
   }
 
@@ -2929,6 +2969,8 @@ function update(dt) {
         if (dist(b.x, b.y, e.x, e.y) <= e.def.r + 6) {
           damage(e, b.dmg, b.slow, b.slowT);
           tryStun(e, b);
+          // 관통탄에 폭발까지 붙어 있으면(넥서스 탄환 개조) 꿰뚫은 자리마다 절반 위력으로 터진다
+          if (b.splash > 0) splashHit(b.x, b.y, b.dmg * 0.5, b.splash, b.color);
           b.pierced.add(e);
           burst(b.x, b.y, b.color, 6);
           if (b.pierced.size >= b.pierce) { b.gone = true; break; }
@@ -5662,6 +5704,15 @@ function renderSel() {
       ? `<div class="stat"><span>중력파</span><b>피해 ${S.gravWave.dmg}/초 · 범위 ${S.gravWave.range}</b></div>` : '';
     const modInfo = mlv('m_nexusMod') > 0
       ? `<div class="stat"><span>다중 포탑</span><b>동시 ${1 + mlv('m_nexusMod')}표적 사격</b></div>` : '';
+    // 탄환 개조 셋은 한 줄에 모아 보여준다
+    const shell = [];
+    if (mlv('m_nexPierce') > 0) shell.push(`관통 ${1 + mlv('m_nexPierce')}체`);
+    if (mlv('m_nexBlast') > 0) shell.push(`폭발 반경 ${mlv('m_nexBlast') * MSTEP.nexBlast}`);
+    if (mlv('m_nexChill') > 0) shell.push(`감속 ${Math.round(mlv('m_nexChill') * MSTEP.nexChill * 100)}%`);
+    const shellInfo = shell.length
+      ? `<div class="stat"><span>탄환 개조</span><b>${shell.join(' · ')}</b></div>` : '';
+    const thornInfo = mlv('m_nexThorn') > 0
+      ? `<div class="stat"><span>반격 파동</span><b>피격 시 반경 ${NEX_THORN_R} 공격력 ${num(mlv('m_nexThorn') * MSTEP.nexThorn)}배</b></div>` : '';
     const nb = nexusBoost();
     const shot = Math.round(n.dmg * nb.dmg);
     const ampInfo = nb.amp > 0
@@ -5675,7 +5726,7 @@ function renderSel() {
       <div class="stat"><span>체력재생</span><b>${n.regen.toFixed(1)}/초</b></div>
       <div class="stat"><span>골드 배율</span><b>×${S.goldMul.toFixed(2)}</b></div>
       <div class="stat"><span>수입 배율</span><b>×${S.incomeMul.toFixed(2)}</b></div>
-      ${gravInfo}${modInfo}${ampInfo}`;
+      ${gravInfo}${modInfo}${shellInfo}${thornInfo}${ampInfo}`;
     return;
   }
 
