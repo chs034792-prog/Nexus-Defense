@@ -986,10 +986,6 @@ const GROUND_UNITS = [
     stunChance:0.2, stunDur:0.7,
     aura:true, auraDmg:15, auraRange:120,
     desc:'저주로 적을 묶고, 20% 확률로 0.7초 기절시킨다' },
-  { id:'mechanic', name:'작업공', cost:400, color:'#fbbf24', accent:'#fde68a',
-    dmg:0, range:0, rate:0, bspd:0, spd:100, splash:0, slow:0, slowT:0,
-    hold:true, unique:true, noCombat:true,
-    desc:'넥서스를 수리하는 작업공 (특수강화로 배치)' },
 ];
 
 // 기갑 병과 — 느리고 묵직, 광역·관통 특화.
@@ -1099,7 +1095,7 @@ const TROOP_TIERS = [
   { tier: 'tier_a2', name: '공중병력 II',  units: [au('stealthFighter'), au('bomber'), au('missileInterceptor')] },
   { tier: 'tier_a3', name: '공중병력 III', units: [au('aceStriker'), au('strategicBomber'), au('orbitalStriker')] },
 ];
-const isTroop = def => !isHeroClass(def) && !def.noCombat;
+const isTroop = def => !isHeroClass(def);
 
 const ZONE_ENEMIES = {
   초원: {
@@ -1408,8 +1404,6 @@ function buildWave(w) {
 // 강화 비용 증가율 — 한 번 살 때마다 다음 비용이 이 배율만큼 오른다 (1.0 이면 고정)
 const UP_COST_GROW = 1.15;
 
-// 작업공 수리 — 넥서스에 붙는 초당 체력 재생. 해금(Lv1) 시 base, 레벨마다 step 증가.
-const REPAIR = { base: 5, step: 3 };
 /* 중력파 범위 상한 — 필드가 960×720 이라 중심에서 위아래 끝까지가 360 이다.
    상한을 두지 않으면 넥서스에 앉아서 화면 전체를 훑게 되므로 350 에서 멈춘다. */
 // 범위 증가폭은 코어 강화 쪽(MSTEP.gravRng)에만 있다 — 판 안에서는 범위를 못 넓힌다
@@ -1468,9 +1462,6 @@ const num = v => (Number.isInteger(v) ? v : +v.toFixed(2));
 // 영구 강화 레벨로 정해지는 중력파 시작 범위 — 상한을 넘지 않는다
 const gravRangeFor = lv => Math.min(GRAV.maxRange, GRAV.range + lv * MSTEP.gravRng);
 
-// 작업공 배치 레벨(p_mech)로 정해지는 넥서스 초당 수리량 — Lv0 이면 0
-const repairAmt = lv => lv > 0 ? REPAIR.base + (lv - 1) * REPAIR.step : 0;
-
 /* 병력 영구 강화는 유닛마다 오르는 폭이 다르다(저격수처럼 한 방이 큰 유닛은 크게,
    버퍼처럼 보조인 유닛은 작게). 정의에 dmgStep 이 없으면 기본값을 쓴다. */
 const troopDmgStep = def => def.dmgStep ?? MSTEP.troopDmg;
@@ -1484,7 +1475,7 @@ const troopRateFor = (def, lv) => def.rate + lv * troopRateStep(def);
 
 /* 레벨을 계속 올리는 항목은 값이 META_CAP 에 닿으면 더 오르지 않는다.
    레벨마다 계속 비싸지면 후반에는 코어를 아무리 모아도 한 칸을 못 올린다.
-   해금 한 번으로 끝나는 항목(작업공·중력파 해금·넥서스 개조)에는 걸지 않는다. */
+   해금 한 번으로 끝나는 항목(중력파 해금·넥서스 개조)에는 걸지 않는다. */
 const META_CAP = 500;
 
 const META = [
@@ -1504,12 +1495,6 @@ const META = [
     desc: lv => `골드 획득 +${num(lv * MSTEP.minc)}% (현재 +${num(lv * MSTEP.minc)}%)` },
   /* special: true 인 항목은 상점의 '특수강화' 탭에 모아 보여준다.
      저장 구조는 그대로라 목록을 나눌 필요 없이 표시할 때만 갈라 쓴다. */
-  /* 작업공 배치 — 넥서스 자동 수리. id 는 병영에 있던 p_mech 를 그대로 써서
-     이미 사둔 사람의 레벨을 보존한다. 초당 수리량 = REPAIR.base + (레벨-1)*step. */
-  { id:'p_mech', name:'작업공 배치 — 넥서스 자동 수리', max:Infinity, base:2000, special:true,
-    desc: lv => lv
-      ? `매 판 시작 시 작업공 배치 · 넥서스 초당 수리 +${repairAmt(lv)} (인구 미차감)`
-      : `작업공을 배치해 넥서스를 초당 ${REPAIR.base} 수리한다 (인구 차지 안 함)` },
   { id:'m_grav',  name:'중력파 해금',     max:1, base:3000, special:true,
     desc: lv => lv ? '매 판 시작 시 중력파 자동 활성화' : '게임 시작 시 중력파가 자동으로 가동된다' },
   { id:'m_gravDmg', name:'중력파 공격력', max:Infinity, base:50, special:true, capCost:META_CAP,
@@ -1571,15 +1556,22 @@ const COUPONS = {
 
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
    save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
-const MIGRATION = 3;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
+const MIGRATION = 4;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
                                    // 2: 지상/기갑/공중 일괄 해금 -> 단계별 순차 해금으로 개편
                                    // 3: 단계 선택제 도입 + 공중 3단계 확장
+                                   // 4: 특수강화 '작업공 배치' 삭제 — 들인 코어 환급
 function migrate() {
   if ((save.mig || 0) < 1) save.cores = Math.floor(save.cores / 10);
   if ((save.mig || 0) < 2) {
     if (save.meta.t_ground > 0) { save.meta.tier_g1 = 1; save.meta.tier_g2 = 1; save.meta.tier_g3 = 1; }
     if (save.meta.t_mech > 0) { save.meta.tier_m1 = 1; save.meta.tier_m2 = 1; save.meta.tier_m3 = 1; }
     if (save.meta.t_air > 0) { save.meta.tier_a1 = 1; }
+  }
+  /* 작업공 배치를 없앴다 — 그 항목에 들인 코어(2000 x (1+2+…+레벨))를 돌려준다. */
+  if ((save.mig || 0) < 4 && save.meta.p_mech > 0) {
+    const lv = save.meta.p_mech;
+    save.cores += 2000 * lv * (lv + 1) / 2;
+    save.meta.p_mech = 0;
   }
   save.mig = MIGRATION;
 }
@@ -1706,7 +1698,7 @@ function saveRun() {
   const n = S.nexus;
   const snap = {
     wave: S.wave, startWave: S.startWave, gold: S.gold, hired: S.hired,
-    nexusEvolved: S.nexusEvolved, hasMechanic: S.hasMechanic, gravWave: S.gravWave, autoSkill: S.autoSkill,
+    nexusEvolved: S.nexusEvolved, gravWave: S.gravWave, autoSkill: S.autoSkill,
     dmgMul: S.dmgMul, goldMul: S.goldMul, incomeMul: S.incomeMul,
     maxPop: S.maxPop, heroUpLv: S.heroUpLv, troopLv: S.troopLv,
     nexus: { hp: n.hp, maxHp: n.maxHp, dmg: n.dmg, range: n.range, rate: n.rate, regen: n.regen },
@@ -1776,7 +1768,7 @@ function newGame(startWave) {
              dmg: CFG.nexusDmg + mlv('power') * MSTEP.power + (boost ? boost.dmg : 0),
              range: CFG.nexusRange + mlv('rng') * MSTEP.rng + (boost ? boost.range : 0),
              rate: CFG.nexusRate + mlv('spd') * MSTEP.spd + (boost ? boost.rate : 0),
-             regen: mlv('mregen') * MSTEP.mregen + repairAmt(mlv('p_mech')) + (boost ? boost.regen : 0),
+             regen: mlv('mregen') * MSTEP.mregen + (boost ? boost.regen : 0),
              cd: 0, hitFlash: 0, ang: 0 },
     nexusLv: Object.fromEntries(NEXUS_UPS.map(u => [u.id, 0])),
     heroes: [], enemies: [], bullets: [], eBullets: [], bombs: [], parts: [], texts: [], minions: [],
@@ -1790,7 +1782,6 @@ function newGame(startWave) {
     heroUpLv: 0,                         // 영웅 강화 횟수
     troopLv: mlv('troopDmg'),            // 병력 영구 강화 레벨 (증가폭은 유닛마다 다름)
     nexusEvolved: false, nexusShield: 0, allyAtkBuff: 0,
-    hasMechanic: false,
     gravWave: null,
     hero: null,
   };
@@ -1800,9 +1791,6 @@ function newGame(startWave) {
       range: gravRangeFor(mlv('m_gravRng')),
       ang: 0,
     };
-  }
-  if (mlv('p_mech') > 0) {
-    S.hasMechanic = true;      // 좌상단 작업공 표시 + 넥서스 수리(regen 에 이미 반영)
   }
   // 출정 구성(save.meta.deploy)에 담긴 병력을 인구 상한까지 배치한다
   for (const [id, cnt] of Object.entries(save.meta.deploy)) {
@@ -1843,7 +1831,6 @@ function resumeGame(snap) {
   S.gold = snap.gold;
   S.hired = snap.hired || 0;
   S.nexusEvolved = snap.nexusEvolved ?? false;
-  S.hasMechanic = snap.hasMechanic ?? false;
   S.autoSkill = snap.autoSkill ?? true;
   S.gravWave = snap.gravWave ?? null;
   // 상한을 두기 전에 저장된 판은 범위가 더 넓을 수 있다
@@ -1903,7 +1890,7 @@ function show(name, fromPop) {
 
 const ownedCount = id => S.heroes.filter(h => h.def.id === id).length;
 const heroCost = def => Math.floor(def.cost * Math.pow(CFG.heroCostGrow, ownedCount(def.id)));
-const popFull = () => S.heroes.filter(h => !h.permaMech).length >= S.maxPop;
+const popFull = () => S.heroes.length >= S.maxPop;
 const heroBlocked = def => CFG.heroesLocked || popFull() ||
                            (CFG.heroUnique && ownedCount(def.id) > 0);
 
@@ -2523,8 +2510,6 @@ function update(dt) {
         h.y = home.y + (h.y - home.y) / off * roam;
       }
     }
-
-    if (h.def.noCombat) { h.cd = 1; continue; }
 
     if (inRange && h.cd <= 0) {
       h.cd = 1 / st.rate;
@@ -4845,19 +4830,6 @@ function draw() {
     ctx.globalAlpha = 1;
   }
 
-  /* 영구 작업공 표시 — 좌측 상단 */
-  if (S.hasMechanic && !S.heroes.some(h => h.def.id === 'mechanic')) {
-    ctx.save();
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(10, 46, 8, 8);
-    ctx.globalAlpha = 0.7;
-    ctx.font = '11px "Malgun Gothic", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('작업공', 22, 54);
-    ctx.restore();
-  }
-
   /* 하단 안내 */
   if (S.phase === 'build') {
     if (S.autoT > 0) {
@@ -5686,8 +5658,6 @@ function renderSel() {
     const n = S.nexus;
     $('selBtns').style.display = 'none';
     $('selName').textContent = '넥서스 정보';
-    const repairInfo = S.hasMechanic
-      ? `<div class="stat"><span>작업공 수리</span><b>넥서스 초당 +${repairAmt(mlv('p_mech'))} 수리</b></div>` : '';
     const gravInfo = S.gravWave
       ? `<div class="stat"><span>중력파</span><b>피해 ${S.gravWave.dmg}/초 · 범위 ${S.gravWave.range}</b></div>` : '';
     const modInfo = mlv('m_nexusMod') > 0
@@ -5705,7 +5675,7 @@ function renderSel() {
       <div class="stat"><span>체력재생</span><b>${n.regen.toFixed(1)}/초</b></div>
       <div class="stat"><span>골드 배율</span><b>×${S.goldMul.toFixed(2)}</b></div>
       <div class="stat"><span>수입 배율</span><b>×${S.incomeMul.toFixed(2)}</b></div>
-      ${repairInfo}${gravInfo}${modInfo}${ampInfo}`;
+      ${gravInfo}${modInfo}${ampInfo}`;
     return;
   }
 
@@ -5892,9 +5862,7 @@ $('selModal').onclick = ev => { if (ev.target === $('selModal')) closeSel(); };
 $('btnSell').onclick = () => {
   if (!sel || sel.kind !== 'hero') return;
   const h = sel.h;
-  if (h.permaMech) { alert('영구 배치된 작업공은 해고할 수 없습니다.'); return; }
   S.gold += Math.floor(h.invested * CFG.sellRatio);
-  if (h.def.id === 'mechanic') S.hasMechanic = false;
   S.heroes = S.heroes.filter(x => x !== h);
   saveRun();
   closeSel();
