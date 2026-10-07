@@ -563,6 +563,93 @@
   }
   #menu #btnNickEdit { padding: 2px 4px; }
   .rank-loading { text-align: center; color: #6d7ba0; padding: 14px; font-size: 13px; }
+
+  /* ── 복권 ─────────────────────────────── */
+  #lottoOverlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(6,8,16,.78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    justify-content: center; align-items: center; padding: 12px;
+  }
+  #lottoOverlay.on { display: flex; }
+  #lottoBox {
+    width: 100%; max-width: 380px; max-height: 94vh; overflow-y: auto;
+    background: linear-gradient(180deg, #1a1a35, #101725);
+    border: 1px solid rgba(240,171,252,.3); border-radius: var(--r-lg); padding: 18px 16px;
+    box-shadow: var(--sh-3), var(--hair), 0 0 60px rgba(240,171,252,.08);
+  }
+  #lottoBox h2 { font-size: 20px; font-weight: 800; text-align: center; letter-spacing: .06em; }
+  #lottoBox .lotto-own { text-align: center; font-size: 12px; color: var(--text-dim); margin: 4px 0 14px; }
+  #lottoBox .lotto-own b { color: var(--cyan); }
+  #lottoBox .lotto-own b.tk { color: #f0abfc; }
+  #lottoReels { display: flex; gap: 10px; justify-content: center; }
+  #lottoReels .reel {
+    width: 86px; height: 96px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 44px; font-weight: 900; color: var(--text-mute);
+    background: linear-gradient(180deg, #0a0e19, #141b2e);
+    border: 1px solid var(--line-strong);
+    box-shadow: inset 0 6px 16px rgba(0,0,0,.6), var(--hair);
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+  }
+  #lottoReels .reel.spin { filter: blur(1.2px); opacity: .85; }
+  #lottoReels .reel.hit { transform: scale(1.06); }
+  #lottoReels .reel.win {
+    border-color: rgba(255,212,94,.75);
+    box-shadow: inset 0 6px 16px rgba(0,0,0,.5), 0 0 22px rgba(255,212,94,.35);
+  }
+  #lottoReels .reel.jackpot {
+    border-color: #ff5fa2;
+    box-shadow: inset 0 6px 16px rgba(0,0,0,.4), 0 0 30px rgba(255,95,162,.6);
+    animation: lottoPulse .5s ease-in-out infinite alternate;
+  }
+  @keyframes lottoPulse { from { transform: scale(1.03); } to { transform: scale(1.1); } }
+  /* 잭팟 그림 — 이모지 대신 금색 7 */
+  .seven {
+    background: linear-gradient(180deg, #fff3b0, #ffb300 60%, #ff7a00);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    font-style: italic; font-weight: 900; line-height: 1; padding: 0 .12em;
+  }
+  #lottoReels .seven { font-size: 54px; filter: drop-shadow(0 2px 6px rgba(255,150,0,.6)); }
+  #lottoOdds .seven { font-size: 17px; }
+  #lottoMsg {
+    text-align: center; min-height: 44px; margin: 12px 0 10px;
+    font-size: 14px; font-weight: 700; color: var(--text-dim);
+    display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  }
+  #lottoMsg .big { font-size: 19px; font-weight: 800; }
+  #lottoMsg.win .big { color: var(--gold); }
+  #lottoMsg.jackpot .big { color: #ff7ab8; text-shadow: 0 0 16px rgba(255,95,162,.7); }
+  #lottoMsg.lose .big { color: var(--text-mute); }
+  #btnLottoFree {
+    background: linear-gradient(180deg, #e879f9, #a855f7); border-color: rgba(240,171,252,.5);
+    padding: 12px; font-size: 14px;
+  }
+  #btnLottoFree:hover:not(:disabled) { background: linear-gradient(180deg, #f0abfc, #b46bff); box-shadow: var(--hair), 0 6px 18px rgba(168,85,247,.4); }
+  #lottoBuys { display: flex; gap: 6px; margin-top: 8px; }
+  #lottoBuys button {
+    flex: 1; padding: 9px 4px; display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.15;
+    background: linear-gradient(180deg, rgba(255,212,94,.18), rgba(255,212,94,.06));
+    border-color: rgba(255,212,94,.4); color: var(--gold); box-shadow: none;
+  }
+  #lottoBuys button:hover:not(:disabled) { background: rgba(255,212,94,.26); border-color: rgba(255,212,94,.6); }
+  #lottoBuys button:disabled { background: rgba(255,255,255,.03); border-color: var(--line); color: #5c6884; }
+  #lottoBuys .c { font-size: 14px; font-weight: 800; }
+  #lottoBuys .u { font-size: 10px; font-weight: 600; opacity: .75; }
+  #lottoOdds { margin-top: 12px; font-size: 12px; color: var(--text-dim); }
+  #lottoOdds summary { cursor: pointer; color: var(--text-mute); font-size: 11.5px; padding: 4px 0; }
+  #lottoOdds table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  #lottoOdds td { padding: 4px 4px; border-bottom: 1px solid var(--line); }
+  #lottoOdds tr:last-child td { border-bottom: 0; }
+  #lottoOdds td:nth-child(1) { width: 34px; text-align: center; font-size: 15px; }
+  #lottoOdds td:nth-child(3) { text-align: right; color: var(--gold); font-weight: 700; }
+  #lottoOdds td:nth-child(4) { text-align: right; color: var(--text-mute); width: 58px; }
+  #lottoStats { text-align: center; margin-top: 10px; }
+  /* 메인 버튼에 붙는 무료 복권 수 배지 */
+  .badge {
+    display: inline-block; min-width: 18px; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+    background: #f0abfc; color: #2a0b33; font-size: 11px; font-weight: 800; vertical-align: 1px;
+  }
+  .badge:empty { display: none; }
 </style>
 </head>
 <body>
@@ -596,7 +683,10 @@
     <button id="btnContinue" style="display:none">이어하기</button>
     <button id="btnSortie">출격(처음부터시작)</button>
     <button id="btnShop" class="ghost">코어 상점</button>
-    <button id="btnRank" class="ghost" style="border-color:#ffd45e55;color:#ffd45e">랭킹</button>
+    <div class="row" style="gap:8px">
+      <button id="btnRank" class="ghost" style="flex:1;border-color:#ffd45e55;color:#ffd45e">랭킹</button>
+      <button id="btnLotto" class="ghost" style="flex:1;border-color:#f0abfc66;color:#f0abfc">복권<span id="lottoBadge" class="badge"></span></button>
+    </div>
   </div>
 
   <div id="backupBox" style="display:none">
@@ -800,6 +890,25 @@
     </div>
     <div id="rankBody"><p class="rank-loading">불러오는 중...</p></div>
     <button class="ghost" id="btnRankClose" style="width:100%;margin-top:14px">닫기</button>
+  </div>
+</div>
+
+<!-- ── 복권 오버레이 ──────────────────────────── -->
+<div id="lottoOverlay">
+  <div id="lottoBox">
+    <h2>코어 복권</h2>
+    <p class="lotto-own">보유 코어 <b id="lottoCores">0</b> · 무료 복권 <b class="tk" id="lottoTickets">0</b>장</p>
+    <div id="lottoReels"><div class="reel">?</div><div class="reel">?</div><div class="reel">?</div></div>
+    <div id="lottoMsg"><span>복권을 골라 긁어 보세요</span></div>
+    <button id="btnLottoFree">무료 복권 긁기</button>
+    <div id="lottoBuys"></div>
+    <details id="lottoOdds">
+      <summary>당첨 확률 보기</summary>
+      <table id="lottoOddsTable"></table>
+      <p class="hint" style="margin-top:6px">같은 그림 3개가 나오면 당첨입니다. 당첨금은 복권 값의 배수이고, 무료 복권은 매일 1장 · 100웨이브를 돌파할 때마다 1장씩 받습니다.</p>
+    </details>
+    <p class="hint" id="lottoStats"></p>
+    <button class="ghost" id="btnLottoClose" style="width:100%;margin-top:12px">닫기</button>
   </div>
 </div>
 
@@ -1739,6 +1848,36 @@ const COUPONS = {
   'SKYFALL':      { cores: 200000, specialCores: 5,  desc: '공중 병력 보급' },
 };
 
+/* ── 복권 ────────────────────────────────────────────
+   코어로 사는 긁는 복권. 당첨금은 '복권 값 x 배수'이고, 등수는 아래 표의 확률로
+   한 번에 정한다(그림 3개는 결과를 보여주는 연출일 뿐이다).
+   기대값은 0.855배 — 살수록 평균적으로는 잃는다. 코어를 찍어내는 수단이 되지
+   않게 일부러 1배 밑으로 뒀고, 대신 무료 복권을 매일 한 장씩 준다.
+   확률을 고치면 합이 1 이 되는지, 기대값이 1 을 넘지 않는지 꼭 확인할 것. */
+const LOTTO_PRICES = [1000, 10000, 100000];      // 판매가(코어)
+const LOTTO_TABLE = [
+  { id:'jackpot', p:0.003, mul:50,  name:'잭팟', sym:'7' },
+  { id:'first',   p:0.012, mul:10,  name:'1등',  sym:'💎' },
+  { id:'second',  p:0.035, mul:5,   name:'2등',  sym:'⭐' },
+  { id:'third',   p:0.08,  mul:2,   name:'3등',  sym:'🍀' },
+  { id:'even',    p:0.13,  mul:1,   name:'본전', sym:'🔔' },
+  { id:'half',    p:0.24,  mul:0.5, name:'절반', sym:'🍒' },
+  { id:'none',    p:0.50,  mul:0,   name:'꽝' },
+];
+const LOTTO_JACKPOT_SPECIAL = 2;                 // 잭팟이면 특수 코어도 얹어 준다
+const LOTTO_MAX_TICKETS = 30;                    // 무료 복권을 쌓아둘 수 있는 한도
+/* 무료 복권 한 장의 값 — 최고 웨이브에 비례해 커진다(100 단위로 맞춤).
+   초반에는 1,000 짜리, 최고 1,320 웨이브면 26,400 짜리다. */
+const lottoFreeValue = () => Math.max(1000, Math.min(200000, Math.round(save.best * 20 / 100) * 100));
+// 저장·백업 코드에서 읽은 값을 믿지 않고 형태를 맞춘다
+function normLotto(o) {
+  const src = (o && typeof o === 'object') ? o : {};
+  const n = k => Math.max(0, Math.floor(+src[k] || 0));
+  return { day: typeof src.day === 'string' ? src.day : '',
+           tickets: Math.min(LOTTO_MAX_TICKETS, n('tickets')),
+           bought: n('bought'), spent: n('spent'), won: n('won'), best: n('best') };
+}
+
 /* 저장 데이터 보정 — 밸런스를 크게 바꿀 때 기존 플레이어 기록을 한 번만 손본다.
    save.mig 에 적용된 단계를 남겨서 같은 보정이 두 번 걸리지 않게 한다. */
 const MIGRATION = 4;              // 1: 강화 증가폭 절반화에 맞춰 코어를 1/10 로
@@ -1782,6 +1921,7 @@ function loadSave() {
     else save.meta.deploy[id] = Math.min(save.meta.deploy[id], owned);
   }
   if (!Array.isArray(save.coupons)) save.coupons = [];
+  save.lotto = normLotto(save.lotto);
   const old = +(localStorage.getItem('nexusdefense.best') || 0);
   if (old > save.best) save.best = old;
   const stale = (save.mig || 0) < MIGRATION;
@@ -1822,7 +1962,7 @@ function exportSave() {
                                 cores: DEV ? realCores : save.cores,
                                 specialCores: save.specialCores || 0,
                                 runs: save.runs, meta: save.meta, mig: save.mig || 0,
-                                coupons: save.coupons || [] });
+                                coupons: save.coupons || [], lotto: save.lotto });
   return btoa(String.fromCharCode(...new TextEncoder().encode(body)));
 }
 
@@ -1864,6 +2004,7 @@ function importSave(code) {
   save.meta.t_air = +(d.meta.t_air) || 0;
   // 옛 코드(v1)는 보정 전 값이라 여기서 한 번 깎인다
   save.coupons = Array.isArray(d.coupons) ? d.coupons : [];
+  save.lotto = normLotto(d.lotto);
   save.mig = Math.max(0, +d.mig || 0);
   migrate();
   realCores = save.cores;          // 불러온 값이 운영자 모드에 덮이지 않게 한다
@@ -2331,6 +2472,9 @@ function centuryClear(wave) {
   save.specialCores++;
   save.runs++;
   if (wave > save.best) save.best = wave;
+  // 100웨이브를 넘을 때마다 무료 복권도 한 장 (한도까지)
+  const gotTicket = save.lotto.tickets < LOTTO_MAX_TICKETS;
+  if (gotTicket) save.lotto.tickets++;
   writeSave();
   clearRun();
   const z = currentZone(wave);
@@ -2339,7 +2483,7 @@ function centuryClear(wave) {
   $('overMsg').textContent = `${z.name} · 웨이브 ${wave} 돌파 · 최고 기록 ${save.best}`;
   $('overCore').textContent = `코어 +${cores} (보유 ${save.cores})`;
   $('overBonus').style.display = '';
-  $('overBonus').textContent = `특수 코어 +1 (보유 ${save.specialCores})`;
+  $('overBonus').textContent = `특수 코어 +1 (보유 ${save.specialCores})${gotTicket ? ' · 무료 복권 +1' : ''}`;
   $('over').classList.add('on');
   syncUI();
   submitRanking();
@@ -5211,6 +5355,9 @@ function renderMenu() {
   btn.style.display = run ? '' : 'none';
   if (run) btn.textContent = `이어하기 (웨이브 ${run.wave})`;
   renderZoneChip();
+  // 무료 복권이 있으면 메인 버튼에 장수를 띄운다
+  lottoRefill();
+  $('lottoBadge').textContent = save.lotto.tickets > 0 ? save.lotto.tickets : '';
 }
 
 /* 일반강화와 특수강화는 같은 META 목록을 special 표시로 갈라 쓴다.
@@ -6197,6 +6344,129 @@ $('btnCouponUse').onclick = () => {
   msg.style.color = '#ffd45e';
   $('mCores').textContent = save.cores;
 };
+
+/* ── 복권 ──────────────────────────────────────────────
+   표·가격·무료 복권 값은 위쪽 LOTTO_* 에 있다. 여기는 뽑기와 화면만 다룬다. */
+function lottoToday() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+/* 날짜가 넘어간 뒤 처음 들여다볼 때 무료 복권을 한 장 채운다(이 기기의 날짜 기준).
+   시계를 뒤로 돌려 다시 받지 못하게, 저장된 날짜보다 뒤일 때만 준다. */
+function lottoRefill() {
+  const L = save.lotto, t = lottoToday();
+  if (!(t > L.day)) return;
+  L.day = t;
+  if (L.tickets < LOTTO_MAX_TICKETS) L.tickets++;
+  writeSave();
+}
+function lottoRoll() {
+  let r = Math.random();
+  for (const t of LOTTO_TABLE) { if ((r -= t.p) < 0) return t; }
+  return LOTTO_TABLE[LOTTO_TABLE.length - 1];
+}
+
+let lottoBusy = false;   // 긁는 연출이 도는 동안 true — 버튼을 잠근다
+let lottoHold = 0;       // 연출이 끝나기 전까지 화면의 보유 코어에서 감춰 둘 당첨금
+
+function lottoDraw(price, free) {
+  if (lottoBusy) return;
+  const L = save.lotto;
+  if (free) { if (L.tickets <= 0) return; L.tickets--; }
+  else { if (save.cores < price) return; save.cores -= price; L.spent += price; }
+  const tier = lottoRoll();
+  const prize = Math.floor(price * tier.mul);
+  const sp = tier.id === 'jackpot' ? LOTTO_JACKPOT_SPECIAL : 0;
+  save.cores += prize; save.specialCores += sp;
+  L.bought++; L.won += prize;
+  if (prize > L.best) L.best = prize;
+  // 결과는 긁는 순간 저장한다 — 연출 도중에 닫거나 새로 고쳐도 결과가 달라지지 않는다
+  writeSave();
+  lottoAnimate(tier, prize, sp);
+}
+
+const lottoSymHtml = s => s === '7' ? '<span class="seven">7</span>' : s;
+
+function lottoAnimate(tier, prize, sp) {
+  lottoBusy = true; lottoHold = prize;
+  renderLotto();
+  const reels = [...$('lottoReels').children];
+  const syms = LOTTO_TABLE.filter(t => t.sym).map(t => t.sym);
+  // 당첨이면 같은 그림 셋, 꽝이면 셋이 모두 같지는 않게 고른다
+  let final;
+  if (tier.sym) final = [tier.sym, tier.sym, tier.sym];
+  else {
+    do { final = [0, 1, 2].map(() => syms[Math.random() * syms.length | 0]); }
+    while (final[0] === final[1] && final[1] === final[2]);
+  }
+  const msg = $('lottoMsg');
+  msg.className = ''; msg.innerHTML = '<span>긁는 중…</span>';
+  reels.forEach(r => { r.className = 'reel spin'; });
+  const spin = setInterval(() => {
+    for (const r of reels)
+      if (r.classList.contains('spin')) r.innerHTML = lottoSymHtml(syms[Math.random() * syms.length | 0]);
+  }, 70);
+  [500, 950, 1500].forEach((ms, i) => setTimeout(() => {
+    reels[i].className = 'reel hit';
+    reels[i].innerHTML = lottoSymHtml(final[i]);
+    setTimeout(() => reels[i].classList.remove('hit'), 160);
+    if (i < 2) return;
+    clearInterval(spin);
+    lottoBusy = false; lottoHold = 0;
+    const jackpot = tier.id === 'jackpot';
+    if (tier.sym) reels.forEach(r => r.classList.add(jackpot ? 'jackpot' : 'win'));
+    const won = `+${prize.toLocaleString()} 코어`;
+    if (jackpot) {
+      msg.className = 'jackpot';
+      msg.innerHTML = `<span class="big">잭팟! ${tier.mul}배</span><span>${won} · 특수 코어 +${sp}</span>`;
+    } else if (tier.mul > 1) {
+      msg.className = 'win';
+      msg.innerHTML = `<span class="big">${tier.name} 당첨! ${tier.mul}배</span><span>${won}</span>`;
+    } else if (tier.mul > 0) {
+      msg.className = 'win';
+      msg.innerHTML = `<span class="big">${tier.name}</span><span>${won}</span>`;
+    } else {
+      msg.className = 'lose';
+      msg.innerHTML = '<span class="big">꽝</span><span>다음 기회에…</span>';
+    }
+    renderLotto();
+    renderMenu();          // 메인의 보유 코어와 배지도 같이 맞춘다
+  }, ms));
+}
+
+function renderLotto() {
+  forceAdminCores();
+  const L = save.lotto, fv = lottoFreeValue();
+  $('lottoCores').textContent = (save.cores - lottoHold).toLocaleString();
+  $('lottoTickets').textContent = L.tickets;
+  const fb = $('btnLottoFree');
+  fb.disabled = lottoBusy || L.tickets <= 0;
+  fb.textContent = L.tickets > 0 ? `무료 복권 긁기 (${fv.toLocaleString()} 코어짜리)` : '무료 복권 없음 — 내일 1장 충전';
+  $('lottoBuys').innerHTML = LOTTO_PRICES.map(p =>
+    `<button data-p="${p}" ${lottoBusy || save.cores - lottoHold < p ? 'disabled' : ''}>
+       <span class="c">${p.toLocaleString()}</span><span class="u">코어</span></button>`).join('');
+  $('lottoBuys').querySelectorAll('button').forEach(b => { b.onclick = () => lottoDraw(+b.dataset.p, false); });
+  $('lottoStats').textContent = L.bought
+    ? `긁은 복권 ${L.bought.toLocaleString()}장 · 쓴 코어 ${L.spent.toLocaleString()} · 받은 코어 ${L.won.toLocaleString()} · 최고 당첨 ${L.best.toLocaleString()}`
+    : '';
+}
+
+function openLotto() {
+  lottoRefill();
+  $('lottoOddsTable').innerHTML = LOTTO_TABLE.map(t =>
+    `<tr><td>${t.sym ? lottoSymHtml(t.sym) : '✕'}</td>
+         <td>${t.name}${t.id === 'jackpot' ? ` <span style="color:#f0abfc">+ 특수 코어 ${LOTTO_JACKPOT_SPECIAL}</span>` : ''}</td>
+         <td>${t.mul ? '×' + t.mul : '—'}</td>
+         <td>${+(t.p * 100).toFixed(1)}%</td></tr>`).join('');
+  renderLotto();
+  $('lottoOverlay').classList.add('on');
+}
+function closeLotto() { $('lottoOverlay').classList.remove('on'); renderMenu(); }
+
+$('btnLotto').onclick = openLotto;
+$('btnLottoClose').onclick = closeLotto;
+$('lottoOverlay').onclick = e => { if (e.target === $('lottoOverlay')) closeLotto(); };
+$('btnLottoFree').onclick = () => lottoDraw(lottoFreeValue(), true);
 
 function renderZoneList() {
   const selected = getSelectedZoneFrom();
